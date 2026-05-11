@@ -11,11 +11,13 @@ export default function Cart() {
   const { cartItems, updateQuantity, removeFromCart, cartTotal } = useCart();
   const [isProcessing, setIsProcessing] = useState(false);
 
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
   const handleCheckout = async () => {
     setIsProcessing(true);
     try {
       // Request a checkout session from our backend
-      const res = await fetch('http://localhost:5000/api/payment/create-checkout-session', {
+      const res = await fetch(`${API_URL}/api/payment/create-checkout-session`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ items: cartItems }),

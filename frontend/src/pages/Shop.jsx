@@ -6,9 +6,11 @@ export default function Shop() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
   // Use React's useEffect to fetch data when the page loads
   useEffect(() => {
-    fetch('http://localhost:5000/api/products')
+    fetch(`${API_URL}/api/products`)
       .then((res) => {
         if (!res.ok) throw new Error('Failed to connect to the backend API');
         return res.json();

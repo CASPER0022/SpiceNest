@@ -9,10 +9,12 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:5000/api/auth/login', {
+      const res = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -29,8 +31,8 @@ export default function Login() {
   };
 
   return (
-    <div className="flex justify-center items-center py-20">
-      <div className="bg-white p-8 rounded-lg shadow-md w-96">
+    <div className="flex justify-center items-center py-20 px-4">
+      <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-sm">
         <h2 className="text-2xl font-bold mb-6 text-center">Login to SpiceNest</h2>
         {error && <p className="text-red-500 mb-4 text-center">{error}</p>}
         <form onSubmit={handleSubmit}>
