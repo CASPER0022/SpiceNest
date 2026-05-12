@@ -18,7 +18,7 @@ export default function Success() {
       <p className="text-xl text-gray-600 mb-8 text-center max-w-lg">
         Thank you for your order. Your premium spices are being prepared and will be shipped to you soon!
       </p>
-      <Link to="/shop" className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 px-8 rounded-full transition-colors duration-200">
+      <Link to="/shop" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-8 rounded-full transition-colors duration-200">
         Continue Shopping
       </Link>
     </div>

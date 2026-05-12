@@ -39,7 +39,7 @@ export default function Signup() {
             <label className="block text-gray-700 text-sm font-bold mb-2">Name</label>
             <input 
               type="text" 
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
               value={name} onChange={(e) => setName(e.target.value)} required 
             />
           </div>
@@ -47,7 +47,7 @@ export default function Signup() {
             <label className="block text-gray-700 text-sm font-bold mb-2">Email</label>
             <input 
               type="email" 
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
               value={email} onChange={(e) => setEmail(e.target.value)} required 
             />
           </div>
@@ -55,16 +55,16 @@ export default function Signup() {
             <label className="block text-gray-700 text-sm font-bold mb-2">Password</label>
             <input 
               type="password" 
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
               value={password} onChange={(e) => setPassword(e.target.value)} required 
             />
           </div>
-          <button type="submit" className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-4 rounded-lg">
+          <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg">
             Sign Up
           </button>
         </form>
         <p className="mt-4 text-center text-sm text-gray-600">
-          Already have an account? <Link to="/login" className="text-amber-600 hover:underline">Login</Link>
+          Already have an account? <Link to="/login" className="text-emerald-600 hover:underline">Login</Link>
         </p>
       </div>
     </div>

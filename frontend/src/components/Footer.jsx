@@ -4,7 +4,7 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center">
           <div>
-            <h2 className="text-2xl font-bold text-amber-500">SpiceNest</h2>
+            <h2 className="text-2xl font-bold text-emerald-500">SpiceNest</h2>
             <p className="mt-2 text-gray-400 text-sm">Premium spices from around the world.</p>
           </div>
           <div className="text-gray-400 text-sm">

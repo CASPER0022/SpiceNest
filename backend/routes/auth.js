@@ -62,10 +62,45 @@ router.post('/login', async (req, res) => {
     const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '1d' });
 
     // 4. Send token back to frontend
-    res.json({ token, user: { id: user.id, name: user.name, email: user.email } });
+    res.json({ token, user: { id: user.id, name: user.name, email: user.email, address: user.address } });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// ==========================================
+// UPDATE ADDRESS ROUTE (/api/auth/update-address)
+// ==========================================
+// A simple middleware to verify the token for this route
+const verifyToken = (req, res, next) => {
+  const authHeader = req.header('Authorization');
+  if (!authHeader) return res.status(401).json({ error: 'Access denied' });
+  
+  const token = authHeader.split(' ')[1];
+  try {
+    const verified = jwt.verify(token, JWT_SECRET);
+    req.user = verified;
+    next();
+  } catch (err) {
+    res.status(400).json({ error: 'Invalid token' });
+  }
+};
+
+router.put('/update-address', verifyToken, async (req, res) => {
+  try {
+    const { address } = req.body;
+    
+    // Update the user's address in the database
+    const updatedUser = await prisma.user.update({
+      where: { id: parseInt(req.user.id, 10) },
+      data: { address }
+    });
+    
+    res.json({ message: 'Address updated successfully', address: updatedUser.address });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to update address' });
   }
 });
 
