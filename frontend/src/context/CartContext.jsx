@@ -5,30 +5,35 @@ const CartContext = createContext();
 export function CartProvider({ children }) {
   const [cartItems, setCartItems] = useState([]);
 
-  const addToCart = (product) => {
+  const [isCartOpen, setIsCartOpen] = useState(false);
+
+  const addToCart = (product, weight = '100g', customPrice = null) => {
     setCartItems((prev) => {
-      const existingItem = prev.find((item) => item.id === product.id);
+      const priceToUse = customPrice !== null ? customPrice : product.price;
+      const cartItemId = `${product.id}-${weight}`;
+      const existingItem = prev.find((item) => item.cartItemId === cartItemId || (!item.cartItemId && item.id === product.id));
       if (existingItem) {
         return prev.map((item) =>
-          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+          (item.cartItemId === cartItemId || item.id === product.id) ? { ...item, quantity: item.quantity + 1 } : item
         );
       }
-      return [...prev, { ...product, quantity: 1 }];
+      return [...prev, { ...product, cartItemId, weight, price: priceToUse, quantity: 1 }];
     });
+    setIsCartOpen(true); // Open drawer when item added
   };
 
-  const removeFromCart = (productId) => {
-    setCartItems((prev) => prev.filter((item) => item.id !== productId));
+  const removeFromCart = (cartItemId) => {
+    setCartItems((prev) => prev.filter((item) => item.cartItemId !== cartItemId && item.id !== cartItemId));
   };
 
-  const updateQuantity = (productId, quantity) => {
+  const updateQuantity = (cartItemId, quantity) => {
     if (quantity < 1) {
-      removeFromCart(productId);
+      removeFromCart(cartItemId);
       return;
     }
     setCartItems((prev) =>
       prev.map((item) =>
-        item.id === productId ? { ...item, quantity } : item
+        (item.cartItemId === cartItemId || item.id === cartItemId) ? { ...item, quantity } : item
       )
     );
   };
@@ -53,6 +58,8 @@ export function CartProvider({ children }) {
         clearCart,
         cartTotal,
         cartCount,
+        isCartOpen,
+        setIsCartOpen,
       }}
     >
       {children}

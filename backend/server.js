@@ -44,6 +44,25 @@ app.get('/api/products', async (req, res) => {
   }
 });
 
+// Get a single product by ID
+app.get('/api/products/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const product = await prisma.product.findUnique({
+      where: { id: parseInt(id) }
+    });
+    
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    
+    res.json(product);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to fetch product' });
+  }
+});
+
 // A simple test route to verify the server works
 app.get('/api/test', (req, res) => {
   res.json({ message: 'Hello from the SpiceNest Backend! 🌶️' });

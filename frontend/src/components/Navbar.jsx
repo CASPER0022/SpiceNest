@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useState } from 'react';
 
 export default function Navbar() {
-  const { cartCount } = useCart();
+  const { cartCount, setIsCartOpen } = useCart();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -40,7 +40,7 @@ export default function Navbar() {
           <div className="hidden md:ml-6 md:flex md:space-x-8 items-center">
             <Link to="/" className={`inline-flex items-center px-1 pt-1 text-sm font-bold transition-colors ${textClass}`}>Home</Link>
             <Link to="/shop" className={`inline-flex items-center px-1 pt-1 text-sm font-bold transition-colors ${mutedTextClass}`}>Shop</Link>
-            <Link to="/cart" className={`inline-flex items-center px-1 pt-1 text-sm font-bold relative mr-4 transition-colors ${mutedTextClass}`}>
+            <button onClick={() => setIsCartOpen(true)} className={`inline-flex items-center px-1 pt-1 text-sm font-bold relative mr-4 transition-colors ${mutedTextClass}`}>
               <ShoppingCart size={20} className="mr-1" />
               Cart
               {cartCount > 0 && (
@@ -48,7 +48,7 @@ export default function Navbar() {
                   {cartCount}
                 </span>
               )}
-            </Link>
+            </button>
 
             {user ? (
               <div className={`flex items-center space-x-4 border-l pl-4 ${borderClass}`}>
@@ -63,16 +63,15 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Mobile Menu Button */}
           <div className="flex items-center md:hidden">
-            <Link to="/cart" className={`mr-4 relative ${textClass}`}>
+            <button onClick={() => setIsCartOpen(true)} className={`mr-4 relative ${textClass}`}>
               <ShoppingCart size={20} />
               {cartCount > 0 && (
                 <span className="absolute -top-2 -right-2 bg-emerald-600 text-white rounded-full text-[10px] font-bold w-4 h-4 flex items-center justify-center">
                   {cartCount}
                 </span>
               )}
-            </Link>
+            </button>
             <button 
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className={`focus:outline-none bg-gray-100 p-2 rounded-full transition-colors ${textClass}`}
