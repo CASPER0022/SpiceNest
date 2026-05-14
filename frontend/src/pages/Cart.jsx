@@ -136,7 +136,7 @@ export default function Cart() {
         body: JSON.stringify({ 
           items: cartItems,
           userId: user.id,
-          address: user.address // This is the JSON string
+          address: JSON.stringify(address) // Use the fresh local state!
         }),
       });
       
