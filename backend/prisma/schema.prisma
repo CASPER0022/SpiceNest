@@ -22,6 +22,10 @@ model Product {
   category    String
   image       String
   
+  // Relation to Farmer
+  farmerId    Int?
+  farmer      Farmer?  @relation(fields: [farmerId], references: [id])
+  
   // These automatically keep track of when a product was added/updated
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -33,6 +37,18 @@ model User {
   email     String   @unique
   password  String
   address   String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Farmer {
+  id        Int       @id @default(autoincrement())
+  name      String
+  rating    Float
+  about     String
+  image     String
+  products  Product[]
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

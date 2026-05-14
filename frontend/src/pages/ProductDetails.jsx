@@ -164,6 +164,27 @@ export default function ProductDetails() {
             {product.description} Completely free from heavy metals, chemicals, and additives, it is a premium everyday spice that brings natural wellness and authentic flavour to your kitchen.
           </p>
 
+          {/* Sourced By */}
+          {product.farmer && (
+            <div className="mb-8 p-5 bg-emerald-50 rounded-2xl border border-emerald-100 flex items-center justify-between transition-all hover:shadow-md">
+              <div className="flex items-center space-x-4">
+                <img 
+                  src={product.farmer.image || 'https://ui-avatars.com/api/?name=Farmer&background=10b981&color=fff&size=128'} 
+                  alt={product.farmer.name} 
+                  className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm" 
+                  onError={(e) => { e.target.src = 'https://ui-avatars.com/api/?name=Farmer&background=10b981&color=fff&size=128' }}
+                />
+                <div>
+                  <p className="text-xs text-emerald-600 font-bold uppercase tracking-wider mb-0.5">from farmer</p>
+                  <p className="text-gray-900 font-bold">{product.farmer.name}</p>
+                </div>
+              </div>
+              <Link to={`/farmer/${product.farmer.id}`} className="text-sm bg-white border border-emerald-200 text-emerald-700 font-bold py-2 px-4 rounded-xl hover:bg-emerald-600 hover:text-white transition-colors">
+                View Profile
+              </Link>
+            </div>
+          )}
+
           {/* Weight Selection */}
           <div className="mb-6">
             <h3 className="text-sm font-bold text-gray-900 mb-2">Select Weight</h3>
@@ -238,6 +259,7 @@ export default function ProductDetails() {
               <span>Certified organic product</span>
             </div>
           </div>
+
 
           {/* Meta Actions */}
           <div className="flex items-center gap-6 mt-6 pt-2">

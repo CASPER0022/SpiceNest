@@ -19,12 +19,12 @@ router.post('/create-checkout-session', async (req, res) => {
     // 1. Transform our cart items into the format Stripe expects
     const lineItems = items.map((item) => ({
       price_data: {
-        currency: 'usd',
+        currency: 'inr',
         product_data: {
           name: item.name,
           images: [item.image],
         },
-        // Stripe expects the price in cents! ($15.99 = 1599)
+        // Stripe expects the price in paise! (₹15.99 = 1599)
         unit_amount: Math.round(item.price * 100), 
       },
       quantity: item.quantity,

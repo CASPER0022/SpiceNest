@@ -133,7 +133,7 @@ export default function Cart() {
                   <img src={item.image} alt={item.name} className="w-20 h-20 object-cover rounded-xl mb-4 sm:mb-0 shadow-sm" />
                   <div className="sm:ml-6 flex-grow mb-4 sm:mb-0">
                     <h3 className="text-lg font-bold text-gray-900">{item.name} <span className="text-sm text-gray-500 font-normal">({item.weight || '100g'})</span></h3>
-                    <p className="text-emerald-600 font-bold">${item.price.toFixed(2)}</p>
+                    <p className="text-emerald-600 font-bold">₹{item.price.toFixed(2)}</p>
                   </div>
                   <div className="flex items-center space-x-4">
                     <div className="flex items-center border rounded-lg overflow-hidden">
@@ -202,7 +202,7 @@ export default function Cart() {
             <div className="space-y-3 mb-6">
               <div className="flex justify-between text-gray-600 font-medium">
                 <span>Subtotal</span>
-                <span>${cartTotal.toFixed(2)}</span>
+                <span>₹{cartTotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-gray-600 font-medium">
                 <span>Shipping</span>
@@ -210,7 +210,7 @@ export default function Cart() {
               </div>
               <div className="border-t pt-4 flex justify-between items-end">
                 <span className="text-lg font-bold text-gray-900">Total</span>
-                <span className="text-3xl font-black text-emerald-600">${cartTotal.toFixed(2)}</span>
+                <span className="text-3xl font-black text-emerald-600">₹{cartTotal.toFixed(2)}</span>
               </div>
             </div>
 
