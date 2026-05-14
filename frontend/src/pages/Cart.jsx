@@ -133,7 +133,11 @@ export default function Cart() {
       const res = await fetch(`${API_URL}/api/payment/create-checkout-session`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: cartItems }),
+        body: JSON.stringify({ 
+          items: cartItems,
+          userId: user.id,
+          address: user.address // This is the JSON string
+        }),
       });
       
       const session = await res.json();
