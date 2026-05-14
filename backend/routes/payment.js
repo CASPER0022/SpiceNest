@@ -16,21 +16,29 @@ router.post('/create-checkout-session', async (req, res) => {
     
     const { items } = req.body;
 
-    // 1. Transform our cart items into the format Stripe expects
-    const lineItems = items.map((item) => ({
-      price_data: {
-        currency: 'inr',
-        product_data: {
-          name: item.name,
-          images: [item.image],
-        },
-        // Stripe expects the price in paise! (₹15.99 = 1599)
-        unit_amount: Math.round(item.price * 100), 
-      },
-      quantity: item.quantity,
-    }));
-
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+    // 1. Transform our cart items into the format Stripe expects
+    const lineItems = items.map((item) => {
+      // Stripe requires absolute URLs for images
+      let imageUrl = item.image;
+      if (imageUrl && imageUrl.startsWith('/')) {
+        imageUrl = `${frontendUrl}${imageUrl}`;
+      }
+
+      return {
+        price_data: {
+          currency: 'inr',
+          product_data: {
+            name: item.name,
+            images: imageUrl ? [imageUrl] : [],
+          },
+          // Stripe expects the price in paise! (₹15.99 = 1599)
+          unit_amount: Math.round(item.price * 100), 
+        },
+        quantity: item.quantity,
+      };
+    });
 
     // 2. Create a secure Checkout Session
     const session = await stripe.checkout.sessions.create({

@@ -36,13 +36,19 @@ export default function Cart() {
         const parsed = JSON.parse(user.address);
         if (parsed && typeof parsed === 'object') {
           setAddress(prev => ({ ...prev, ...parsed }));
+          
+          // Check if the saved address is complete
+          const required = ['fullName', 'mobileNumber', 'pincode', 'houseNo', 'area', 'city', 'state'];
+          const isComplete = required.every(field => parsed[field]?.trim());
+          setIsEditingAddress(!isComplete);
         } else {
           setAddress(prev => ({ ...prev, houseNo: user.address }));
+          setIsEditingAddress(true);
         }
       } catch (e) {
         setAddress(prev => ({ ...prev, houseNo: user.address }));
+        setIsEditingAddress(true);
       }
-      setIsEditingAddress(false);
     } else {
       setIsEditingAddress(true);
     }
@@ -59,9 +65,15 @@ export default function Cart() {
     
     const addressString = JSON.stringify(address);
     
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert("Your session has expired. Please log in again.");
+      navigate('/login');
+      return false;
+    }
+
     setIsSavingAddress(true);
     try {
-      const token = localStorage.getItem('token');
       const res = await fetch(`${API_URL}/api/auth/update-address`, {
         method: 'PUT',
         headers: { 
@@ -88,24 +100,34 @@ export default function Cart() {
   const handleCheckout = async () => {
     // 1. Must be logged in
     if (!user) {
-      // Redirect to login if not authenticated
       navigate('/login');
       return;
     }
 
-    // 2. Must save address if currently editing
+    // 2. Validate Address Completion
+    const required = ['fullName', 'mobileNumber', 'pincode', 'houseNo', 'area', 'city', 'state'];
+    const isComplete = required.every(field => address[field]?.trim());
+
+    if (!isComplete) {
+       alert("Please complete all required shipping address fields.");
+       setIsEditingAddress(true);
+       return;
+    }
+
+    // 3. Must save address if currently editing
     if (isEditingAddress) {
       const saved = await handleSaveAddress();
       if (!saved) return; 
     }
 
-    // 3. Final validation
-    if (!user.address && !address) {
+    // 4. Final validation check
+    if (!user.address && !address.houseNo) {
        alert("A shipping address is required to proceed.");
+       setIsEditingAddress(true);
        return;
     }
 
-    // 4. Initiate Stripe Checkout
+    // 5. Initiate Stripe Checkout
     setIsProcessing(true);
     try {
       const res = await fetch(`${API_URL}/api/payment/create-checkout-session`, {
