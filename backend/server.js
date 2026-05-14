@@ -36,7 +36,10 @@ app.use('/api/payment', paymentRoutes);
 // Get all spices from the Neon Database!
 app.get('/api/products', async (req, res) => {
   try {
-    const products = await prisma.product.findMany();
+    const products = await prisma.product.findMany({
+      orderBy: { id: 'desc' },
+      include: { farmer: true }
+    });
     res.json(products);
   } catch (error) {
     console.error(error);
@@ -49,7 +52,8 @@ app.get('/api/products/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const product = await prisma.product.findUnique({
-      where: { id: parseInt(id) }
+      where: { id: parseInt(id) },
+      include: { farmer: true }
     });
     
     if (!product) {
@@ -60,6 +64,26 @@ app.get('/api/products/:id', async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch product' });
+  }
+});
+
+// Get a single farmer by ID
+app.get('/api/farmers/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const farmer = await prisma.farmer.findUnique({
+      where: { id: parseInt(id) },
+      include: { products: true }
+    });
+    
+    if (!farmer) {
+      return res.status(404).json({ error: 'Farmer not found' });
+    }
+    
+    res.json(farmer);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to fetch farmer' });
   }
 });
 

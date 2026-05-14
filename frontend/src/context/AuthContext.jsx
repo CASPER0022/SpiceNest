@@ -8,8 +8,14 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     // Check if user is already logged in when the page loads
     const storedUser = localStorage.getItem('user');
-    if (storedUser) {
+    const token = localStorage.getItem('token');
+    if (storedUser && token) {
       setUser(JSON.parse(storedUser));
+    } else {
+      // If either is missing, clear both to be safe
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      setUser(null);
     }
   }, []);
 

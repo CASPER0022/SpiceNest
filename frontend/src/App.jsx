@@ -12,6 +12,7 @@ import Cart from './pages/Cart';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Success from './pages/Success';
+import FarmerProfile from './pages/FarmerProfile';
 
 // Main App Layout component to handle routing logic like dynamic padding
 function AppLayout() {
@@ -33,6 +34,7 @@ function AppLayout() {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/success" element={<Success />} />
+          <Route path="/farmer/:id" element={<FarmerProfile />} />
         </Routes>
       </main>
       <Footer />

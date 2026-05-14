@@ -30,7 +30,7 @@ export default function ProductCard({ product }) {
         <h3 className="text-lg font-bold text-gray-900 mb-2">{product.name}</h3>
         <p className="text-gray-600 text-sm mb-4 line-clamp-2">{product.description}</p>
         <div className="flex items-center justify-between mt-auto">
-          <span className="text-xl font-bold text-gray-900">${product.price.toFixed(2)}</span>
+          <span className="text-xl font-bold text-gray-900">₹{product.price.toFixed(2)}</span>
           <button 
             onClick={handleAddToCart}
             className="bg-emerald-100 hover:bg-emerald-600 text-emerald-700 hover:text-white rounded-full p-2 transition-colors duration-200 flex-shrink-0 relative z-10"
