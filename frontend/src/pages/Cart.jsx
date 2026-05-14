@@ -14,7 +14,16 @@ export default function Cart() {
   const navigate = useNavigate();
   
   const [isProcessing, setIsProcessing] = useState(false);
-  const [address, setAddress] = useState('');
+  const [address, setAddress] = useState({
+    fullName: '',
+    mobileNumber: '',
+    pincode: '',
+    houseNo: '',
+    area: '',
+    landmark: '',
+    city: '',
+    state: ''
+  });
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [isSavingAddress, setIsSavingAddress] = useState(false);
 
@@ -23,7 +32,16 @@ export default function Cart() {
   // Initialize address state when user loads
   useEffect(() => {
     if (user?.address) {
-      setAddress(user.address);
+      try {
+        const parsed = JSON.parse(user.address);
+        if (parsed && typeof parsed === 'object') {
+          setAddress(prev => ({ ...prev, ...parsed }));
+        } else {
+          setAddress(prev => ({ ...prev, houseNo: user.address }));
+        }
+      } catch (e) {
+        setAddress(prev => ({ ...prev, houseNo: user.address }));
+      }
       setIsEditingAddress(false);
     } else {
       setIsEditingAddress(true);
@@ -31,10 +49,15 @@ export default function Cart() {
   }, [user]);
 
   const handleSaveAddress = async () => {
-    if (!address.trim()) {
-      alert("Please enter a valid shipping address.");
+    const required = ['fullName', 'mobileNumber', 'pincode', 'houseNo', 'area', 'city', 'state'];
+    const missing = required.filter(field => !address[field]?.trim());
+    
+    if (missing.length > 0) {
+      alert(`Please fill in all required fields.`);
       return false;
     }
+    
+    const addressString = JSON.stringify(address);
     
     setIsSavingAddress(true);
     try {
@@ -45,13 +68,13 @@ export default function Cart() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ address }),
+        body: JSON.stringify({ address: addressString }),
       });
       
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       
-      updateAddress(address); // Update the React context and localStorage
+      updateAddress(addressString); // Update the React context and localStorage
       setIsEditingAddress(false);
       return true;
     } catch (error) {
@@ -176,24 +199,85 @@ export default function Cart() {
                   <Link to="/login" className="text-emerald-600 font-bold mt-2 inline-block">Login or Create Account →</Link>
                 </div>
               ) : isEditingAddress ? (
-                <div className="space-y-3">
-                  <textarea
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    placeholder="Enter your full delivery address..."
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 min-h-[100px] text-sm"
-                  ></textarea>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 gap-3">
+                    <input
+                      type="text"
+                      placeholder="Full Name (Required)"
+                      value={address.fullName}
+                      onChange={(e) => setAddress({...address, fullName: e.target.value})}
+                      className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Mobile Number (Required)"
+                      value={address.mobileNumber}
+                      onChange={(e) => setAddress({...address, mobileNumber: e.target.value})}
+                      className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                    />
+                    <div className="grid grid-cols-2 gap-3">
+                      <input
+                        type="text"
+                        placeholder="Pincode"
+                        value={address.pincode}
+                        onChange={(e) => setAddress({...address, pincode: e.target.value})}
+                        className="p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                      />
+                      <input
+                        type="text"
+                        placeholder="City"
+                        value={address.city}
+                        onChange={(e) => setAddress({...address, city: e.target.value})}
+                        className="p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                      />
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="State (Required)"
+                      value={address.state}
+                      onChange={(e) => setAddress({...address, state: e.target.value})}
+                      className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                    />
+                    <input
+                      type="text"
+                      placeholder="House No., Building Name (Required)"
+                      value={address.houseNo}
+                      onChange={(e) => setAddress({...address, houseNo: e.target.value})}
+                      className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Road name, Area, Colony (Required)"
+                      value={address.area}
+                      onChange={(e) => setAddress({...address, area: e.target.value})}
+                      className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Landmark (Optional)"
+                      value={address.landmark}
+                      onChange={(e) => setAddress({...address, landmark: e.target.value})}
+                      className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                    />
+                  </div>
+                  
                   <button 
                     onClick={handleSaveAddress}
                     disabled={isSavingAddress}
-                    className="w-full bg-gray-900 text-white font-bold py-2 px-4 rounded-lg text-sm hover:bg-black transition-colors flex items-center justify-center disabled:opacity-50"
+                    className="w-full bg-emerald-600 text-white font-bold py-3 px-4 rounded-xl text-sm hover:bg-emerald-700 transition-colors flex items-center justify-center disabled:opacity-50 shadow-md"
                   >
-                    {isSavingAddress ? 'Saving...' : <><Check size={16} className="mr-2" /> Save Address</>}
+                    {isSavingAddress ? 'Saving...' : <><Check size={16} className="mr-2" /> Save & Deliver Here</>}
                   </button>
                 </div>
               ) : (
-                <div className="bg-white p-3 rounded-lg border border-emerald-100 text-sm text-gray-700 leading-relaxed">
-                  {user.address}
+                <div className="bg-white p-4 rounded-xl border border-emerald-100 text-sm text-gray-700 shadow-sm">
+                  <p className="font-bold text-gray-900 mb-1">{address.fullName}</p>
+                  <p className="mb-1">{address.houseNo}, {address.area}</p>
+                  {address.landmark && <p className="mb-1 text-gray-500 text-xs">Landmark: {address.landmark}</p>}
+                  <p className="mb-2">{address.city}, {address.state} - {address.pincode}</p>
+                  <p className="font-medium text-gray-900 flex items-center">
+                    <span className="text-gray-500 font-normal mr-2">Phone:</span> {address.mobileNumber}
+                  </p>
                 </div>
               )}
             </div>
