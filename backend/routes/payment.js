@@ -128,13 +128,13 @@ router.get('/confirm-order', async (req, res) => {
     // 5. Send response to user immediately (don't block the UI)
     res.json({ success: true, order });
 
-    // 6. Send confirmation email in the background
+    // 6. Send confirmation email in the background (NOT awaited)
     try {
       const parsedAddress = JSON.parse(address);
       if (parsedAddress.email) {
         console.log(`📧 Sending confirmation to: ${parsedAddress.email}`);
-        // We still await here to ensure it finishes in the background process
-        await sendOrderConfirmation(parsedAddress.email, order);
+        // We do NOT await here to ensure the user is never blocked
+        sendOrderConfirmation(parsedAddress.email, order);
       }
     } catch (e) {
       console.error('Background email task failed:', e);
