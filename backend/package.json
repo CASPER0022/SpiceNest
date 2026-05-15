@@ -9,6 +9,7 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
+    "@getbrevo/brevo": "^5.0.4",
     "@prisma/client": "^6.4.1",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",

@@ -1,21 +1,23 @@
-import { Resend } from 'resend';
+import * as Brevo from '@getbrevo/brevo';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 /**
- * Sends an order confirmation email to the customer using Resend.
+ * Sends an order confirmation email to the customer using Brevo API.
  * @param {string} to - Customer's email address
  * @param {object} order - The order object from Prisma
  */
 export async function sendOrderConfirmation(to, order) {
   try {
-    if (!process.env.RESEND_API_KEY) {
-      console.error('❌ RESEND_API_KEY is missing');
+    if (!process.env.BREVO_API_KEY) {
+      console.error('❌ BREVO_API_KEY is missing');
       return false;
     }
+
+    // Initialize Brevo API
+    const apiInstance = new Brevo.TransactionalEmailsApi();
+    apiInstance.setApiKey(Brevo.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY);
 
     // Parse address if it's a string
     let address = order.address;
@@ -35,11 +37,10 @@ export async function sendOrderConfirmation(to, order) {
       </tr>
     `).join('');
 
-    const { data, error } = await resend.emails.send({
-      from: 'SpiceNest <onboarding@resend.dev>',
-      to: to,
-      subject: `Order Confirmed! Order ID: #${order.id}`,
-      html: `
+    const sendSmtpEmail = new Brevo.SendSmtpEmail();
+
+    sendSmtpEmail.subject = `Order Confirmed! Order ID: #${order.id}`;
+    sendSmtpEmail.htmlContent = `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
           <h1 style="color: #059669; text-align: center;">Order Confirmed!</h1>
           <p>Hi ${address.fullName || 'Valued Customer'},</p>
@@ -81,18 +82,18 @@ export async function sendOrderConfirmation(to, order) {
             Kerala, India
           </p>
         </div>
-      `
-    });
+    `;
+    
+    // Sender must be a verified email in Brevo
+    sendSmtpEmail.sender = { "name": "SpiceNest", "email": "heyitsmealbinjohn@gmail.com" };
+    sendSmtpEmail.to = [{ "email": to, "name": address.fullName || "Valued Customer" }];
+    sendSmtpEmail.replyTo = { "email": "heyitsmealbinjohn@gmail.com", "name": "SpiceNest Support" };
 
-    if (error) {
-      console.error('❌ Resend Error:', error);
-      return false;
-    }
-
-    console.log('✅ Email sent via Resend:', data.id);
+    const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
+    console.log('✅ Email sent via Brevo:', data.body.messageId);
     return true;
   } catch (error) {
-    console.error('❌ Failed to send email via Resend:', error);
+    console.error('❌ Failed to send email via Brevo:', error.response ? error.response.body : error);
     return false;
   }
 }
