@@ -8,6 +8,10 @@ import nodemailer from 'nodemailer';
 export async function sendOrderConfirmation(to, order) {
   try {
     // Configure transporter
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      console.warn('⚠️ EMAIL_USER or EMAIL_PASS not set. Falling back to Ethereal.');
+    }
+
     let transporter;
     
     if (process.env.EMAIL_USER && process.env.EMAIL_USER.includes('gmail')) {
@@ -20,11 +24,11 @@ export async function sendOrderConfirmation(to, order) {
         },
       });
     } else {
-      // Use Ethereal for testing
+      // Use SMTP or Ethereal for testing
       transporter = nodemailer.createTransport({
-        host: 'smtp.ethereal.email',
-        port: 587,
-        secure: false,
+        host: process.env.EMAIL_HOST || 'smtp.ethereal.email',
+        port: process.env.EMAIL_PORT || 587,
+        secure: process.env.EMAIL_SECURE === 'true',
         auth: {
           user: process.env.EMAIL_USER || 'test@ethereal.email',
           pass: process.env.EMAIL_PASS || 'test_password',
@@ -32,12 +36,23 @@ export async function sendOrderConfirmation(to, order) {
       });
     }
 
+    // Verify transporter connection
+    try {
+      await transporter.verify();
+      console.log('✅ SMTP connection verified');
+    } catch (verifyError) {
+      console.error('❌ SMTP verification failed:', verifyError);
+      throw verifyError;
+    }
+
     // Parse address if it's a string
     let address = order.address;
     try {
-      address = JSON.parse(order.address);
+      if (typeof order.address === 'string') {
+        address = JSON.parse(order.address);
+      }
     } catch (e) {
-      // already a string or fallback
+      console.error('Failed to parse order address:', e);
     }
 
     const itemsHtml = order.items.map(item => `
@@ -49,8 +64,9 @@ export async function sendOrderConfirmation(to, order) {
     `).join('');
 
     const mailOptions = {
-      from: '"SpiceNest 🌿" <orders@spicenest.com>',
+      from: `"SpiceNest 🌿" <${process.env.EMAIL_USER}>`, // Gmail requires this to be the authenticated email
       to: to,
+      replyTo: process.env.EMAIL_USER,
       subject: `Order Confirmed! Order ID: #${order.id}`,
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
@@ -98,7 +114,7 @@ export async function sendOrderConfirmation(to, order) {
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log('✅ Email sent: %s', info.messageId);
+    console.log('✅ Email sent successfully: %s', info.messageId);
     
     // If using Ethereal, log the preview URL
     if (transporter.options.host === 'smtp.ethereal.email') {
@@ -108,6 +124,10 @@ export async function sendOrderConfirmation(to, order) {
     return true;
   } catch (error) {
     console.error('❌ Failed to send email:', error);
+    // Log more specific info for Gmail
+    if (error.code === 'EAUTH') {
+      console.error('Check if your App Password is correct and EMAIL_USER matches.');
+    }
     return false;
   }
 }
