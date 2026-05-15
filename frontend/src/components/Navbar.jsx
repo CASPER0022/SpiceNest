@@ -40,6 +40,7 @@ export default function Navbar() {
           <div className="hidden md:ml-6 md:flex md:space-x-8 items-center">
             <Link to="/" className={`inline-flex items-center px-1 pt-1 text-sm font-bold transition-colors ${textClass}`}>Home</Link>
             <Link to="/shop" className={`inline-flex items-center px-1 pt-1 text-sm font-bold transition-colors ${mutedTextClass}`}>Shop</Link>
+            <Link to="/viewed" className={`inline-flex items-center px-1 pt-1 text-sm font-bold transition-colors ${mutedTextClass}`}>Viewed</Link>
             <button onClick={() => setIsCartOpen(true)} className={`inline-flex items-center px-1 pt-1 text-sm font-bold relative mr-4 transition-colors ${mutedTextClass}`}>
               <ShoppingCart size={20} className="mr-1" />
               Cart
@@ -52,7 +53,7 @@ export default function Navbar() {
 
             {user ? (
               <div className={`flex items-center space-x-4 border-l pl-4 ${borderClass}`}>
-                <span className={`text-sm font-bold flex items-center ${textClass}`}><User size={16} className="mr-1" /> {user.name}</span>
+                <Link to="/profile" className={`text-sm font-bold flex items-center ${textClass}`}><User size={16} className="mr-1" /> {user.name}</Link>
                 <button onClick={handleLogout} className="text-sm font-bold text-red-500 hover:text-red-600 transition-colors">Logout</button>
               </div>
             ) : (
