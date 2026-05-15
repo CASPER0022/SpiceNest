@@ -7,18 +7,30 @@ import nodemailer from 'nodemailer';
  */
 export async function sendOrderConfirmation(to, order) {
   try {
-    // Create a transporter
-    // For production, use your real SMTP credentials (Gmail, SendGrid, etc.)
-    // For now, we use a test account via Ethereal
-    const transporter = nodemailer.createTransport({
-      host: 'smtp.ethereal.email',
-      port: 587,
-      secure: false, // true for 465, false for other ports
-      auth: {
-        user: process.env.EMAIL_USER || 'test@ethereal.email', 
-        pass: process.env.EMAIL_PASS || 'test_password',
-      },
-    });
+    // Configure transporter
+    let transporter;
+    
+    if (process.env.EMAIL_USER && process.env.EMAIL_USER.includes('gmail')) {
+      // Use Gmail
+      transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+      });
+    } else {
+      // Use Ethereal for testing
+      transporter = nodemailer.createTransport({
+        host: 'smtp.ethereal.email',
+        port: 587,
+        secure: false,
+        auth: {
+          user: process.env.EMAIL_USER || 'test@ethereal.email',
+          pass: process.env.EMAIL_PASS || 'test_password',
+        },
+      });
+    }
 
     // Parse address if it's a string
     let address = order.address;
