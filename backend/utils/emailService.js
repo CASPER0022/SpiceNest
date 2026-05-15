@@ -24,19 +24,19 @@ export async function sendOrderConfirmation(to, order) {
     if (process.env.EMAIL_USER && process.env.EMAIL_USER.includes('gmail')) {
       // Use Gmail with explicit settings for better compatibility with Render/Hosting
       transporter = nodemailer.createTransport({
-        host: 'smtp.gmail.com',
+        // Use direct IPv4 address to absolutely bypass any IPv6 issues on Render
+        host: '74.125.142.108', 
         port: 587,
         secure: false, // STARTTLS
         auth: {
           user: process.env.EMAIL_USER,
           pass: process.env.EMAIL_PASS,
         },
-        family: 4, // Explicitly force IPv4
-        // Force IPv4 at the DNS lookup level as well
-        lookup: (hostname, options, callback) => {
-          dns.lookup(hostname, { family: 4 }, callback);
+        tls: {
+          // This ensures the SSL certificate still matches 'smtp.gmail.com'
+          servername: 'smtp.gmail.com'
         },
-        connectionTimeout: 20000, // 20 seconds
+        connectionTimeout: 20000, 
         greetingTimeout: 20000,
         socketTimeout: 20000,
       });
