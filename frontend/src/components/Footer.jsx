@@ -22,7 +22,7 @@ export default function Footer() {
             </div>
             
             <p className="text-gray-400 text-sm leading-relaxed max-w-xs">
-              Premium organic spices from the lush farms of Wayanad, Kerala. Every spice is handpicked and processed with care to bring nature's best to your kitchen.
+              Premium organic spices from the lush farms of Idukki, Kerala. Every spice is handpicked and processed with care to bring nature's best to your kitchen.
             </p>
             
             <div className="flex space-x-3 pt-2">
@@ -81,18 +81,18 @@ export default function Footer() {
             <ul className="space-y-5 text-sm text-gray-400">
               <li className="flex items-start">
                 <MapPin size={20} className="mr-3 text-emerald-500 shrink-0" />
-                <span>Karunalayam, Cheekallore, Kaniyambetta, Kalpetta, Wayanad, Kerala - 673 121</span>
+                <span>Kanjikuzhy, Idukki, Kaniyambetta, Kalpetta, Wayanad, Kerala - 685 606</span>
               </li>
               <li className="flex items-center">
                 <Phone size={20} className="mr-3 text-emerald-500 shrink-0" />
                 <div className="flex flex-col">
-                  <span>+91 80-62689625</span>
-                  <span>+91 9886 55 9991</span>
+                  <span>+91 8921663449</span>
+                  <span>+91 9645425742</span>
                 </div>
               </li>
               <li className="flex items-center">
                 <Mail size={20} className="mr-3 text-emerald-500 shrink-0" />
-                <span>hello@wayanadcraft.com</span>
+                <span>heyitsmealbinjohn@gmail.com</span>
               </li>
               <li className="flex items-center">
                 <Clock size={20} className="mr-3 text-emerald-500 shrink-0" />
@@ -108,11 +108,11 @@ export default function Footer() {
           <div className="flex flex-col md:flex-row items-center space-y-2 md:space-y-0 md:space-x-4">
             <span>© {new Date().getFullYear()} SpiceNest. All rights reserved.</span>
             <span className="hidden md:inline text-gray-700">|</span>
-            <span>PGS-India and NPOP Certified</span>
+            <span>Certified</span>
           </div>
           <div className="flex items-center">
             <span>Designed and Developed by</span>
-            <span className="ml-1 text-emerald-500 font-bold hover:underline cursor-pointer">theCoin</span>
+            <span className="ml-1 text-emerald-500 font-bold hover:underline cursor-pointer">Albin John</span>
           </div>
         </div>
       </div>
