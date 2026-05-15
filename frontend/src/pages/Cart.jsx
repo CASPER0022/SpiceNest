@@ -179,7 +179,7 @@ export default function Cart() {
                 const itemId = item.cartItemId || item.id;
                 return (
                 <li key={itemId} className="p-6 flex flex-col sm:flex-row sm:items-center">
-                  <img src={item.image} alt={item.name} className="w-20 h-20 object-cover rounded-xl mb-4 sm:mb-0 shadow-sm" />
+                  <img src={item.images ? item.images[0] : item.image} alt={item.name} className="w-20 h-20 object-cover rounded-xl mb-4 sm:mb-0 shadow-sm" />
                   <div className="sm:ml-6 flex-grow mb-4 sm:mb-0">
                     <h3 className="text-lg font-bold text-gray-900">{item.name} <span className="text-sm text-gray-500 font-normal">({item.weight || '100g'})</span></h3>
                     <p className="text-emerald-600 font-bold">₹{item.price.toFixed(2)}</p>

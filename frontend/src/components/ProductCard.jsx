@@ -23,7 +23,7 @@ export default function ProductCard({ product }) {
   return (
     <Link to={`/product/${product.id}`} className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 group flex flex-col cursor-pointer block">
       <div className="relative h-48 overflow-hidden bg-gray-200 shrink-0">
-        <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+        <img src={(product.images && product.images[0]) || '/images/placeholder.jpg'} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
       </div>
       <div className="p-5 flex flex-col flex-grow">
         <div className="text-xs text-emerald-600 font-semibold uppercase tracking-wider mb-1">{product.category}</div>

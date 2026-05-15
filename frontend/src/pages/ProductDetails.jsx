@@ -23,6 +23,7 @@ export default function ProductDetails() {
   const [error, setError] = useState(null);
   const [selectedWeight, setSelectedWeight] = useState(WEIGHT_OPTIONS[0]);
   const [quantity, setQuantity] = useState(1);
+  const [activeImage, setActiveImage] = useState(null);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -34,6 +35,9 @@ export default function ProductDetails() {
       })
       .then((data) => {
         setProduct(data);
+        if (data.images && data.images.length > 0) {
+          setActiveImage(data.images[0]);
+        }
         addToViewed(data);
         setLoading(false);
       })
@@ -114,16 +118,28 @@ export default function ProductDetails() {
         <div className="space-y-4">
           <div className="aspect-w-4 aspect-h-3 bg-gray-100 rounded-3xl overflow-hidden shadow-lg border border-gray-100 relative group">
             <img 
-              src={product.image} 
+              src={activeImage || (product.images && product.images[0]) || '/images/placeholder.jpg'} 
               alt={product.name} 
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
           </div>
-          {/* Mock Thumbnails */}
+          {/* Thumbnails */}
           <div className="flex space-x-4 overflow-x-auto pb-2">
-            {[product.image, product.image, product.image].map((img, i) => (
-              <button key={i} className={`shrink-0 w-20 h-20 rounded-xl overflow-hidden border-2 ${i === 0 ? 'border-emerald-500' : 'border-transparent'} opacity-${i===0?'100':'70'} hover:opacity-100 transition-opacity`}>
-                 <img src={img} alt="" className="w-full h-full object-cover" />
+            {product.images?.map((img, i) => (
+              <button 
+                key={i} 
+                onClick={() => setActiveImage(img)}
+                className={`shrink-0 w-20 h-20 rounded-xl overflow-hidden border-2 ${activeImage === img ? 'border-emerald-500' : 'border-transparent'} opacity-${activeImage === img ? '100' : '70'} hover:opacity-100 transition-opacity bg-gray-50`}
+              >
+                 <img 
+                   src={img} 
+                   alt={`${product.name} ${i + 1}`} 
+                   className="w-full h-full object-cover"
+                   onError={(e) => {
+                     // Fallback to the first image if there's an error
+                     if (i > 0 && product.images) e.target.src = product.images[0];
+                   }}
+                 />
               </button>
             ))}
           </div>
