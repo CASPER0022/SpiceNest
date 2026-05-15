@@ -1,64 +1,20 @@
-import nodemailer from 'nodemailer';
-import dns from 'dns';
+import { Resend } from 'resend';
+import dotenv from 'dotenv';
 
-// Force Node.js to prefer IPv4 over IPv6. 
-// This fixes the 'ENETUNREACH' error on platforms like Render.
-if (dns.setDefaultResultOrder) {
-  dns.setDefaultResultOrder('ipv4first');
-}
+dotenv.config();
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 /**
- * Sends an order confirmation email to the customer.
+ * Sends an order confirmation email to the customer using Resend.
  * @param {string} to - Customer's email address
  * @param {object} order - The order object from Prisma
  */
 export async function sendOrderConfirmation(to, order) {
   try {
-    // Configure transporter
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-      console.warn('⚠️ EMAIL_USER or EMAIL_PASS not set. Falling back to Ethereal.');
-    }
-
-    let transporter;
-    
-    if (process.env.EMAIL_USER && process.env.EMAIL_USER.includes('gmail')) {
-      // Use Gmail with explicit settings for better compatibility with Render/Hosting
-      transporter = nodemailer.createTransport({
-        // Switch to SSL Port 465 as 587 is timing out on Render
-        host: '74.125.142.108', 
-        port: 465,
-        secure: true, // SSL
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS,
-        },
-        tls: {
-          servername: 'smtp.gmail.com'
-        },
-        connectionTimeout: 20000, 
-        greetingTimeout: 20000,
-        socketTimeout: 20000,
-      });
-    } else {
-      // Use SMTP or Ethereal for testing
-      transporter = nodemailer.createTransport({
-        host: process.env.EMAIL_HOST || 'smtp.ethereal.email',
-        port: process.env.EMAIL_PORT || 587,
-        secure: process.env.EMAIL_SECURE === 'true',
-        auth: {
-          user: process.env.EMAIL_USER || 'test@ethereal.email',
-          pass: process.env.EMAIL_PASS || 'test_password',
-        },
-      });
-    }
-
-    // Verify transporter connection
-    try {
-      await transporter.verify();
-      console.log('✅ SMTP connection verified');
-    } catch (verifyError) {
-      console.error('❌ SMTP verification failed:', verifyError);
-      throw verifyError;
+    if (!process.env.RESEND_API_KEY) {
+      console.error('❌ RESEND_API_KEY is missing');
+      return false;
     }
 
     // Parse address if it's a string
@@ -79,10 +35,9 @@ export async function sendOrderConfirmation(to, order) {
       </tr>
     `).join('');
 
-    const mailOptions = {
-      from: `"SpiceNest 🌿" <${process.env.EMAIL_USER}>`, // Gmail requires this to be the authenticated email
+    const { data, error } = await resend.emails.send({
+      from: 'SpiceNest <onboarding@resend.dev>',
       to: to,
-      replyTo: process.env.EMAIL_USER,
       subject: `Order Confirmed! Order ID: #${order.id}`,
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
@@ -127,23 +82,17 @@ export async function sendOrderConfirmation(to, order) {
           </p>
         </div>
       `
-    };
+    });
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log('✅ Email sent successfully: %s', info.messageId);
-    
-    // If using Ethereal, log the preview URL
-    if (transporter.options.host === 'smtp.ethereal.email') {
-      console.log('✉️ Preview URL: %s', nodemailer.getTestMessageUrl(info));
+    if (error) {
+      console.error('❌ Resend Error:', error);
+      return false;
     }
-    
+
+    console.log('✅ Email sent via Resend:', data.id);
     return true;
   } catch (error) {
-    console.error('❌ Failed to send email:', error);
-    // Log more specific info for Gmail
-    if (error.code === 'EAUTH') {
-      console.error('Check if your App Password is correct and EMAIL_USER matches.');
-    }
+    console.error('❌ Failed to send email via Resend:', error);
     return false;
   }
 }
