@@ -22,7 +22,8 @@ export default function Cart() {
     area: '',
     landmark: '',
     city: '',
-    state: ''
+    state: '',
+    email: ''
   });
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [isSavingAddress, setIsSavingAddress] = useState(false);
@@ -38,7 +39,7 @@ export default function Cart() {
           setAddress(prev => ({ ...prev, ...parsed }));
           
           // Check if the saved address is complete
-          const required = ['fullName', 'mobileNumber', 'pincode', 'houseNo', 'area', 'city', 'state'];
+          const required = ['fullName', 'mobileNumber', 'email', 'pincode', 'houseNo', 'area', 'city', 'state'];
           const isComplete = required.every(field => parsed[field]?.trim());
           setIsEditingAddress(!isComplete);
         } else {
@@ -55,7 +56,7 @@ export default function Cart() {
   }, [user]);
 
   const handleSaveAddress = async () => {
-    const required = ['fullName', 'mobileNumber', 'pincode', 'houseNo', 'area', 'city', 'state'];
+    const required = ['fullName', 'mobileNumber', 'email', 'pincode', 'houseNo', 'area', 'city', 'state'];
     const missing = required.filter(field => !address[field]?.trim());
     
     if (missing.length > 0) {
@@ -105,7 +106,7 @@ export default function Cart() {
     }
 
     // 2. Validate Address Completion
-    const required = ['fullName', 'mobileNumber', 'pincode', 'houseNo', 'area', 'city', 'state'];
+    const required = ['fullName', 'mobileNumber', 'email', 'pincode', 'houseNo', 'area', 'city', 'state'];
     const isComplete = required.every(field => address[field]?.trim());
 
     if (!isComplete) {
@@ -241,6 +242,13 @@ export default function Cart() {
                       onChange={(e) => setAddress({...address, mobileNumber: e.target.value})}
                       className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
                     />
+                    <input
+                      type="email"
+                      placeholder="Email Address (Required for Confirmation)"
+                      value={address.email}
+                      onChange={(e) => setAddress({...address, email: e.target.value})}
+                      className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                    />
                     <div className="grid grid-cols-2 gap-3">
                       <input
                         type="text"
@@ -301,8 +309,11 @@ export default function Cart() {
                   <p className="mb-1">{address.houseNo}, {address.area}</p>
                   {address.landmark && <p className="mb-1 text-gray-500 text-xs">Landmark: {address.landmark}</p>}
                   <p className="mb-2">{address.city}, {address.state} - {address.pincode}</p>
-                  <p className="font-medium text-gray-900 flex items-center">
+                  <p className="font-medium text-gray-900 flex items-center mb-1">
                     <span className="text-gray-500 font-normal mr-2">Phone:</span> {address.mobileNumber}
+                  </p>
+                  <p className="font-medium text-gray-900 flex items-center">
+                    <span className="text-gray-500 font-normal mr-2">Email:</span> {address.email}
                   </p>
                 </div>
               )}
