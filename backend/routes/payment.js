@@ -125,18 +125,20 @@ router.get('/confirm-order', async (req, res) => {
       include: { items: { include: { product: true } } }
     });
     
-    // 5. Send confirmation email (awaited to ensure delivery on hosted platforms)
+    // 5. Send response to user immediately (don't block the UI)
+    res.json({ success: true, order });
+
+    // 6. Send confirmation email in the background
     try {
       const parsedAddress = JSON.parse(address);
       if (parsedAddress.email) {
         console.log(`📧 Sending confirmation to: ${parsedAddress.email}`);
+        // We still await here to ensure it finishes in the background process
         await sendOrderConfirmation(parsedAddress.email, order);
       }
     } catch (e) {
-      console.error('Failed to send confirmation email:', e);
+      console.error('Background email task failed:', e);
     }
-
-    res.json({ success: true, order });
   } catch (error) {
     console.error('Order confirmation error:', error);
     res.status(500).json({ error: 'Failed to confirm order: ' + error.message });

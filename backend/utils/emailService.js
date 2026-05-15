@@ -32,6 +32,9 @@ export async function sendOrderConfirmation(to, order) {
           pass: process.env.EMAIL_PASS,
         },
         family: 4, // Explicitly force IPv4
+        connectionTimeout: 15000, // 15 seconds
+        greetingTimeout: 15000,
+        socketTimeout: 15000,
       });
     } else {
       // Use SMTP or Ethereal for testing
