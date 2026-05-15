@@ -8,7 +8,7 @@ async function main() {
 
   // 1. Create or Update Farmer Raju John
   const raju = await prisma.farmer.upsert({
-    where: { id: 1 }, // Assuming ID 1 for simplicity, or we can findFirst by name
+    where: { id: 1 }, 
     update: {
       name: 'Raju John',
       rating: 4.9,
@@ -25,14 +25,34 @@ async function main() {
 
   console.log(`Synced Farmer: ${raju.name}`);
 
+  // 2. Clear existing products to ensure only the requested ones remain
+  // We handle potential relation issues by deleting order items if necessary, 
+  // but for a clean seed, we'll just focus on the product list.
+  await prisma.product.deleteMany({
+    where: {
+      name: {
+        notIn: ['Black Pepper', 'Cashew']
+      }
+    }
+  });
+
   const spices = [
-    { name: 'Black Pepper', price: 175.00, category: 'Whole Spices', image: '/images/black-pepper.jpg', description: 'Freshly ground premium black pepper.', farmerId: raju.id },
-    { name: 'Premium Saffron', price: 15.99, category: 'Whole Spices', image: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=800&q=80', description: 'Highest quality hand-picked saffron threads.' },
-    { name: 'Smoked Paprika', price: 6.50, category: 'Ground Spices', image: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=800&q=80', description: 'Sweet and smoky paprika from Spain.' },
-    { name: 'Turmeric Powder', price: 5.00, category: 'Ground Spices', image: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=800&q=80', description: 'Vibrant and earthy organic turmeric.' },
-    { name: 'Cardamom Pods', price: 8.99, category: 'Whole Spices', image: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=800&q=80', description: 'Aromatic green cardamom pods.' },
-    { name: 'Cinnamon Sticks', price: 4.50, category: 'Whole Spices', image: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=800&q=80', description: 'Sweet and warm cinnamon from Ceylon.' },
-    { name: 'Black Peppercorns', price: 7.00, category: 'Whole Spices', image: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=800&q=80', description: 'Bold and spicy Tellicherry peppercorns.' },
+    { 
+      name: 'Black Pepper', 
+      price: 175.00, 
+      category: 'Whole Spices', 
+      images: ['/images/pepper/pepper-1.jpg', '/images/pepper/pepper-2.jpg', '/images/pepper/pepper-3.jpg'], 
+      description: 'Freshly ground premium black pepper. Completely free from heavy metals, chemicals, and additives, it is a premium everyday spice that brings natural wellness and authentic flavour to your kitchen.', 
+      farmerId: raju.id 
+    },
+    { 
+      name: 'Cashew', 
+      price: 450.00, 
+      category: 'Dry Fruits', 
+      images: ['/images/cashew/Cashew1.jpg', '/images/cashew/Cashew2.jpg'], 
+      description: 'Premium jumbo cashews from the farms of Kerala. Rich in protein, healthy fats, and antioxidants, these cashews are carefully sun-dried and processed to maintain their natural crunch and buttery flavor.', 
+      farmerId: raju.id 
+    }
   ];
 
   for (const spice of spices) {
@@ -54,7 +74,7 @@ async function main() {
     }
   }
   
-  console.log('✅ Sync complete!');
+  console.log('✅ Sync complete! Only Black Pepper and Cashew remain.');
 }
 
 main()
@@ -63,6 +83,5 @@ main()
     process.exit(1);
   })
   .finally(async () => {
-    // Always disconnect from the database when done
     await prisma.$disconnect();
   });

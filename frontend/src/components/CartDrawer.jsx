@@ -80,7 +80,7 @@ export default function CartDrawer() {
                   const itemId = item.cartItemId || item.id;
                   return (
                   <li key={itemId} className="flex gap-4">
-                    <img src={item.image} alt={item.name} className="w-20 h-20 object-cover rounded-xl border border-gray-100" />
+                    <img src={item.images ? item.images[0] : item.image} alt={item.name} className="w-20 h-20 object-cover rounded-xl border border-gray-100" />
                     <div className="flex-1 flex flex-col justify-between">
                       <div>
                         <h3 className="text-sm font-bold text-gray-900 leading-tight mb-1">{item.name}</h3>

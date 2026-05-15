@@ -2,6 +2,7 @@ import express from 'express';
 import Stripe from 'stripe';
 import dotenv from 'dotenv';
 import pkg from '@prisma/client';
+import { sendOrderConfirmation } from '../utils/emailService.js';
 
 dotenv.config();
 
@@ -123,6 +124,19 @@ router.get('/confirm-order', async (req, res) => {
       },
       include: { items: { include: { product: true } } }
     });
+    
+    // 5. Send confirmation email asynchronously
+    try {
+      const parsedAddress = JSON.parse(address);
+      if (parsedAddress.email) {
+        console.log(`📧 Sending confirmation to: ${parsedAddress.email}`);
+        // We don't 'await' here to avoid delaying the response to the user,
+        // but we can if we want to ensure it sent.
+        sendOrderConfirmation(parsedAddress.email, order);
+      }
+    } catch (e) {
+      console.error('Failed to send confirmation email:', e);
+    }
 
     res.json({ success: true, order });
   } catch (error) {

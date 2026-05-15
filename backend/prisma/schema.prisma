@@ -20,7 +20,7 @@ model Product {
   description String
   price       Float
   category    String
-  image       String
+  images      String[]
   
   // Relation to Farmer
   farmerId    Int?

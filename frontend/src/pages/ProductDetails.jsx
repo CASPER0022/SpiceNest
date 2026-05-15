@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ChevronLeft, ShoppingCart, Star, Heart, Share2, Truck, ShieldCheck, Leaf, Plus, Minus } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useViewed } from '../context/ViewedContext';
 import toast from 'react-hot-toast';
 
 const WEIGHT_OPTIONS = [
@@ -15,12 +16,14 @@ export default function ProductDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { addToCart } = useCart();
+  const { addToViewed } = useViewed();
   
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedWeight, setSelectedWeight] = useState(WEIGHT_OPTIONS[0]);
   const [quantity, setQuantity] = useState(1);
+  const [activeImage, setActiveImage] = useState(null);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -32,6 +35,10 @@ export default function ProductDetails() {
       })
       .then((data) => {
         setProduct(data);
+        if (data.images && data.images.length > 0) {
+          setActiveImage(data.images[0]);
+        }
+        addToViewed(data);
         setLoading(false);
       })
       .catch((err) => {
@@ -111,16 +118,28 @@ export default function ProductDetails() {
         <div className="space-y-4">
           <div className="aspect-w-4 aspect-h-3 bg-gray-100 rounded-3xl overflow-hidden shadow-lg border border-gray-100 relative group">
             <img 
-              src={product.image} 
+              src={activeImage || (product.images && product.images[0]) || '/images/placeholder.jpg'} 
               alt={product.name} 
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
           </div>
-          {/* Mock Thumbnails */}
+          {/* Thumbnails */}
           <div className="flex space-x-4 overflow-x-auto pb-2">
-            {[product.image, product.image, product.image].map((img, i) => (
-              <button key={i} className={`shrink-0 w-20 h-20 rounded-xl overflow-hidden border-2 ${i === 0 ? 'border-emerald-500' : 'border-transparent'} opacity-${i===0?'100':'70'} hover:opacity-100 transition-opacity`}>
-                 <img src={img} alt="" className="w-full h-full object-cover" />
+            {product.images?.map((img, i) => (
+              <button 
+                key={i} 
+                onClick={() => setActiveImage(img)}
+                className={`shrink-0 w-20 h-20 rounded-xl overflow-hidden border-2 ${activeImage === img ? 'border-emerald-500' : 'border-transparent'} opacity-${activeImage === img ? '100' : '70'} hover:opacity-100 transition-opacity bg-gray-50`}
+              >
+                 <img 
+                   src={img} 
+                   alt={`${product.name} ${i + 1}`} 
+                   className="w-full h-full object-cover"
+                   onError={(e) => {
+                     // Fallback to the first image if there's an error
+                     if (i > 0 && product.images) e.target.src = product.images[0];
+                   }}
+                 />
               </button>
             ))}
           </div>
@@ -207,68 +226,76 @@ export default function ProductDetails() {
           </div>
 
           {/* Quantity Selection */}
-          <div className="mb-8">
-            <h3 className="text-sm font-bold text-gray-900 mb-2">Quantity</h3>
-            <div className="flex items-center w-full border border-gray-200 rounded-xl overflow-hidden bg-white">
-              <button 
-                onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="p-3 px-5 text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition-colors"
-              >
-                <Minus size={18} />
-              </button>
-              <div className="flex-1 text-center font-bold text-gray-900">
-                {quantity}
+          <div className="mb-6">
+            <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wider opacity-60">Quantity</h3>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                <button 
+                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  className="p-3 px-4 text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition-colors border-r border-gray-100"
+                >
+                  <Minus size={18} strokeWidth={2.5} />
+                </button>
+                <div className="w-12 text-center font-black text-gray-900 text-lg">
+                  {quantity}
+                </div>
+                <button 
+                  onClick={() => setQuantity(quantity + 1)}
+                  className="p-3 px-4 text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition-colors border-l border-gray-100"
+                >
+                  <Plus size={18} strokeWidth={2.5} />
+                </button>
               </div>
-              <button 
-                onClick={() => setQuantity(quantity + 1)}
-                className="p-3 px-5 text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition-colors"
-              >
-                <Plus size={18} />
-              </button>
             </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 mb-10">
+          <div className="grid grid-cols-2 gap-3 mb-6">
             <button 
               onClick={handleAddToCart}
-              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 px-8 rounded-xl flex items-center justify-center transition-transform duration-200 transform hover:scale-[1.02] shadow-lg shadow-emerald-600/20"
+              className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-4 px-4 rounded-xl flex items-center justify-center transition-all shadow-lg shadow-emerald-700/20 active:scale-[0.98]"
             >
-              <ShoppingCart size={20} className="mr-2" /> Add to Cart
+              <ShoppingCart size={18} className="mr-2" /> Add to Cart
             </button>
             <button 
               onClick={handleBuyNow}
-              className="flex-1 bg-white hover:bg-gray-50 text-gray-900 border-2 border-gray-900 font-bold py-4 px-8 rounded-xl flex items-center justify-center transition-transform duration-200 transform hover:scale-[1.02] shadow-sm"
+              className="bg-white hover:bg-gray-50 text-emerald-700 border border-gray-200 font-bold py-4 px-4 rounded-xl flex items-center justify-center transition-all shadow-sm active:scale-[0.98]"
             >
-              ⚡ Buy Now
+              <span className="mr-2 text-emerald-500">⚡</span> Buy Now
             </button>
           </div>
 
-          {/* Trust Badges */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 py-6 border-y border-gray-100">
-            <div className="flex items-center text-sm text-gray-600 font-medium">
-              <Truck size={20} className="text-emerald-500 mr-3 shrink-0" />
-              <span>Free delivery on orders over ₹500</span>
-            </div>
-            <div className="flex items-center text-sm text-gray-600 font-medium">
-              <ShieldCheck size={20} className="text-emerald-500 mr-3 shrink-0" />
-              <span>100% quality guarantee</span>
-            </div>
-            <div className="flex items-center text-sm text-gray-600 font-medium">
-              <Leaf size={20} className="text-emerald-500 mr-3 shrink-0" />
-              <span>Certified organic product</span>
-            </div>
+          {/* Meta Actions */}
+          <div className="grid grid-cols-2 gap-3 mb-8">
+             <button className="flex items-center justify-center py-3 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors">
+               <Heart size={18} className="mr-2 text-gray-400" /> Add to Wishlist
+             </button>
+             <button className="flex items-center justify-center py-3 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors">
+               <Share2 size={18} className="mr-2 text-gray-400" /> Share
+             </button>
           </div>
 
-
-          {/* Meta Actions */}
-          <div className="flex items-center gap-6 mt-6 pt-2">
-             <button className="flex items-center text-sm font-medium text-gray-500 hover:text-red-500 transition-colors">
-               <Heart size={18} className="mr-2" /> Add to Wishlist
-             </button>
-             <button className="flex items-center text-sm font-medium text-gray-500 hover:text-emerald-600 transition-colors">
-               <Share2 size={18} className="mr-2" /> Share
-             </button>
+          {/* Trust Badges */}
+          <div className="space-y-2 mb-10">
+            <div className="flex items-center justify-between p-4 bg-gray-50/80 rounded-xl border border-gray-100/50">
+              <div className="flex items-center text-sm text-gray-700 font-semibold">
+                <Truck size={18} className="text-emerald-600 mr-3 shrink-0" />
+                <span>Free delivery on orders over ₹500</span>
+              </div>
+            </div>
+            <div className="flex items-center justify-between p-4 bg-gray-50/80 rounded-xl border border-gray-100/50">
+              <div className="flex items-center text-sm text-gray-700 font-semibold">
+                <ShieldCheck size={18} className="text-emerald-600 mr-3 shrink-0" />
+                <span>100% quality guarantee</span>
+              </div>
+            </div>
+            <div className="flex items-center justify-between p-4 bg-gray-50/80 rounded-xl border border-gray-100/50">
+              <div className="flex items-center text-sm text-gray-700 font-semibold">
+                <Leaf size={18} className="text-emerald-600 mr-3 shrink-0" />
+                <span>Certified organic product</span>
+              </div>
+              <span className="text-gray-400 text-xs">→</span>
+            </div>
           </div>
           
         </div>
