@@ -1,4 +1,11 @@
 import nodemailer from 'nodemailer';
+import dns from 'dns';
+
+// Force Node.js to prefer IPv4 over IPv6. 
+// This fixes the 'ENETUNREACH' error on platforms like Render.
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder('ipv4first');
+}
 
 /**
  * Sends an order confirmation email to the customer.
@@ -24,10 +31,7 @@ export async function sendOrderConfirmation(to, order) {
           user: process.env.EMAIL_USER,
           pass: process.env.EMAIL_PASS,
         },
-        family: 4, // Force IPv4 to avoid ENETUNREACH on IPv6
-        connectionTimeout: 10000, // 10 seconds
-        greetingTimeout: 10000,
-        socketTimeout: 10000,
+        family: 4, // Explicitly force IPv4
       });
     } else {
       // Use SMTP or Ethereal for testing
