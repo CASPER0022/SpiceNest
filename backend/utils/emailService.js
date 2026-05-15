@@ -15,13 +15,19 @@ export async function sendOrderConfirmation(to, order) {
     let transporter;
     
     if (process.env.EMAIL_USER && process.env.EMAIL_USER.includes('gmail')) {
-      // Use Gmail
+      // Use Gmail with explicit settings for better compatibility with Render/Hosting
       transporter = nodemailer.createTransport({
-        service: 'gmail',
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false, // STARTTLS
         auth: {
           user: process.env.EMAIL_USER,
           pass: process.env.EMAIL_PASS,
         },
+        family: 4, // Force IPv4 to avoid ENETUNREACH on IPv6
+        connectionTimeout: 10000, // 10 seconds
+        greetingTimeout: 10000,
+        socketTimeout: 10000,
       });
     } else {
       // Use SMTP or Ethereal for testing
