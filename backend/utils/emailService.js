@@ -32,9 +32,13 @@ export async function sendOrderConfirmation(to, order) {
           pass: process.env.EMAIL_PASS,
         },
         family: 4, // Explicitly force IPv4
-        connectionTimeout: 15000, // 15 seconds
-        greetingTimeout: 15000,
-        socketTimeout: 15000,
+        // Force IPv4 at the DNS lookup level as well
+        lookup: (hostname, options, callback) => {
+          dns.lookup(hostname, { family: 4 }, callback);
+        },
+        connectionTimeout: 20000, // 20 seconds
+        greetingTimeout: 20000,
+        socketTimeout: 20000,
       });
     } else {
       // Use SMTP or Ethereal for testing
