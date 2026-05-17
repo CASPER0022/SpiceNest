@@ -1,4 +1,4 @@
-import * as Brevo from '@getbrevo/brevo';
+import { TransactionalEmailsApi, SendSmtpEmail, TransactionalEmailsApiApiKeys } from '@getbrevo/brevo';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -16,8 +16,8 @@ export async function sendOrderConfirmation(to, order) {
     }
 
     // Initialize Brevo API
-    const apiInstance = new Brevo.TransactionalEmailsApi();
-    apiInstance.setApiKey(Brevo.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY);
+    const apiInstance = new TransactionalEmailsApi();
+    apiInstance.setApiKey(TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY);
 
     // Parse address if it's a string
     let address = order.address;
@@ -37,7 +37,7 @@ export async function sendOrderConfirmation(to, order) {
       </tr>
     `).join('');
 
-    const sendSmtpEmail = new Brevo.SendSmtpEmail();
+    const sendSmtpEmail = new SendSmtpEmail();
 
     sendSmtpEmail.subject = `Order Confirmed! Order ID: #${order.id}`;
     sendSmtpEmail.htmlContent = `
