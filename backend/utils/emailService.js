@@ -1,4 +1,4 @@
-import { TransactionalEmailsApi, SendSmtpEmail, TransactionalEmailsApiApiKeys } from '@getbrevo/brevo';
+import { BrevoClient } from '@getbrevo/brevo';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -15,9 +15,8 @@ export async function sendOrderConfirmation(to, order) {
       return false;
     }
 
-    // Initialize Brevo API
-    const apiInstance = new TransactionalEmailsApi();
-    apiInstance.setApiKey(TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY);
+    // Initialize Brevo Client
+    const client = new BrevoClient({ apiKey: process.env.BREVO_API_KEY });
 
     // Parse address if it's a string
     let address = order.address;
@@ -37,10 +36,7 @@ export async function sendOrderConfirmation(to, order) {
       </tr>
     `).join('');
 
-    const sendSmtpEmail = new SendSmtpEmail();
-
-    sendSmtpEmail.subject = `Order Confirmed! Order ID: #${order.id}`;
-    sendSmtpEmail.htmlContent = `
+    const htmlContent = `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
           <h1 style="color: #059669; text-align: center;">Order Confirmed!</h1>
           <p>Hi ${address.fullName || 'Valued Customer'},</p>
@@ -83,17 +79,20 @@ export async function sendOrderConfirmation(to, order) {
           </p>
         </div>
     `;
-    
-    // Sender must be a verified email in Brevo
-    sendSmtpEmail.sender = { "name": "SpiceNest", "email": "heyitsmealbinjohn@gmail.com" };
-    sendSmtpEmail.to = [{ "email": to, "name": address.fullName || "Valued Customer" }];
-    sendSmtpEmail.replyTo = { "email": "heyitsmealbinjohn@gmail.com", "name": "SpiceNest Support" };
 
-    const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
-    console.log('✅ Email sent via Brevo:', data.body.messageId);
+    const response = await client.transactionalEmails.sendTransacEmail({
+      subject: `Order Confirmed! Order ID: #${order.id}`,
+      htmlContent: htmlContent,
+      sender: { name: "SpiceNest", email: "heyitsmealbinjohn@gmail.com" },
+      to: [{ email: to, name: address.fullName || "Valued Customer" }],
+      replyTo: { email: "heyitsmealbinjohn@gmail.com", name: "SpiceNest Support" }
+    });
+
+    console.log('✅ Email sent via Brevo:', response.data?.messageId || response.messageId || 'Success');
     return true;
   } catch (error) {
-    console.error('❌ Failed to send email via Brevo:', error.response ? error.response.body : error);
+    console.error('❌ Failed to send email via Brevo:', error.response?.body || error);
     return false;
   }
 }
+
