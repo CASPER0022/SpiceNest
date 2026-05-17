@@ -3,8 +3,9 @@ import { useState, useEffect } from 'react';
 import { ArrowRight, CheckCircle2 } from 'lucide-react';
 
 const IMAGES = [
-  'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=2070&auto=format&fit=crop', // Lush tropical green leaves (Original)
-  'https://images.unsplash.com/photo-1536882240095-0379873feb4e?q=80&w=2070&auto=format&fit=crop', // Dark moody monstera leaves
+  '/images/homepage/homepage-bg1.jpg',
+  '/images/homepage/homepage-bg2.jpg',
+  '/images/homepage/homepage-bg3.jpg',
 ];
 
 const FEATURES = [
