@@ -85,13 +85,12 @@ export default function Home() {
           {/* Soft, organic dark radial glow behind the text for superior contrast without shifting the text alignment */}
           <div className="absolute top-[35%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-4xl h-80 bg-[radial-gradient(circle_at_center,rgba(0,0,0,0.45)_0%,transparent_75%)] pointer-events-none -z-10 blur-3xl scale-125" />
 
-          {/* Ather-Style Heading (Reduced Size) */}
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white tracking-tight mb-6 max-w-5xl leading-tight drop-shadow-[0_4px_12px_rgba(0,0,0,0.65)]">
+          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white tracking-tight mb-6 max-w-7xl mx-auto leading-tight drop-shadow-[0_4px_12px_rgba(0,0,0,0.65)]">
             Experience True <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-green-300 relative inline-block">
               Natural Flavors
               {/* The signature Ather-style rounded highlight around the text */}
               <span className="absolute inset-0 border-2 border-emerald-400 rounded-[2rem] -m-2 opacity-60 md:-m-3 md:rounded-[3rem] pointer-events-none hidden md:block"></span>
-            </span> straight from the farm.
+            </span> <br className="hidden md:inline" /> from the farms in Idukki
           </h1>
 
           {/* Subtext (Reduced Size) */}

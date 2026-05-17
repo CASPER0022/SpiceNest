@@ -42,7 +42,7 @@ async function main() {
       price: 175.00, 
       category: 'Whole Spices', 
       images: ['/images/pepper/pepper-1.jpg', '/images/pepper/pepper-2.jpg', '/images/pepper/pepper-3.jpg'], 
-      description: 'Freshly ground premium black pepper. Completely free from heavy metals, chemicals, and additives, it is a premium everyday spice that brings natural wellness and authentic flavour to your kitchen.', 
+      description: 'Freshly sourced from the spice farms of Idukki, our black pepper is packed with bold aroma and natural flavour. Carefully harvested and traditionally processed by local farmers, each batch brings the authentic taste of Kerala straight to your kitchen. Pure, fresh, and full of richness — made for everyday cooking with real farm-grown quality.', 
       farmerId: raju.id 
     },
     { 
@@ -50,7 +50,7 @@ async function main() {
       price: 450.00, 
       category: 'Dry Fruits', 
       images: ['/images/cashew/Cashew1.jpg', '/images/cashew/Cashew2.jpg'], 
-      description: 'Premium jumbo cashews from the farms of Kerala. Rich in protein, healthy fats, and antioxidants, these cashews are carefully sun-dried and processed to maintain their natural crunch and buttery flavor.', 
+      description: 'Straight from the farms of Idukki to your home, we bring spices and dry fruits grown with care by local farmers. No long storage, no unnecessary processing — just fresh, authentic products packed with natural aroma and flavour. Every order helps support farming families and keeps the tradition of Kerala’s spice heritage alive.', 
       farmerId: raju.id 
     }
   ];

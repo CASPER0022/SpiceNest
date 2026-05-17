@@ -180,7 +180,7 @@ export default function ProductDetails() {
           </div>
 
           <p className="text-gray-600 mb-8 leading-relaxed">
-            {product.description} Completely free from heavy metals, chemicals, and additives, it is a premium everyday spice that brings natural wellness and authentic flavour to your kitchen.
+            {product.description}
           </p>
 
           {/* Sourced By */}

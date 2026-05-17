@@ -81,7 +81,7 @@ export default function Footer() {
             <ul className="space-y-5 text-sm text-gray-400">
               <li className="flex items-start">
                 <MapPin size={20} className="mr-3 text-emerald-500 shrink-0" />
-                <span>Kanjikuzhy, Idukki, Kaniyambetta, Kalpetta, Wayanad, Kerala - 685 606</span>
+                <span>Kanjikuzhy, Idukki, Kerala - 685606</span>
               </li>
               <li className="flex items-center">
                 <Phone size={20} className="mr-3 text-emerald-500 shrink-0" />
