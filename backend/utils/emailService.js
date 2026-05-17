@@ -96,3 +96,63 @@ export async function sendOrderConfirmation(to, order) {
   }
 }
 
+/**
+ * Sends a password reset link to the customer using Brevo API.
+ * @param {string} to - Customer's email address
+ * @param {string} name - Customer's name
+ * @param {string} resetUrl - The password reset URL
+ */
+export async function sendPasswordResetEmail(to, name, resetUrl) {
+  try {
+    if (!process.env.BREVO_API_KEY) {
+      console.error('❌ BREVO_API_KEY is missing');
+      return false;
+    }
+
+    const client = new BrevoClient({ apiKey: process.env.BREVO_API_KEY });
+
+    const htmlContent = `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
+          <h1 style="color: #059669; text-align: center;">Reset Your Password 🌿</h1>
+          <p>Hi ${name || 'Valued Customer'},</p>
+          <p>We received a request to reset your SpiceNest account password. If you didn't request a password reset, you can safely ignore this email.</p>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${resetUrl}" style="background: #059669; color: #fff; text-decoration: none; padding: 12px 25px; border-radius: 8px; font-weight: bold; display: inline-block; box-shadow: 0 4px 6px rgba(5,150,105,0.2);">
+              Reset Password
+            </a>
+          </div>
+
+          <p style="font-size: 14px; color: #555;">
+            This link is valid for <strong>1 hour</strong>. For security, please do not forward or share this link.
+          </p>
+
+          <p style="font-size: 12px; color: #999;">
+            If the button above does not work, copy and paste this URL into your browser:<br>
+            <a href="${resetUrl}" style="color: #059669;">${resetUrl}</a>
+          </p>
+
+          <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="font-size: 12px; color: #999; text-align: center;">
+            SpiceNest - From our farms to your kitchen.<br>
+            Kerala, India
+          </p>
+        </div>
+    `;
+
+    const response = await client.transactionalEmails.sendTransacEmail({
+      subject: "Reset Your SpiceNest Password 🌿",
+      htmlContent: htmlContent,
+      sender: { name: "SpiceNest", email: "heyitsmealbinjohn@gmail.com" },
+      to: [{ email: to, name: name || "Valued Customer" }],
+      replyTo: { email: "heyitsmealbinjohn@gmail.com", name: "SpiceNest Support" }
+    });
+
+    console.log('✅ Reset email sent via Brevo:', response.data?.messageId || response.messageId || 'Success');
+    return true;
+  } catch (error) {
+    console.error('❌ Failed to send reset email via Brevo:', error.response?.body || error);
+    return false;
+  }
+}
+
