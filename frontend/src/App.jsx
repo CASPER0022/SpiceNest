@@ -7,6 +7,7 @@ import Navbar from './components/Navbar';
 import MobileBottomNav from './components/MobileBottomNav';
 import CartDrawer from './components/CartDrawer';
 import Footer from './components/Footer';
+import ScrollToTop from './components/ScrollToTop';
 import Home from './pages/Home';
 import Shop from './pages/Shop';
 import ProductDetails from './pages/ProductDetails';
@@ -59,6 +60,7 @@ function App() {
       <CartProvider>
         <ViewedProvider>
           <Router>
+            <ScrollToTop />
             <AppLayout />
           </Router>
         </ViewedProvider>
