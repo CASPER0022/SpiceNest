@@ -88,10 +88,10 @@ async function main() {
   const cardamom = await prisma.product.findFirst({ where: { name: 'Cardamom' } });
   const coffee = await prisma.product.findFirst({ where: { name: 'Coffee' } });
 
-  const albin = await prisma.user.findFirst({ where: { email: { equals: 'heyitsmealbinjohn@gmail.com', mode: 'insensitive' } } });
-  const casper = await prisma.user.findFirst({ where: { email: { equals: 'albinjohn2427@gmail.com', mode: 'insensitive' } } });
-  const anjali = await prisma.user.findFirst({ where: { email: { equals: 'anjalypthomas146@gmail.com', mode: 'insensitive' } } });
-  const testUser = await prisma.user.findFirst({ where: { email: { equals: 'testuser@spicenest.com', mode: 'insensitive' } } });
+  const albin = await prisma.user.findFirst({ where: { email: 'heyitsmealbinjohn@gmail.com' } });
+  const casper = await prisma.user.findFirst({ where: { email: 'albinjohn2427@gmail.com' } });
+  const anjali = await prisma.user.findFirst({ where: { email: 'anjalypthomas146@gmail.com' } });
+  const testUser = await prisma.user.findFirst({ where: { email: 'testuser@spicenest.com' } });
 
   const ordersData = [
     {
