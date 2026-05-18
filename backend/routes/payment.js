@@ -173,4 +173,43 @@ router.get('/my-orders', verifyToken, async (req, res) => {
   }
 });
 
+// ==========================================
+// GET ADMIN DASHBOARD DATA ROUTE
+// ==========================================
+router.get('/admin/dashboard', verifyToken, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: parseInt(req.user.id, 10) }
+    });
+
+    const adminEmails = ['heyitsmealbinjohn@gmail.com', 'bibinjohn22@gmail.com'];
+    if (!user || !adminEmails.includes(user.email)) {
+      return res.status(403).json({ error: 'Access denied: Admins only' });
+    }
+
+    // Fetch all orders in the entire system, ordered by creation date (newest first)
+    const orders = await prisma.order.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        user: {
+          select: {
+            name: true,
+            email: true
+          }
+        },
+        items: {
+          include: {
+            product: true
+          }
+        }
+      }
+    });
+
+    res.json(orders);
+  } catch (error) {
+    console.error('Fetch admin dashboard error:', error);
+    res.status(500).json({ error: 'Failed to fetch admin dashboard data' });
+  }
+});
+
 export default router;

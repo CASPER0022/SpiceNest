@@ -9,6 +9,7 @@ export default function Navbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const isAdmin = user && ['heyitsmealbinjohn@gmail.com', 'bibinjohn22@gmail.com'].includes(user.email);
 
   const handleLogout = () => {
     logout();
@@ -43,6 +44,9 @@ export default function Navbar() {
             <Link to="/viewed" className={`inline-flex items-center px-1 pt-1 text-sm font-bold transition-colors ${mutedTextClass}`}>Viewed</Link>
             {user && (
               <Link to="/orders" className={`inline-flex items-center px-1 pt-1 text-sm font-bold transition-colors ${mutedTextClass}`}>My Orders</Link>
+            )}
+            {isAdmin && (
+              <Link to="/dashboard" className={`inline-flex items-center px-1 pt-1 text-sm font-bold transition-colors ${mutedTextClass}`}>Dashboard</Link>
             )}
             <button onClick={() => setIsCartOpen(true)} className={`inline-flex items-center px-1 pt-1 text-sm font-bold relative mr-4 transition-colors ${mutedTextClass}`}>
               <ShoppingCart size={20} className="mr-1" />
@@ -94,6 +98,9 @@ export default function Navbar() {
             <Link to="/shop" onClick={() => setIsMenuOpen(false)} className="block pl-6 pr-4 py-4 text-base font-bold text-gray-600 border-b border-gray-50">Shop</Link>
             {user && (
               <Link to="/orders" onClick={() => setIsMenuOpen(false)} className="block pl-6 pr-4 py-4 text-base font-bold text-gray-600 border-b border-gray-50">My Orders</Link>
+            )}
+            {isAdmin && (
+              <Link to="/dashboard" onClick={() => setIsMenuOpen(false)} className="block pl-6 pr-4 py-4 text-base font-bold text-gray-600 border-b border-gray-50">Dashboard</Link>
             )}
           </div>
           <div className="pt-4 pb-6 bg-gray-50/50">
