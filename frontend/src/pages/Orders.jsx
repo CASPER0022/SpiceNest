@@ -110,7 +110,7 @@ export default function Orders() {
         </div>
         <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight mb-3">No Orders Yet</h2>
         <p className="text-gray-500 text-sm mb-8 leading-relaxed max-w-sm">
-          Looks like you haven't placed an order yet. From black pepper to premium cashews, discover the authentic flavours of Kerala!
+          Looks like you haven't placed an order yet. From bold black pepper to aromatic green cardamom and single-origin coffee, discover the authentic flavours of Kerala!
         </p>
         <Link 
           to="/shop" 

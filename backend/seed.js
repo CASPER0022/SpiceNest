@@ -25,13 +25,13 @@ async function main() {
 
   console.log(`Synced Farmer: ${raju.name}`);
 
-  // 2. Clear existing products to ensure only the requested ones remain
-  // We handle potential relation issues by deleting order items if necessary, 
-  // but for a clean seed, we'll just focus on the product list.
+  // 2. Clear existing orders, and unneeded products to prevent foreign key errors
+  await prisma.orderItem.deleteMany({});
+  await prisma.order.deleteMany({});
   await prisma.product.deleteMany({
     where: {
       name: {
-        notIn: ['Black Pepper', 'Cashew']
+        notIn: ['Black Pepper', 'Cardamom', 'Coffee']
       }
     }
   });
@@ -46,11 +46,19 @@ async function main() {
       farmerId: raju.id 
     },
     { 
-      name: 'Cashew', 
-      price: 450.00, 
-      category: 'Dry Fruits', 
-      images: ['/images/cashew/Cashew1.jpg', '/images/cashew/Cashew2.jpg'], 
-      description: 'Straight from the farms of Idukki to your home, we bring spices and dry fruits grown with care by local farmers. No long storage, no unnecessary processing — just fresh, authentic products packed with natural aroma and flavour. Every order helps support farming families and keeps the tradition of Kerala’s spice heritage alive.', 
+      name: 'Cardamom', 
+      price: 350.00, 
+      category: 'Whole Spices', 
+      images: ['/images/cardamom/cardamom1.jpg', '/images/cardamom/cardamom2.jpg'], 
+      description: 'Freshly handpicked from the high altitudes of Idukki, Kerala, our premium green cardamom pods boast a vibrant green color, full-bodied pods, and an intense, sweet-spicy aroma. Traditionally dried to lock in maximum volatile oils, these green pods are perfect for tea, traditional sweets, and exotic culinary dishes.', 
+      farmerId: raju.id 
+    },
+    { 
+      name: 'Coffee', 
+      price: 250.00, 
+      category: 'Beverages', 
+      images: ['/images/coffee/coffee1.jpg', '/images/coffee/coffee2.jpg'], 
+      description: 'Sourced from the shade-grown high elevation estates of Wayanad and Idukki, our premium single-origin Arabica-Robusta blend coffee is roasted to a perfect medium-dark level. With rich, bold earthy notes and a subtle chocolatey finish, it delivers an authentic South Indian filter coffee experience that stays true to its Western Ghats roots.', 
       farmerId: raju.id 
     }
   ];
@@ -74,7 +82,7 @@ async function main() {
     }
   }
   
-  console.log('✅ Sync complete! Only Black Pepper and Cashew remain.');
+  console.log('✅ Sync complete! Only Black Pepper, Cardamom, and Coffee remain.');
 }
 
 main()
