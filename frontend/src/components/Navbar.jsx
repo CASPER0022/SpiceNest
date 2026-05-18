@@ -41,6 +41,9 @@ export default function Navbar() {
             <Link to="/" className={`inline-flex items-center px-1 pt-1 text-sm font-bold transition-colors ${textClass}`}>Home</Link>
             <Link to="/shop" className={`inline-flex items-center px-1 pt-1 text-sm font-bold transition-colors ${mutedTextClass}`}>Shop</Link>
             <Link to="/viewed" className={`inline-flex items-center px-1 pt-1 text-sm font-bold transition-colors ${mutedTextClass}`}>Viewed</Link>
+            {user && (
+              <Link to="/orders" className={`inline-flex items-center px-1 pt-1 text-sm font-bold transition-colors ${mutedTextClass}`}>My Orders</Link>
+            )}
             <button onClick={() => setIsCartOpen(true)} className={`inline-flex items-center px-1 pt-1 text-sm font-bold relative mr-4 transition-colors ${mutedTextClass}`}>
               <ShoppingCart size={20} className="mr-1" />
               Cart
@@ -89,6 +92,9 @@ export default function Navbar() {
           <div className="pt-2 pb-3 space-y-1">
             <Link to="/" onClick={() => setIsMenuOpen(false)} className="block pl-6 pr-4 py-4 text-base font-bold text-gray-900 border-b border-gray-50">Home</Link>
             <Link to="/shop" onClick={() => setIsMenuOpen(false)} className="block pl-6 pr-4 py-4 text-base font-bold text-gray-600 border-b border-gray-50">Shop</Link>
+            {user && (
+              <Link to="/orders" onClick={() => setIsMenuOpen(false)} className="block pl-6 pr-4 py-4 text-base font-bold text-gray-600 border-b border-gray-50">My Orders</Link>
+            )}
           </div>
           <div className="pt-4 pb-6 bg-gray-50/50">
             {user ? (

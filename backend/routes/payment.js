@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import dotenv from 'dotenv';
 import pkg from '@prisma/client';
 import { sendOrderConfirmation } from '../utils/emailService.js';
+import { verifyToken } from './auth.js';
 
 dotenv.config();
 
@@ -142,6 +143,33 @@ router.get('/confirm-order', async (req, res) => {
   } catch (error) {
     console.error('Order confirmation error:', error);
     res.status(500).json({ error: 'Failed to confirm order: ' + error.message });
+  }
+});
+
+// ==========================================
+// GET USER'S ORDERS ROUTE
+// ==========================================
+router.get('/my-orders', verifyToken, async (req, res) => {
+  try {
+    const userId = parseInt(req.user.id, 10);
+    
+    // Fetch all orders for this user, ordered by creation date (newest first)
+    const orders = await prisma.order.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        items: {
+          include: {
+            product: true
+          }
+        }
+      }
+    });
+    
+    res.json(orders);
+  } catch (error) {
+    console.error('Fetch orders error:', error);
+    res.status(500).json({ error: 'Failed to fetch your orders' });
   }
 });
 

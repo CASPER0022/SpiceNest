@@ -36,7 +36,7 @@ export default function Profile() {
   };
 
   const quickActions = [
-    { icon: Package, label: 'My Orders', desc: 'Track & manage orders', color: 'text-blue-600', bg: 'bg-blue-50' },
+    { icon: Package, label: 'My Orders', desc: 'Track & manage orders', color: 'text-blue-600', bg: 'bg-blue-50', path: '/orders' },
     { icon: Heart, label: 'Wishlist', desc: 'Items you loved', color: 'text-red-600', bg: 'bg-red-50' },
     { icon: Bell, label: 'Notifications', desc: 'Updates & offers', color: 'text-amber-600', bg: 'bg-amber-50' },
   ];
@@ -98,7 +98,7 @@ export default function Profile() {
             <h3 className="text-sm font-black text-gray-400 uppercase tracking-[0.2em] mb-4 ml-1">Quick Access</h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {quickActions.map((item, i) => (
-                <button key={i} className="flex flex-col items-start p-6 bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-all hover:-translate-y-1 text-left group">
+                <button key={i} onClick={() => item.path && navigate(item.path)} className="flex flex-col items-start p-6 bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-all hover:-translate-y-1 text-left group w-full">
                   <div className={`p-3 ${item.bg} ${item.color} rounded-2xl mb-4 group-hover:scale-110 transition-transform`}>
                     <item.icon size={24} />
                   </div>

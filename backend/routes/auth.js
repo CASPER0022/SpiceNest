@@ -75,7 +75,7 @@ router.post('/login', async (req, res) => {
 // UPDATE ADDRESS ROUTE (/api/auth/update-address)
 // ==========================================
 // A simple middleware to verify the token for this route
-const verifyToken = (req, res, next) => {
+export const verifyToken = (req, res, next) => {
   const authHeader = req.header('Authorization');
   if (!authHeader) return res.status(401).json({ error: 'Access denied' });
   

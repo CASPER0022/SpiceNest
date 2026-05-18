@@ -20,6 +20,7 @@ import Viewed from './pages/Viewed';
 import FarmerProfile from './pages/FarmerProfile';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import Orders from './pages/Orders';
 
 // Main App Layout component to handle routing logic like dynamic padding
 function AppLayout() {
@@ -46,6 +47,7 @@ function AppLayout() {
           <Route path="/farmer/:id" element={<FarmerProfile />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/orders" element={<Orders />} />
         </Routes>
       </main>
       <Footer />
