@@ -82,7 +82,192 @@ async function main() {
     }
   }
   
-  console.log('✅ Sync complete! Only Black Pepper, Cardamom, and Coffee remain.');
+  console.log('✅ Spices and coffee seeded! Now seeding realistic historical orders to populate Admin Dashboard metrics... 📊');
+
+  const pepper = await prisma.product.findFirst({ where: { name: 'Black Pepper' } });
+  const cardamom = await prisma.product.findFirst({ where: { name: 'Cardamom' } });
+  const coffee = await prisma.product.findFirst({ where: { name: 'Coffee' } });
+
+  const albin = await prisma.user.findFirst({ where: { email: { equals: 'heyitsmealbinjohn@gmail.com', mode: 'insensitive' } } });
+  const casper = await prisma.user.findFirst({ where: { email: { equals: 'albinjohn2427@gmail.com', mode: 'insensitive' } } });
+  const anjali = await prisma.user.findFirst({ where: { email: { equals: 'anjalypthomas146@gmail.com', mode: 'insensitive' } } });
+  const testUser = await prisma.user.findFirst({ where: { email: { equals: 'testuser@spicenest.com', mode: 'insensitive' } } });
+
+  const ordersData = [
+    {
+      user: albin,
+      totalAmount: 350.00,
+      createdAt: new Date('2026-05-14T10:00:00.000Z'),
+      stripeSessionId: 'CS_TEST_A1BHEWKWHLJE1',
+      address: '{"fullName":"ALBIN JOHN","mobileNumber":"8921663449","pincode":"685606","houseNo":"kanjikuzhy","area":"dfg","landmark":"df","city":"Kottayam","state":"Kerala"}',
+      items: [{ product: pepper, quantity: 2, price: 175.00, weight: '100g' }]
+    },
+    {
+      user: casper,
+      totalAmount: 350.00,
+      createdAt: new Date('2026-05-14T11:00:00.000Z'),
+      stripeSessionId: 'CS_TEST_A1BHEWKWHLJE2',
+      address: '{"fullName":"ALBIN JOHN","mobileNumber":"8921663449","pincode":"685606","houseNo":"kanjikuzhy","area":"dfg","landmark":"df","city":"Kottayam","state":"Kerala"}',
+      items: [{ product: cardamom, quantity: 1, price: 350.00, weight: '100g' }]
+    },
+    {
+      user: casper,
+      totalAmount: 175.00,
+      createdAt: new Date('2026-05-14T12:00:00.000Z'),
+      stripeSessionId: 'CS_TEST_A1BHEWKWHLJE3',
+      address: '{"fullName":"ALBIN JOHN","mobileNumber":"8921663449","pincode":"685606","houseNo":"kanjikuzhy","area":"dfg","landmark":"df","city":"Kottayam","state":"Kerala"}',
+      items: [{ product: pepper, quantity: 1, price: 175.00, weight: '100g' }]
+    },
+    {
+      user: anjali,
+      totalAmount: 525.00,
+      createdAt: new Date('2026-05-14T13:00:00.000Z'),
+      stripeSessionId: 'CS_TEST_A1BHEWKWHLJE4',
+      address: '{"fullName":"Anjaly","mobileNumber":"6484614748","pincode":"685606","houseNo":"Hsh","area":"Sgajzj","landmark":"Hzjzjz","city":"Kanjikuzhy","state":"Kerala"}',
+      items: [{ product: cardamom, quantity: 1, price: 350.00, weight: '100g' }, { product: pepper, quantity: 1, price: 175.00, weight: '100g' }]
+    },
+    {
+      user: albin,
+      totalAmount: 625.00,
+      createdAt: new Date('2026-05-15T09:00:00.000Z'),
+      stripeSessionId: 'CS_TEST_A1BHEWKWHLJE5',
+      address: '{"fullName":"ALBIN JOHN","mobileNumber":"8921663449","pincode":"685606","houseNo":"kanjikuzhy","area":"dfg","landmark":"df","city":"Kottayam","state":"Kerala"}',
+      items: [{ product: coffee, quantity: 1, price: 625.00, weight: '250g' }]
+    },
+    {
+      user: anjali,
+      totalAmount: 900.00,
+      createdAt: new Date('2026-05-15T10:00:00.000Z'),
+      stripeSessionId: 'CS_TEST_A1BHEWKWHLJE6',
+      address: '{"fullName":"Anjaly","mobileNumber":"6484614748","pincode":"685606","houseNo":"Hsh","area":"Sgajzj","landmark":"Hzjzjz","city":"Kanjikuzhy","state":"Kerala"}',
+      items: [{ product: coffee, quantity: 2, price: 250.00, weight: '100g' }, { product: cardamom, quantity: 1, price: 350.00, weight: '100g' }]
+    },
+    {
+      user: albin,
+      totalAmount: 175.00,
+      createdAt: new Date('2026-05-15T11:00:00.000Z'),
+      stripeSessionId: 'CS_TEST_A1BHEWKWHLJE7',
+      address: '{"fullName":"ALBIN JOHN","mobileNumber":"8921663449","pincode":"685606","houseNo":"kanjikuzhy","area":"dfg","landmark":"df","city":"Kottayam","state":"Kerala"}',
+      items: [{ product: pepper, quantity: 1, price: 175.00, weight: '100g' }]
+    },
+    {
+      user: albin,
+      totalAmount: 450.00,
+      createdAt: new Date('2026-05-15T12:00:00.000Z'),
+      stripeSessionId: 'CS_TEST_A1BHEWKWHLJE8',
+      address: '{"fullName":"ALBIN JOHN","mobileNumber":"8921663449","pincode":"685606","houseNo":"kanjikuzhy","area":"dfg","landmark":"df","city":"Kottayam","state":"Kerala"}',
+      items: [{ product: cardamom, quantity: 1, price: 350.00, weight: '100g' }, { product: pepper, quantity: 1, price: 100.00, weight: '100g' }]
+    },
+    {
+      user: albin,
+      totalAmount: 450.00,
+      createdAt: new Date('2026-05-15T13:00:00.000Z'),
+      stripeSessionId: 'CS_TEST_A1BHEWKWHLJE9',
+      address: '{"fullName":"ALBIN JOHN","mobileNumber":"8921663449","pincode":"685606","houseNo":"kanjikuzhy","area":"dfg","landmark":"df","city":"Kottayam","state":"Kerala"}',
+      items: [{ product: cardamom, quantity: 1, price: 350.00, weight: '100g' }, { product: pepper, quantity: 1, price: 100.00, weight: '100g' }]
+    },
+    {
+      user: albin,
+      totalAmount: 450.00,
+      createdAt: new Date('2026-05-15T14:00:00.000Z'),
+      stripeSessionId: 'CS_TEST_A1BHEWKWHLJE10',
+      address: '{"fullName":"ALBIN JOHN","mobileNumber":"8921663449","pincode":"685606","houseNo":"kanjikuzhy","area":"dfg","landmark":"df","city":"Kottayam","state":"Kerala"}',
+      items: [{ product: cardamom, quantity: 1, price: 350.00, weight: '100g' }, { product: pepper, quantity: 1, price: 100.00, weight: '100g' }]
+    },
+    {
+      user: albin,
+      totalAmount: 175.00,
+      createdAt: new Date('2026-05-15T15:00:00.000Z'),
+      stripeSessionId: 'CS_TEST_A1BHEWKWHLJE11',
+      address: '{"fullName":"ALBIN JOHN","mobileNumber":"8921663449","pincode":"685606","houseNo":"kanjikuzhy","area":"dfg","landmark":"df","city":"Kottayam","state":"Kerala"}',
+      items: [{ product: pepper, quantity: 1, price: 175.00, weight: '100g' }]
+    },
+    {
+      user: albin,
+      totalAmount: 175.00,
+      createdAt: new Date('2026-05-15T16:00:00.000Z'),
+      stripeSessionId: 'CS_TEST_A1BHEWKWHLJE12',
+      address: '{"fullName":"ALBIN JOHN","mobileNumber":"8921663449","pincode":"685606","houseNo":"kanjikuzhy","area":"dfg","landmark":"df","city":"Kottayam","state":"Kerala"}',
+      items: [{ product: pepper, quantity: 1, price: 175.00, weight: '100g' }]
+    },
+    {
+      user: albin,
+      totalAmount: 450.00,
+      createdAt: new Date('2026-05-15T17:00:00.000Z'),
+      stripeSessionId: 'CS_TEST_A1BHEWKWHLJE13',
+      address: '{"fullName":"ALBIN JOHN","mobileNumber":"8921663449","pincode":"685606","houseNo":"kanjikuzhy","area":"dfg","landmark":"df","city":"Kottayam","state":"Kerala"}',
+      items: [{ product: cardamom, quantity: 1, price: 350.00, weight: '100g' }, { product: pepper, quantity: 1, price: 100.00, weight: '100g' }]
+    },
+    {
+      user: albin,
+      totalAmount: 175.00,
+      createdAt: new Date('2026-05-15T18:00:00.000Z'),
+      stripeSessionId: 'CS_TEST_A1BHEWKWHLJE14',
+      address: '{"fullName":"ALBIN JOHN","mobileNumber":"8921663449","pincode":"685606","houseNo":"kanjikuzhy","area":"dfg","landmark":"df","city":"Kottayam","state":"Kerala"}',
+      items: [{ product: pepper, quantity: 1, price: 175.00, weight: '100g' }]
+    },
+    {
+      user: albin,
+      totalAmount: 350.00,
+      createdAt: new Date('2026-05-16T12:00:00.000Z'),
+      stripeSessionId: 'CS_TEST_A1BHEWKWHLJE15',
+      address: '{"fullName":"ALBIN JOHN","mobileNumber":"8921663449","pincode":"685606","houseNo":"kanjikuzhy","area":"dfg","landmark":"df","city":"Kottayam","state":"Kerala"}',
+      items: [{ product: cardamom, quantity: 1, price: 350.00, weight: '100g' }]
+    },
+    {
+      user: albin,
+      totalAmount: 450.00,
+      createdAt: new Date('2026-05-17T12:00:00.000Z'),
+      stripeSessionId: 'CS_TEST_A1BHEWKWHLJE16',
+      address: '{"fullName":"ALBIN JOHN","mobileNumber":"8921663449","pincode":"685606","houseNo":"kanjikuzhy","area":"dfg","landmark":"df","city":"Kottayam","state":"Kerala"}',
+      items: [{ product: cardamom, quantity: 1, price: 350.00, weight: '100g' }, { product: pepper, quantity: 1, price: 100.00, weight: '100g' }]
+    },
+    {
+      user: albin,
+      totalAmount: 175.00,
+      createdAt: new Date('2026-05-17T13:00:00.000Z'),
+      stripeSessionId: 'CS_TEST_A1BHEWKWHLJE17',
+      address: '{"fullName":"ALBIN JOHN","mobileNumber":"8921663449","pincode":"685606","houseNo":"kanjikuzhy","area":"dfg","landmark":"df","city":"Kottayam","state":"Kerala"}',
+      items: [{ product: pepper, quantity: 1, price: 175.00, weight: '100g' }]
+    },
+    {
+      user: testUser,
+      totalAmount: 415.63,
+      createdAt: new Date('2026-05-18T10:00:00.000Z'),
+      stripeSessionId: 'CS_TEST_A1BHEWKWHLJE18',
+      address: '{"fullName":"Test Recipient","mobileNumber":"9876543210","pincode":"685602","houseNo":"123 Spice Farms","area":"Vazhavatta","landmark":"","city":"Idukki","state":"Kerala"}',
+      items: [{ product: pepper, quantity: 1, price: 415.63, weight: '100g' }]
+    }
+  ];
+
+  for (const o of ordersData) {
+    if (!o.user) continue;
+    const orderRecord = await prisma.order.create({
+      data: {
+        userId: o.user.id,
+        totalAmount: o.totalAmount,
+        createdAt: o.createdAt,
+        stripeSessionId: o.stripeSessionId,
+        address: o.address,
+        status: 'PAID'
+      }
+    });
+
+    for (const item of o.items) {
+      if (!item.product) continue;
+      await prisma.orderItem.create({
+        data: {
+          orderId: orderRecord.id,
+          productId: item.product.id,
+          quantity: item.quantity,
+          price: item.price,
+          weight: item.weight
+        }
+      });
+    }
+  }
+
+  console.log('✅ Sync complete! Product Catalog updated and 18 historical orders successfully re-seeded!');
 }
 
 main()
