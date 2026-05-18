@@ -19,8 +19,10 @@ router.post('/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
+    const normalizedEmail = email.toLowerCase();
+
     // 1. Check if user already exists
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    const existingUser = await prisma.user.findUnique({ where: { email: normalizedEmail } });
     if (existingUser) {
       return res.status(400).json({ error: 'User already exists' });
     }
@@ -31,7 +33,7 @@ router.post('/register', async (req, res) => {
 
     // 3. Save to database
     const newUser = await prisma.user.create({
-      data: { name, email, password: hashedPassword }
+      data: { name, email: normalizedEmail, password: hashedPassword }
     });
 
     res.status(201).json({ message: 'User registered successfully!' });
@@ -48,8 +50,10 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    const normalizedEmail = email.toLowerCase();
+
     // 1. Find user in the database
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
     if (!user) {
       return res.status(400).json({ error: 'Invalid credentials' });
     }
@@ -112,9 +116,10 @@ router.put('/update-address', verifyToken, async (req, res) => {
 router.post('/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
+    const normalizedEmail = email.toLowerCase();
     
     // Find user in DB
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
     
     // For security, always return success so attackers can't guess valid emails
     const genericMessage = 'If a user is registered with this email, we have sent a password reset link.';
