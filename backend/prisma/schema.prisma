@@ -21,6 +21,7 @@ model Product {
   price       Float
   category    String
   images      String[]
+  isArchived  Boolean  @default(false)
   
   // Relation to Farmer
   farmerId    Int?
@@ -60,12 +61,14 @@ model Order {
 }
 
 model OrderItem {
-  id        Int     @id @default(autoincrement())
-  orderId   Int
-  order     Order   @relation(fields: [orderId], references: [id])
-  productId Int
-  product   Product @relation(fields: [productId], references: [id])
-  quantity  Int
+  id           Int      @id @default(autoincrement())
+  orderId      Int
+  order        Order    @relation(fields: [orderId], references: [id])
+  productId    Int?
+  product      Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productName  String?
+  productImage String?
+  quantity     Int
   price     Float
   weight    String
 }

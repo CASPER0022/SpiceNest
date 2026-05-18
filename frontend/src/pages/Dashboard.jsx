@@ -557,7 +557,7 @@ export default function Dashboard() {
                                           {item.weight}
                                         </div>
                                         <div className="flex flex-col">
-                                          <span className="font-bold text-gray-800">{item.product.name}</span>
+                                          <span className="font-bold text-gray-800">{item.productName || (item.product ? item.product.name : 'Unknown Product')}</span>
                                           <span className="text-[9px] text-gray-400 font-medium">Qty: {item.quantity}</span>
                                         </div>
                                       </div>

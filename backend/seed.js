@@ -259,6 +259,8 @@ async function main() {
         data: {
           orderId: orderRecord.id,
           productId: item.product.id,
+          productName: item.product.name,
+          productImage: item.product.images && item.product.images.length > 0 ? item.product.images[0] : '',
           quantity: item.quantity,
           price: item.price,
           weight: item.weight

@@ -107,6 +107,8 @@ router.get('/confirm-order', async (req, res) => {
       }
       return {
         productId: product.id,
+        productName: product.name,
+        productImage: product.images && product.images.length > 0 ? product.images[0] : '',
         quantity: item.quantity,
         price: item.amount_total / 100 / item.quantity,
         weight: '100g' // Default weight

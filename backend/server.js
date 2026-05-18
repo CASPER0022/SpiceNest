@@ -37,6 +37,7 @@ app.use('/api/payment', paymentRoutes);
 app.get('/api/products', async (req, res) => {
   try {
     const products = await prisma.product.findMany({
+      where: { isArchived: false },
       orderBy: { id: 'desc' },
       include: { farmer: true }
     });

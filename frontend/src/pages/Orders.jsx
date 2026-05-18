@@ -192,15 +192,15 @@ export default function Orders() {
                 {order.items.map((item) => (
                   <div key={item.id} className="flex gap-4 sm:gap-6 items-center">
                     <img 
-                      src={getProductImage(item.product)} 
-                      alt={item.product.name}
+                      src={item.productImage || getProductImage(item.product)} 
+                      alt={item.productName || (item.product ? item.product.name : 'Unknown Product')}
                       className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-2xl border border-gray-100 shadow-sm shrink-0"
                     />
                     <div className="flex-grow">
                       <div className="flex justify-between items-start gap-2">
                         <div>
                           <h4 className="text-sm sm:text-base font-bold text-gray-900 leading-tight">
-                            {item.product.name}
+                            {item.productName || (item.product ? item.product.name : 'Unknown Product')}
                           </h4>
                           <p className="text-xs text-gray-400 font-medium mt-1 uppercase tracking-wider">
                             Pack Weight: {item.weight}
