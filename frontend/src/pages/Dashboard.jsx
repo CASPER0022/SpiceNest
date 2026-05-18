@@ -19,7 +19,7 @@ export default function Dashboard() {
   const [hoveredPoint, setHoveredPoint] = useState(null); // { x, y, date, value } for graph hover
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-  const adminEmails = ['heyitsmealbinjohn@gmail.com', 'bibinjohn22@gmail.com'];
+  const adminEmails = ['heyitsmealbinjohn@gmail.com', 'bibinjohn2018@gmail.com'];
 
   useEffect(() => {
     if (!user) {

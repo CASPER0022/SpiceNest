@@ -184,7 +184,7 @@ router.get('/admin/dashboard', verifyToken, async (req, res) => {
       where: { id: parseInt(req.user.id, 10) }
     });
 
-    const adminEmails = ['heyitsmealbinjohn@gmail.com', 'bibinjohn22@gmail.com'];
+    const adminEmails = ['heyitsmealbinjohn@gmail.com', 'bibinjohn2018@gmail.com'];
     if (!user || !adminEmails.includes(user.email)) {
       return res.status(403).json({ error: 'Access denied: Admins only' });
     }

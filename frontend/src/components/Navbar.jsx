@@ -9,7 +9,7 @@ export default function Navbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const isAdmin = user && ['heyitsmealbinjohn@gmail.com', 'bibinjohn22@gmail.com'].includes(user.email);
+  const isAdmin = user && ['heyitsmealbinjohn@gmail.com', 'bibinjohn2018@gmail.com'].includes(user.email);
 
   const handleLogout = () => {
     logout();
