@@ -139,8 +139,8 @@ export default function Orders() {
           const address = parseAddress(order.address);
           const isAddressOpen = !!expandedOrders[order.id];
 
-          // 10001 start index offset for order display
-          const displayOrderId = 10000 + order.id;
+          // Database sequence already generates 5-digit IDs (e.g., 10001+)
+          const displayOrderId = order.id;
 
           // Simple dynamic tracking status (Mocked for premium UX since it's hardseeded as PAID)
           const steps = [

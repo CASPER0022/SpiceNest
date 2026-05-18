@@ -496,7 +496,7 @@ export default function Dashboard() {
                 {orders.map((order) => {
                   const isExpanded = !!expandedOrders[order.id];
                   const address = parseAddress(order.address);
-                  const displayOrderId = 10000 + order.id;
+                  const displayOrderId = order.id;
 
                   return (
                     <Fragment key={order.id}>
