@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { 
   Package, Calendar, CreditCard, ChevronDown, ChevronUp, MapPin, 
   TrendingUp, Layers, Users, ShoppingBag, Percent, ArrowRightLeft, DollarSign, Activity,
-  ArrowLeft, Mail, Clock, Globe
+  ArrowLeft, Mail, Clock, Globe, Search
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -23,6 +23,7 @@ export default function Dashboard() {
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [adminMessage, setAdminMessage] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
   const adminEmails = ['heyitsmealbinjohn@gmail.com', 'bibinjohn2018@gmail.com'];
@@ -157,6 +158,20 @@ export default function Dashboard() {
 
     setFilteredOrders(filtered);
   }, [orders, timeFilter, customStartDate, customEndDate]);
+
+  const filteredRegistryOrders = orders.filter(order => {
+    if (!searchQuery.trim()) return true;
+    
+    const query = searchQuery.toLowerCase().trim();
+    const address = parseAddress(order.address);
+    
+    const orderIdMatch = order.id.toString().includes(query) || `#${order.id}`.includes(query);
+    const customerNameMatch = (order.user?.name?.toLowerCase().includes(query) || (address && address.fullName?.toLowerCase().includes(query)));
+    const emailMatch = (order.user?.email?.toLowerCase().includes(query) || (address && address.email?.toLowerCase().includes(query)));
+    const phoneMatch = address && address.mobileNumber ? address.mobileNumber.includes(query) : false;
+    
+    return orderIdMatch || customerNameMatch || emailMatch || phoneMatch;
+  });
 
   const toggleOrderExpand = (orderId) => {
     setExpandedOrders(prev => ({
@@ -869,25 +884,65 @@ export default function Dashboard() {
       ) : (
         
         /* Order Registry Details Tab */
-        <div className="bg-white rounded-3xl border border-gray-150/70 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-100">
-              <thead className="bg-gray-50/50">
-                <tr>
-                  <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Order ID</th>
-                  <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Customer Details</th>
-                  <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Date Mapped</th>
-                  <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Paid</th>
-                  <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Payment Status</th>
-                  <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Shipment Tracking</th>
-                  <th scope="col" className="px-6 py-4 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-50">
-                {orders.map((order) => {
-                  const isExpanded = !!expandedOrders[order.id];
-                  const address = parseAddress(order.address);
-                  const displayOrderId = order.id;
+        <div className="space-y-6">
+          {/* Premium Search Bar */}
+          <div className="bg-white rounded-2xl border border-gray-150/70 p-4 shadow-sm flex items-center gap-3">
+            <div className="relative flex-grow">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search orders by customer name, order ID (#10068), email address, or contact phone..."
+                className="w-full text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-200 rounded-xl pl-10 pr-4 py-3.5 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all shadow-inner"
+              />
+              <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                <Search size={16} />
+              </div>
+            </div>
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="text-[10px] font-black uppercase tracking-wider bg-gray-100 hover:bg-gray-200 text-gray-600 px-4 py-3 rounded-xl transition-all"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          <div className="bg-white rounded-3xl border border-gray-150/70 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-100">
+                <thead className="bg-gray-50/50">
+                  <tr>
+                    <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Order ID</th>
+                    <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Customer Details</th>
+                    <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Date Mapped</th>
+                    <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Paid</th>
+                    <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Payment Status</th>
+                    <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Shipment Tracking</th>
+                    <th scope="col" className="px-6 py-4 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-50">
+                  {filteredRegistryOrders.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-16 text-center">
+                        <div className="flex flex-col items-center justify-center space-y-3">
+                          <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+                            <Search size={22} />
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-sm font-bold text-gray-800">No matching orders found</p>
+                            <p className="text-xs text-gray-400 font-medium">Your query did not match any customer names, order IDs, email addresses, or phone numbers.</p>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredRegistryOrders.map((order) => {
+                      const isExpanded = !!expandedOrders[order.id];
+                      const address = parseAddress(order.address);
+                      const displayOrderId = order.id;
 
                   return (
                     <Fragment key={order.id}>
@@ -955,11 +1010,13 @@ export default function Dashboard() {
                         </td>
                       </tr>
                     </Fragment>
-                  );
-                })}
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
+        </div>
         </div>
       )}
 
