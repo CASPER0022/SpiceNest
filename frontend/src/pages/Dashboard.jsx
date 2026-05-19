@@ -468,6 +468,7 @@ export default function Dashboard() {
                     </div>
                   </div>
                 </div>
+                <div className="space-y-4">
                   <div className="flex items-start gap-3">
                     <Mail className="text-gray-400 shrink-0 mt-0.5" size={18} />
                     <div className="space-y-1">
