@@ -919,11 +919,27 @@ export default function Dashboard() {
                           ₹{order.totalAmount.toFixed(2)}
                         </td>
                         <td className="px-6 py-5 whitespace-nowrap">
-                          <span className={`inline-flex items-center text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border ${
-                            statusStyles[order.status] || 'bg-emerald-50 text-emerald-700 border-emerald-150'
-                          }`}>
-                            {order.status}
-                          </span>
+                          <div className="relative inline-flex items-center">
+                            <select
+                              value={order.status}
+                              onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                              className={`appearance-none inline-flex items-center text-[10px] font-black uppercase tracking-wider px-3 py-1.5 pr-8 rounded-full border cursor-pointer focus:outline-none transition-all shadow-sm ${
+                                statusStyles[order.status] || 'bg-emerald-50 text-emerald-700 border-emerald-150'
+                              }`}
+                            >
+                              <option value="PAID">PAID</option>
+                              <option value="Processing">Processing</option>
+                              <option value="On Hold">On Hold</option>
+                              <option value="Completed">Completed</option>
+                              <option value="Cancelled">Cancelled</option>
+                              <option value="Pending Payment">Pending Payment</option>
+                              <option value="Refunded">Refunded</option>
+                              <option value="Failed">Failed</option>
+                            </select>
+                            <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center px-1 text-gray-500">
+                              <ChevronDown size={12} />
+                            </div>
+                          </div>
                         </td>
                         <td className="px-6 py-5 whitespace-nowrap">
                           {/* Standard Shipment Tracking placeholder as requested */}
