@@ -8,6 +8,14 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+const parseAddress = (addressStr) => {
+  try {
+    return typeof addressStr === 'string' ? JSON.parse(addressStr) : addressStr;
+  } catch (e) {
+    return {};
+  }
+};
+
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -214,13 +222,7 @@ export default function Dashboard() {
     }
   };
 
-  const parseAddress = (addressStr) => {
-    try {
-      return typeof addressStr === 'string' ? JSON.parse(addressStr) : addressStr;
-    } catch (e) {
-      return {};
-    }
-  };
+
 
   const formatDate = (dateStr) => {
     return new Date(dateStr).toLocaleDateString('en-IN', {
