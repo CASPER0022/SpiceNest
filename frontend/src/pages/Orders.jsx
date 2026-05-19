@@ -13,6 +13,28 @@ export default function Orders() {
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
+  const statusStyles = {
+    PAID: 'bg-emerald-50 text-emerald-800 border-emerald-150',
+    Processing: 'bg-blue-50 text-blue-800 border-blue-150',
+    'On Hold': 'bg-gray-50 text-gray-700 border-gray-150',
+    Completed: 'bg-emerald-50 text-emerald-800 border-emerald-150',
+    Cancelled: 'bg-red-50 text-red-800 border-red-150',
+    'Pending Payment': 'bg-amber-50 text-amber-800 border-amber-150',
+    Refunded: 'bg-purple-50 text-purple-800 border-purple-150',
+    Failed: 'bg-rose-50 text-rose-700 border-rose-150'
+  };
+
+  const statusColors = {
+    PAID: 'bg-emerald-500',
+    Processing: 'bg-blue-500',
+    'On Hold': 'bg-gray-400',
+    Completed: 'bg-emerald-500',
+    Cancelled: 'bg-red-500',
+    'Pending Payment': 'bg-amber-500',
+    Refunded: 'bg-purple-500',
+    Failed: 'bg-rose-500'
+  };
+
   useEffect(() => {
     if (authLoading) return;
 
@@ -182,8 +204,10 @@ export default function Orders() {
                 </div>
 
                 <div className="flex items-center md:justify-end gap-3">
-                  <span className="bg-emerald-100 text-emerald-800 text-xs font-black uppercase tracking-wider px-3 py-1.5 rounded-full flex items-center">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-2 animate-ping"></span>
+                  <span className={`text-xs font-black uppercase tracking-wider px-3 py-1.5 rounded-full flex items-center border ${
+                    statusStyles[order.status] || 'bg-emerald-50 text-emerald-800 border-emerald-150'
+                  }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full mr-2 animate-ping ${statusColors[order.status] || 'bg-emerald-500'}`}></span>
                     {order.status}
                   </span>
                 </div>

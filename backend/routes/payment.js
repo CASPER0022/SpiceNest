@@ -299,4 +299,38 @@ router.post('/admin/orders/:id/send-message', verifyToken, async (req, res) => {
   }
 });
 
+// ==========================================
+// UPDATE ORDER STATUS (ADMIN ONLY)
+// ==========================================
+router.put('/admin/orders/:id/status', verifyToken, async (req, res) => {
+  try {
+    const adminUser = await prisma.user.findUnique({
+      where: { id: parseInt(req.user.id, 10) }
+    });
+
+    const adminEmails = ['heyitsmealbinjohn@gmail.com', 'bibinjohn2018@gmail.com'];
+    if (!adminUser || !adminEmails.includes(adminUser.email)) {
+      return res.status(403).json({ error: 'Access denied: Admins only' });
+    }
+
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const validStatuses = ['PAID', 'Processing', 'On Hold', 'Completed', 'Cancelled', 'Pending Payment', 'Refunded', 'Failed'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: 'Invalid status value' });
+    }
+
+    const updatedOrder = await prisma.order.update({
+      where: { id: parseInt(id, 10) },
+      data: { status }
+    });
+
+    res.json({ success: true, order: updatedOrder });
+  } catch (error) {
+    console.error('Update order status error:', error);
+    res.status(500).json({ error: 'Failed to update order status' });
+  }
+});
+
 export default router;

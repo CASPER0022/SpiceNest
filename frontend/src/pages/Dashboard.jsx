@@ -27,6 +27,44 @@ export default function Dashboard() {
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
   const adminEmails = ['heyitsmealbinjohn@gmail.com', 'bibinjohn2018@gmail.com'];
 
+  const statusStyles = {
+    PAID: 'bg-emerald-50 text-emerald-700 border-emerald-150',
+    Processing: 'bg-blue-50 text-blue-700 border-blue-150',
+    'On Hold': 'bg-gray-50 text-gray-600 border-gray-150',
+    Completed: 'bg-emerald-50 text-emerald-700 border-emerald-150',
+    Cancelled: 'bg-red-50 text-red-700 border-red-150',
+    'Pending Payment': 'bg-amber-50 text-amber-700 border-amber-150',
+    Refunded: 'bg-purple-50 text-purple-700 border-purple-150',
+    Failed: 'bg-rose-50 text-rose-700 border-rose-150'
+  };
+
+  const handleStatusChange = async (orderId, newStatus) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/api/payment/admin/orders/${orderId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Failed to update status');
+      }
+
+      setOrders(prevOrders => 
+        prevOrders.map(o => o.id === orderId ? { ...o, status: newStatus } : o)
+      );
+      toast.success(`Order #${orderId} updated to ${newStatus}`);
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || 'Error updating order status');
+    }
+  };
+
   useEffect(() => {
     if (authLoading) return;
 
@@ -386,9 +424,27 @@ export default function Dashboard() {
           <div>
             <div className="flex items-center gap-3 flex-wrap">
               <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 tracking-tight">Order #{selectedOrder.id}</h2>
-              <span className="inline-flex items-center bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full">
-                {selectedOrder.status}
-              </span>
+              <div className="relative inline-flex items-center">
+                <select
+                  value={selectedOrder.status}
+                  onChange={(e) => handleStatusChange(selectedOrder.id, e.target.value)}
+                  className={`appearance-none inline-flex items-center text-[10px] font-black uppercase tracking-wider px-3 py-1.5 pr-8 rounded-full border cursor-pointer focus:outline-none transition-all shadow-sm ${
+                    statusStyles[selectedOrder.status] || 'bg-emerald-50 text-emerald-700 border-emerald-150'
+                  }`}
+                >
+                  <option value="PAID">PAID</option>
+                  <option value="Processing">Processing</option>
+                  <option value="On Hold">On Hold</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Cancelled">Cancelled</option>
+                  <option value="Pending Payment">Pending Payment</option>
+                  <option value="Refunded">Refunded</option>
+                  <option value="Failed">Failed</option>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center px-1 text-gray-500">
+                  <ChevronDown size={12} />
+                </div>
+              </div>
             </div>
             <div className="flex items-center gap-1.5 text-xs text-gray-400 font-bold mt-2">
               <Calendar size={14} className="text-gray-400" />
@@ -863,7 +919,9 @@ export default function Dashboard() {
                           ₹{order.totalAmount.toFixed(2)}
                         </td>
                         <td className="px-6 py-5 whitespace-nowrap">
-                          <span className="inline-flex items-center bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full">
+                          <span className={`inline-flex items-center text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border ${
+                            statusStyles[order.status] || 'bg-emerald-50 text-emerald-700 border-emerald-150'
+                          }`}>
                             {order.status}
                           </span>
                         </td>
