@@ -5,7 +5,7 @@ import { Package, Calendar, CreditCard, ChevronDown, ChevronUp, MapPin, Truck, E
 import toast from 'react-hot-toast';
 
 export default function Orders() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -14,6 +14,8 @@ export default function Orders() {
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
   useEffect(() => {
+    if (authLoading) return;
+
     if (!user) {
       navigate('/login?redirect=orders');
       return;
@@ -77,7 +79,7 @@ export default function Orders() {
     return 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=200&q=80';
   };
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 md:py-20 min-h-[70vh]">
         <div className="space-y-8 animate-pulse">

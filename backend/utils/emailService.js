@@ -156,3 +156,58 @@ export async function sendPasswordResetEmail(to, name, resetUrl) {
   }
 }
 
+/**
+ * Sends a custom admin message to the customer using Brevo API.
+ * @param {string} to - Customer's email address
+ * @param {string} name - Customer's name
+ * @param {object} order - The order context
+ * @param {string} messageContent - The message content written by the admin
+ */
+export async function sendCustomAdminMessage(to, name, order, messageContent) {
+  try {
+    if (!process.env.BREVO_API_KEY) {
+      console.error('❌ BREVO_API_KEY is missing');
+      return false;
+    }
+
+    const client = new BrevoClient({ apiKey: process.env.BREVO_API_KEY });
+
+    // Format newlines into HTML breaks
+    const formattedMessage = messageContent.replace(/\n/g, '<br>');
+
+    const htmlContent = `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
+          <h1 style="color: #059669; text-align: center;">Message regarding Order #${order.id} 🌿</h1>
+          <p>Hi ${name || 'Valued Customer'},</p>
+          <p>We are writing to you with an update regarding your order <strong>#${order.id}</strong> placed on ${new Date(order.createdAt).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })}.</p>
+          
+          <div style="background: #f9fafb; padding: 25px; border-left: 4px solid #059669; border-radius: 8px; margin: 20px 0; font-size: 15px; color: #1f2937; line-height: 1.6;">
+            ${formattedMessage}
+          </div>
+
+          <p>If you have any further questions, you can reply directly to this email to contact our support team.</p>
+
+          <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="font-size: 12px; color: #999; text-align: center;">
+            SpiceNest - From our farms to your kitchen.<br>
+            Kerala, India
+          </p>
+        </div>
+    `;
+
+    const response = await client.transactionalEmails.sendTransacEmail({
+      subject: `Update on your SpiceNest Order #${order.id} 🌿`,
+      htmlContent: htmlContent,
+      sender: { name: "SpiceNest Admin", email: "heyitsmealbinjohn@gmail.com" },
+      to: [{ email: to, name: name || "Valued Customer" }],
+      replyTo: { email: "heyitsmealbinjohn@gmail.com", name: "SpiceNest Support" }
+    });
+
+    console.log('✅ Custom message email sent via Brevo:', response.data?.messageId || response.messageId || 'Success');
+    return true;
+  } catch (error) {
+    console.error('❌ Failed to send custom message email via Brevo:', error.response?.body || error);
+    return false;
+  }
+}
+

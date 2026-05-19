@@ -3,8 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import { User, Mail, MapPin, LogOut, Package, Heart, Bell, Settings, Shield, CreditCard } from 'lucide-react';
 
 export default function Profile() {
-  const { user, logout } = useAuth();
+  const { user, loading: authLoading, logout } = useAuth();
   const navigate = useNavigate();
+
+  if (authLoading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20 min-h-[70vh]">
+        <div className="space-y-6 animate-pulse text-center">
+          <div className="w-32 h-32 bg-gray-200 rounded-full mx-auto mb-6"></div>
+          <div className="h-6 bg-gray-200 rounded-lg w-48 mx-auto"></div>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     navigate('/login');

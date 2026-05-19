@@ -4,6 +4,7 @@ const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Check if user is already logged in when the page loads
@@ -17,6 +18,7 @@ export function AuthProvider({ children }) {
       localStorage.removeItem('token');
       setUser(null);
     }
+    setLoading(false);
   }, []);
 
   const login = (userData, token) => {
@@ -40,7 +42,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, updateAddress }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, updateAddress }}>
       {children}
     </AuthContext.Provider>
   );

@@ -2,7 +2,7 @@ import express from 'express';
 import Stripe from 'stripe';
 import dotenv from 'dotenv';
 import pkg from '@prisma/client';
-import { sendOrderConfirmation } from '../utils/emailService.js';
+import { sendOrderConfirmation, sendCustomAdminMessage } from '../utils/emailService.js';
 import { verifyToken } from './auth.js';
 
 dotenv.config();
@@ -18,6 +18,20 @@ router.post('/create-checkout-session', async (req, res) => {
   try {
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
     const { items, userId, address } = req.body;
+
+    // Capture the client IP address securely
+    const clientIpRaw = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
+    // Clean IPv6 prefix if present (e.g. ::ffff:)
+    const clientIp = clientIpRaw.includes('::ffff:') ? clientIpRaw.split('::ffff:')[1] : clientIpRaw;
+
+    let addressWithIp = address;
+    try {
+      const parsedAddress = typeof address === 'string' ? JSON.parse(address) : address;
+      parsedAddress.clientIp = clientIp;
+      addressWithIp = JSON.stringify(parsedAddress);
+    } catch (e) {
+      console.error('Failed to inject IP to address:', e);
+    }
 
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 
@@ -51,7 +65,7 @@ router.post('/create-checkout-session', async (req, res) => {
       cancel_url: `${frontendUrl}/cart`,
       metadata: {
         userId: userId.toString(),
-        address: address // This is the JSON string of the address
+        address: addressWithIp // This is the JSON string of the address with embedded IP
       }
     });
 
@@ -211,6 +225,77 @@ router.get('/admin/dashboard', verifyToken, async (req, res) => {
   } catch (error) {
     console.error('Fetch admin dashboard error:', error);
     res.status(500).json({ error: 'Failed to fetch admin dashboard data' });
+  }
+});
+
+// ==========================================
+// SEND CUSTOM MESSAGE TO ORDER RECIPIENT
+// ==========================================
+router.post('/admin/orders/:id/send-message', verifyToken, async (req, res) => {
+  try {
+    const adminUser = await prisma.user.findUnique({
+      where: { id: parseInt(req.user.id, 10) }
+    });
+
+    const adminEmails = ['heyitsmealbinjohn@gmail.com', 'bibinjohn2018@gmail.com'];
+    if (!adminUser || !adminEmails.includes(adminUser.email)) {
+      return res.status(403).json({ error: 'Access denied: Admins only' });
+    }
+
+    const { id } = req.params;
+    const { message } = req.body;
+
+    if (!message || message.trim() === '') {
+      return res.status(400).json({ error: 'Message content is required' });
+    }
+
+    // Find the order
+    const order = await prisma.order.findUnique({
+      where: { id: parseInt(id, 10) },
+      include: {
+        user: true,
+        items: true
+      }
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Parse the address to retrieve email
+    let recipientEmail = null;
+    let recipientName = null;
+    try {
+      const address = JSON.parse(order.address);
+      recipientEmail = address.email;
+      recipientName = address.fullName;
+    } catch (e) {
+      console.error('Error parsing order address:', e);
+    }
+
+    // Fallbacks
+    if (!recipientEmail) {
+      recipientEmail = order.user?.email;
+    }
+    if (!recipientName) {
+      recipientName = order.user?.name || 'Valued Customer';
+    }
+
+    if (!recipientEmail) {
+      return res.status(400).json({ error: 'No email address found for this order' });
+    }
+
+    console.log(`📧 Admin sending custom message to: ${recipientEmail}`);
+    const success = await sendCustomAdminMessage(recipientEmail, recipientName, order, message);
+
+    if (success) {
+      res.json({ success: true, message: 'Message sent successfully' });
+    } else {
+      res.status(500).json({ error: 'Failed to send message via Brevo' });
+    }
+  } catch (error) {
+    console.error('Send custom admin message error:', error);
+    res.status(500).json({ error: 'Failed to process message' });
   }
 });
 
