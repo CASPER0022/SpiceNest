@@ -1,19 +1,33 @@
 import { createContext, useContext, useState, useMemo, useEffect } from 'react';
+import { useAuth } from './AuthContext';
 
 const CartContext = createContext();
 
 export function CartProvider({ children }) {
-  const [cartItems, setCartItems] = useState(() => {
-    const savedCart = localStorage.getItem('cart');
-    return savedCart ? JSON.parse(savedCart) : [];
-  });
-
+  const { user, loading: authLoading } = useAuth();
+  const [cartItems, setCartItems] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [loadedKey, setLoadedKey] = useState(null);
 
-  // Persist cart to localStorage whenever it changes
+  // Determine the localStorage key based on logged-in user profile
+  const cartKey = useMemo(() => {
+    return user && user.id ? `cart_${user.id}` : 'cart_guest';
+  }, [user]);
+
+  // Load cart from localStorage when the key changes (e.g. user logs in or out)
   useEffect(() => {
-    localStorage.setItem('cart', JSON.stringify(cartItems));
-  }, [cartItems]);
+    if (authLoading) return;
+    const savedCart = localStorage.getItem(cartKey);
+    const parsed = savedCart ? JSON.parse(savedCart) : [];
+    setCartItems(parsed);
+    setLoadedKey(cartKey);
+  }, [cartKey, authLoading]);
+
+  // Persist cart to localStorage whenever it changes, but only if the key is loaded
+  useEffect(() => {
+    if (authLoading || !loadedKey || loadedKey !== cartKey) return;
+    localStorage.setItem(cartKey, JSON.stringify(cartItems));
+  }, [cartItems, cartKey, loadedKey, authLoading]);
 
   const addToCart = (product, weight = '100g', customPrice = null) => {
     setCartItems((prev) => {
