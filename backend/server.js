@@ -16,6 +16,7 @@ const PORT = process.env.PORT || 5000;
 // Import Routers
 import authRoutes from './routes/auth.js';
 import paymentRoutes from './routes/payment.js';
+import cartRoutes from './routes/cart.js';
 
 // ==========================================
 // Middleware (Software that runs before your routes)
@@ -32,6 +33,9 @@ app.use('/api/auth', authRoutes);
 
 // Payment Routes
 app.use('/api/payment', paymentRoutes);
+
+// Cart Routes
+app.use('/api/cart', cartRoutes);
 
 // Get all spices from the Neon Database!
 app.get('/api/products', async (req, res) => {
