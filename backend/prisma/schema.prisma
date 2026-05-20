@@ -48,16 +48,17 @@ model User {
 }
 
 model Order {
-  id              Int         @id @default(autoincrement())
+  id              Int            @id @default(autoincrement())
   userId          Int
-  user            User        @relation(fields: [userId], references: [id])
+  user            User           @relation(fields: [userId], references: [id])
   totalAmount     Float
-  address         String      // Snapshot of address as JSON string
-  status          String      @default("PAID")
-  stripeSessionId String      @unique
+  address         String         // Snapshot of address as JSON string
+  status          String         @default("PAID")
+  stripeSessionId String         @unique
   items           OrderItem[]
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  messages        OrderMessage[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 }
 
 model OrderItem {
@@ -84,3 +85,13 @@ model Farmer {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model OrderMessage {
+  id        Int      @id @default(autoincrement())
+  orderId   Int
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  message   String   @db.Text
+  sentBy    String   // e.g. "admin"
+  createdAt DateTime @default(now())
+}
+

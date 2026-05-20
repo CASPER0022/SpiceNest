@@ -172,8 +172,26 @@ export async function sendCustomAdminMessage(to, name, order, messageContent) {
 
     const client = new BrevoClient({ apiKey: process.env.BREVO_API_KEY });
 
+    // Parse address if it's a string
+    let address = order.address;
+    try {
+      if (typeof order.address === 'string') {
+        address = JSON.parse(order.address);
+      }
+    } catch (e) {
+      console.error('Failed to parse order address:', e);
+    }
+
     // Format newlines into HTML breaks
     const formattedMessage = messageContent.replace(/\n/g, '<br>');
+
+    const itemsHtml = order.items.map(item => `
+      <tr>
+        <td style="padding: 10px; border-bottom: 1px solid #eee;">${item.productName || (item.product && item.product.name) || 'Product'}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #eee;">${item.quantity}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">₹${item.price.toFixed(2)}</td>
+      </tr>
+    `).join('');
 
     const htmlContent = `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
@@ -185,9 +203,37 @@ export async function sendCustomAdminMessage(to, name, order, messageContent) {
             ${formattedMessage}
           </div>
 
-          <p>If you have any further questions, you can reply directly to this email to contact our support team.</p>
+          <div style="background: #f9fafb; padding: 20px; border-radius: 10px; margin: 25px 0 20px 0; border: 1px solid #f0f0f0;">
+            <h2 style="margin-top: 0; font-size: 16px; color: #059669; border-bottom: 1px solid #eee; padding-bottom: 8px;">Order Details</h2>
+            <p style="margin: 6px 0; font-size: 13px;"><strong>Order ID:</strong> #${order.id}</p>
+            <p style="margin: 6px 0; font-size: 13px;"><strong>Date:</strong> ${new Date(order.createdAt).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })}</p>
+            <p style="margin: 6px 0; font-size: 13px;"><strong>Total Paid:</strong> ₹${order.totalAmount.toFixed(2)}</p>
+          </div>
 
-          <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;">
+          <table style="width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px;">
+            <thead>
+              <tr style="background: #f3f4f6;">
+                <th style="padding: 10px; text-align: left;">Item</th>
+                <th style="padding: 10px; text-align: left;">Qty</th>
+                <th style="padding: 10px; text-align: right;">Price</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsHtml}
+            </tbody>
+          </table>
+
+          <div style="margin-top: 30px;">
+            <h2 style="font-size: 16px; color: #059669; border-bottom: 1px solid #eee; padding-bottom: 8px;">Shipping Address</h2>
+            <p style="color: #555; line-height: 1.6; font-size: 13px; margin-top: 8px;">
+              <strong>${address.fullName || name}</strong><br>
+              ${address.houseNo}, ${address.area}<br>
+              ${address.city}, ${address.state} - ${address.pincode}<br>
+              Phone: ${address.mobileNumber || ''}
+            </p>
+          </div>
+
+          <hr style="border: 0; border-top: 1px solid #eee; margin: 35px 0 25px 0;">
           <p style="font-size: 12px; color: #999; text-align: center;">
             SpiceNest - From our farms to your kitchen.<br>
             Kerala, India

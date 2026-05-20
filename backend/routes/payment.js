@@ -217,6 +217,11 @@ router.get('/admin/dashboard', verifyToken, async (req, res) => {
           include: {
             product: true
           }
+        },
+        messages: {
+          orderBy: {
+            createdAt: 'desc'
+          }
         }
       }
     });
@@ -254,7 +259,11 @@ router.post('/admin/orders/:id/send-message', verifyToken, async (req, res) => {
       where: { id: parseInt(id, 10) },
       include: {
         user: true,
-        items: true
+        items: {
+          include: {
+            product: true
+          }
+        }
       }
     });
 
@@ -289,7 +298,15 @@ router.post('/admin/orders/:id/send-message', verifyToken, async (req, res) => {
     const success = await sendCustomAdminMessage(recipientEmail, recipientName, order, message);
 
     if (success) {
-      res.json({ success: true, message: 'Message sent successfully' });
+      // Save sent message to DB
+      const createdMessage = await prisma.orderMessage.create({
+        data: {
+          orderId: order.id,
+          message,
+          sentBy: 'admin'
+        }
+      });
+      res.json({ success: true, message: 'Message sent successfully', orderMessage: createdMessage });
     } else {
       res.status(500).json({ error: 'Failed to send message via Brevo' });
     }
@@ -330,6 +347,59 @@ router.put('/admin/orders/:id/status', verifyToken, async (req, res) => {
   } catch (error) {
     console.error('Update order status error:', error);
     res.status(500).json({ error: 'Failed to update order status' });
+  }
+});
+
+// ==========================================
+// UPDATE ORDER ADDRESS (ADMIN ONLY)
+// ==========================================
+router.put('/admin/orders/:id/address', verifyToken, async (req, res) => {
+  try {
+    const adminUser = await prisma.user.findUnique({
+      where: { id: parseInt(req.user.id, 10) }
+    });
+
+    const adminEmails = ['heyitsmealbinjohn@gmail.com', 'bibinjohn2018@gmail.com'];
+    if (!adminUser || !adminEmails.includes(adminUser.email)) {
+      return res.status(403).json({ error: 'Access denied: Admins only' });
+    }
+
+    const { id } = req.params;
+    const { address } = req.body;
+
+    if (!address) {
+      return res.status(400).json({ error: 'Address data is required' });
+    }
+
+    const addressString = typeof address === 'string' ? address : JSON.stringify(address);
+
+    const updatedOrder = await prisma.order.update({
+      where: { id: parseInt(id, 10) },
+      data: { address: addressString },
+      include: {
+        user: {
+          select: {
+            name: true,
+            email: true
+          }
+        },
+        items: {
+          include: {
+            product: true
+          }
+        },
+        messages: {
+          orderBy: {
+            createdAt: 'desc'
+          }
+        }
+      }
+    });
+
+    res.json({ success: true, order: updatedOrder });
+  } catch (error) {
+    console.error('Update order address error:', error);
+    res.status(500).json({ error: 'Failed to update order address' });
   }
 });
 

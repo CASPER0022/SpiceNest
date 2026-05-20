@@ -32,6 +32,9 @@ export default function Dashboard() {
   const [adminMessage, setAdminMessage] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
+  const [editAddressForm, setEditAddressForm] = useState(null);
+  const [updatingAddress, setUpdatingAddress] = useState(false);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
   const adminEmails = ['heyitsmealbinjohn@gmail.com', 'bibinjohn2018@gmail.com'];
@@ -214,11 +217,83 @@ export default function Dashboard() {
 
       toast.success('Message sent to customer email successfully! 📧');
       setAdminMessage('');
+
+      // Update local orders list state to add the newly created message
+      if (data.orderMessage) {
+        setOrders(prevOrders => 
+          prevOrders.map(o => {
+            if (o.id === orderId) {
+              const currentMessages = o.messages || [];
+              return {
+                ...o,
+                messages: [data.orderMessage, ...currentMessages]
+              };
+            }
+            return o;
+          })
+        );
+      }
     } catch (err) {
       console.error(err);
       toast.error(err.message || 'An error occurred while sending the message.');
     } finally {
       setSendingMessage(false);
+    }
+  };
+
+  const startEditingAddress = (order) => {
+    const parsed = parseAddress(order.address);
+    setEditAddressForm({
+      fullName: parsed.fullName || '',
+      houseNo: parsed.houseNo || '',
+      area: parsed.area || '',
+      city: parsed.city || '',
+      state: parsed.state || '',
+      pincode: parsed.pincode || '',
+      mobileNumber: parsed.mobileNumber || '',
+      clientIp: parsed.clientIp || ''
+    });
+    setIsEditingAddress(true);
+  };
+
+  const handleAddressSave = async (orderId) => {
+    const requiredFields = ['fullName', 'houseNo', 'area', 'city', 'state', 'pincode', 'mobileNumber'];
+    for (const field of requiredFields) {
+      if (!editAddressForm[field] || !editAddressForm[field].trim()) {
+        toast.error(`Please fill out the ${field} field.`);
+        return;
+      }
+    }
+
+    setUpdatingAddress(true);
+    const token = localStorage.getItem('token');
+    
+    try {
+      const res = await fetch(`${API_URL}/api/payment/admin/orders/${orderId}/address`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ address: editAddressForm })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to update address');
+      }
+
+      setOrders(prevOrders => 
+        prevOrders.map(o => o.id === orderId ? data.order : o)
+      );
+      
+      toast.success('Shipping address updated successfully!');
+      setIsEditingAddress(false);
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || 'Error updating address');
+    } finally {
+      setUpdatingAddress(false);
     }
   };
 
@@ -430,6 +505,8 @@ export default function Dashboard() {
           onClick={() => {
             setSelectedOrderId(null);
             setAdminMessage('');
+            setIsEditingAddress(false);
+            setEditAddressForm(null);
           }}
           className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-gray-500 hover:text-emerald-700 transition-colors mb-8"
         >
@@ -520,60 +597,171 @@ export default function Dashboard() {
 
             {/* Recipient Shipping Details Card */}
             <div className="bg-white rounded-3xl border border-gray-150 p-6 md:p-8 shadow-sm">
-              <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-6">Delivery Details</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm font-bold text-gray-800">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Delivery Details</h3>
+                {!isEditingAddress ? (
+                  <button
+                    onClick={() => startEditingAddress(selectedOrder)}
+                    className="text-[10px] font-black uppercase tracking-wider text-emerald-600 hover:text-emerald-700 hover:underline transition-colors"
+                  >
+                    Edit Address
+                  </button>
+                ) : null}
+              </div>
+
+              {isEditingAddress && editAddressForm ? (
                 <div className="space-y-4">
-                  <div className="flex items-start gap-3">
-                    <MapPin className="text-gray-400 shrink-0 mt-0.5" size={18} />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Recipient Name</span>
-                      <span className="text-sm font-bold text-gray-800">{address.fullName || 'Valued Customer'}</span>
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Recipient Name</label>
+                      <input
+                        type="text"
+                        value={editAddressForm.fullName}
+                        onChange={(e) => setEditAddressForm(prev => ({ ...prev, fullName: e.target.value }))}
+                        className="w-full text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all shadow-inner"
+                        placeholder="Recipient Name"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Contact Phone</label>
+                      <input
+                        type="text"
+                        value={editAddressForm.mobileNumber}
+                        onChange={(e) => setEditAddressForm(prev => ({ ...prev, mobileNumber: e.target.value }))}
+                        className="w-full text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all shadow-inner"
+                        placeholder="Contact Phone"
+                      />
                     </div>
                   </div>
-                  <div className="flex items-start gap-3">
-                    <div className="w-[18px] shrink-0" />
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Address</span>
-                      <p className="text-xs font-semibold text-gray-600 leading-relaxed">
-                        {address.houseNo}, {address.area}<br />
-                        {address.city}, {address.state} - {address.pincode}
-                      </p>
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">House No / Flat / Building</label>
+                      <input
+                        type="text"
+                        value={editAddressForm.houseNo}
+                        onChange={(e) => setEditAddressForm(prev => ({ ...prev, houseNo: e.target.value }))}
+                        className="w-full text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all shadow-inner"
+                        placeholder="House No"
+                      />
                     </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Area / Street / Sector</label>
+                      <input
+                        type="text"
+                        value={editAddressForm.area}
+                        onChange={(e) => setEditAddressForm(prev => ({ ...prev, area: e.target.value }))}
+                        className="w-full text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all shadow-inner"
+                        placeholder="Area"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">City</label>
+                      <input
+                        type="text"
+                        value={editAddressForm.city}
+                        onChange={(e) => setEditAddressForm(prev => ({ ...prev, city: e.target.value }))}
+                        className="w-full text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all shadow-inner"
+                        placeholder="City"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">State</label>
+                      <input
+                        type="text"
+                        value={editAddressForm.state}
+                        onChange={(e) => setEditAddressForm(prev => ({ ...prev, state: e.target.value }))}
+                        className="w-full text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all shadow-inner"
+                        placeholder="State"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Pincode</label>
+                      <input
+                        type="text"
+                        value={editAddressForm.pincode}
+                        onChange={(e) => setEditAddressForm(prev => ({ ...prev, pincode: e.target.value }))}
+                        className="w-full text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all shadow-inner"
+                        placeholder="Pincode"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-2">
+                    <button
+                      onClick={() => setIsEditingAddress(false)}
+                      disabled={updatingAddress}
+                      className="text-xs font-black uppercase tracking-wider px-4 py-2.5 rounded-full border border-gray-200 bg-white hover:bg-gray-50 text-gray-500 transition-all"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => handleAddressSave(selectedOrder.id)}
+                      disabled={updatingAddress}
+                      className="text-xs font-black uppercase tracking-wider px-5 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white transition-all flex items-center gap-1.5 shadow-sm"
+                    >
+                      {updatingAddress ? 'Saving...' : 'Save Changes'}
+                    </button>
                   </div>
                 </div>
-                <div className="space-y-4">
-                  <div className="flex items-start gap-3">
-                    <Mail className="text-gray-400 shrink-0 mt-0.5" size={18} />
-                    <div className="space-y-1">
-                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Stripe Checkout Email</span>
-                      <span className="text-xs font-bold text-gray-700">{recipientEmail}</span>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm font-bold text-gray-800">
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3">
+                      <MapPin className="text-gray-400 shrink-0 mt-0.5" size={18} />
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Recipient Name</span>
+                        <span className="text-sm font-bold text-gray-800">{address.fullName || 'Valued Customer'}</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <Globe className="text-gray-400 shrink-0 mt-0.5" size={18} />
-                    <div className="space-y-1">
-                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Customer IP Address</span>
-                      <span className="text-xs font-bold text-gray-700 font-mono">{address.clientIp || '117.206.18.22'}</span>
-                    </div>
-                  </div>
-                  {address.mobileNumber && (
                     <div className="flex items-start gap-3">
                       <div className="w-[18px] shrink-0" />
                       <div className="space-y-1">
-                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Contact Phone</span>
-                        <span className="text-xs font-bold text-gray-700">{address.mobileNumber}</span>
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Address</span>
+                        <p className="text-xs font-semibold text-gray-600 leading-relaxed">
+                          {address.houseNo}, {address.area}<br />
+                          {address.city}, {address.state} - {address.pincode}
+                        </p>
                       </div>
                     </div>
-                  )}
+                  </div>
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3">
+                      <Mail className="text-gray-400 shrink-0 mt-0.5" size={18} />
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Stripe Checkout Email</span>
+                        <span className="text-xs font-bold text-gray-700">{recipientEmail}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Globe className="text-gray-400 shrink-0 mt-0.5" size={18} />
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Customer IP Address</span>
+                        <span className="text-xs font-bold text-gray-700 font-mono">{address.clientIp || '117.206.18.22'}</span>
+                      </div>
+                    </div>
+                    {address.mobileNumber && (
+                      <div className="flex items-start gap-3">
+                        <div className="w-[18px] shrink-0" />
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Contact Phone</span>
+                          <span className="text-xs font-bold text-gray-700">{address.mobileNumber}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
           </div>
 
           {/* Admin Messaging sidebar (1 col on lg) */}
           <div className="space-y-8">
-            <div className="bg-white rounded-3xl border border-gray-150 p-6 md:p-8 shadow-sm flex flex-col h-full justify-between">
+            <div className="bg-white rounded-3xl border border-gray-150 p-6 md:p-8 shadow-sm flex flex-col h-fit justify-between">
               <div>
                 <div className="flex items-center gap-2 mb-4">
                   <Mail className="text-emerald-600" size={20} />
@@ -607,6 +795,65 @@ export default function Dashboard() {
                   Destination: <span className="text-gray-600">{recipientEmail}</span>
                 </div>
               </div>
+            </div>
+
+            {/* Sent Messages History Card */}
+            <div className="bg-white rounded-3xl border border-gray-150 p-6 md:p-8 shadow-sm flex flex-col h-fit">
+              <div className="flex items-center justify-between mb-4 border-b border-gray-50 pb-4">
+                <div className="flex items-center gap-2">
+                  <Clock className="text-emerald-600" size={18} />
+                  <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Sent Log</h3>
+                </div>
+                <span className="text-[10px] font-black bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full border border-emerald-100 animate-fadeIn">
+                  {selectedOrder.messages?.length || 0} Sent
+                </span>
+              </div>
+
+              {selectedOrder.messages && selectedOrder.messages.length > 0 ? (
+                <div className="space-y-4 max-h-[290px] overflow-y-auto pr-1">
+                  {selectedOrder.messages.map((msg, index) => {
+                    const msgDate = new Date(msg.createdAt);
+                    const formattedMsgDate = msgDate.toLocaleDateString('en-IN', {
+                      month: 'short',
+                      day: 'numeric'
+                    });
+                    const formattedMsgTime = msgDate.toLocaleTimeString('en-IN', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: true
+                    });
+
+                    return (
+                      <div key={msg.id || index} className="p-3.5 bg-gray-50 border border-gray-100 rounded-2xl space-y-2 relative group hover:border-gray-200 transition-all animate-fadeIn">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[9px] font-black text-emerald-800 bg-emerald-50 border border-emerald-100/50 px-2 py-0.5 rounded uppercase tracking-wider">
+                            {msg.sentBy || 'Admin'}
+                          </span>
+                          <span className="text-[9px] text-gray-400 font-bold flex items-center gap-1">
+                            <Clock size={10} />
+                            {formattedMsgDate}, {formattedMsgTime}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-600 font-medium whitespace-pre-wrap leading-relaxed">
+                          {msg.message}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-8 px-4 flex flex-col items-center justify-center space-y-2">
+                  <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400">
+                    <Mail size={18} />
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-bold text-gray-700">No message history</p>
+                    <p className="text-[10px] text-gray-400 font-medium leading-relaxed max-w-[200px] mx-auto">
+                      Any email updates you send to this customer will be archived in this timeline.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
