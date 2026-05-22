@@ -327,11 +327,11 @@ export default function Cart() {
               </div>
               <div className="flex justify-between text-gray-600 font-medium">
                 <span>Shipping</span>
-                <span>Free</span>
+                <span>{cartTotal < 500 ? '₹100.00' : 'Free'}</span>
               </div>
               <div className="border-t pt-4 flex justify-between items-end">
                 <span className="text-lg font-bold text-gray-900">Total</span>
-                <span className="text-3xl font-black text-emerald-600">₹{cartTotal.toFixed(2)}</span>
+                <span className="text-3xl font-black text-emerald-600">₹{(cartTotal + (cartTotal < 500 ? 100 : 0)).toFixed(2)}</span>
               </div>
             </div>
 

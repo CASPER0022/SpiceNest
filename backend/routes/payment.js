@@ -55,7 +55,23 @@ router.post('/create-checkout-session', async (req, res) => {
       };
     });
 
-    // 2. Create a secure Checkout Session
+    // 2. Add shipping fee if subtotal is below ₹500
+    const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    if (subtotal < 500) {
+      lineItems.push({
+        price_data: {
+          currency: 'inr',
+          product_data: {
+            name: 'Shipping Charges',
+            description: 'Shipping cost for orders below ₹500',
+          },
+          unit_amount: 100 * 100, 
+        },
+        quantity: 1,
+      });
+    }
+
+    // 3. Create a secure Checkout Session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: lineItems,
