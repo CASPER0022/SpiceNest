@@ -141,7 +141,7 @@ export default function Home() {
             {/* Card 1: Whole Spices */}
             <div className="relative group rounded-3xl overflow-hidden h-[380px] md:h-[450px] shadow-lg border border-gray-100">
               <img
-                src="https://images.unsplash.com/photo-1596040033229-a9821ebd058d?q=80&w=2070&auto=format&fit=crop"
+                src="/images/homepage/premium_whole_spices.jpg"
                 alt="Whole Spices"
                 className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
               />
