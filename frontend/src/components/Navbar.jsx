@@ -41,6 +41,7 @@ export default function Navbar() {
           <div className="hidden md:ml-6 md:flex md:space-x-8 items-center">
             <Link to="/" className={`inline-flex items-center px-1 pt-1 text-sm font-bold transition-colors ${textClass}`}>Home</Link>
             <Link to="/shop" className={`inline-flex items-center px-1 pt-1 text-sm font-bold transition-colors ${mutedTextClass}`}>Shop</Link>
+            <Link to="/farmers" className={`inline-flex items-center px-1 pt-1 text-sm font-bold transition-colors ${mutedTextClass}`}>Our Farmers</Link>
             <Link to="/viewed" className={`inline-flex items-center px-1 pt-1 text-sm font-bold transition-colors ${mutedTextClass}`}>Viewed</Link>
             {user && (
               <Link to="/orders" className={`inline-flex items-center px-1 pt-1 text-sm font-bold transition-colors ${mutedTextClass}`}>My Orders</Link>
@@ -96,6 +97,7 @@ export default function Navbar() {
           <div className="pt-2 pb-3 space-y-1">
             <Link to="/" onClick={() => setIsMenuOpen(false)} className="block pl-6 pr-4 py-4 text-base font-bold text-gray-900 border-b border-gray-50">Home</Link>
             <Link to="/shop" onClick={() => setIsMenuOpen(false)} className="block pl-6 pr-4 py-4 text-base font-bold text-gray-600 border-b border-gray-50">Shop</Link>
+            <Link to="/farmers" onClick={() => setIsMenuOpen(false)} className="block pl-6 pr-4 py-4 text-base font-bold text-gray-600 border-b border-gray-50">Our Farmers</Link>
             {user && (
               <Link to="/orders" onClick={() => setIsMenuOpen(false)} className="block pl-6 pr-4 py-4 text-base font-bold text-gray-600 border-b border-gray-50">My Orders</Link>
             )}

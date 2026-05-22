@@ -18,6 +18,7 @@ import Success from './pages/Success';
 import Profile from './pages/Profile';
 import Viewed from './pages/Viewed';
 import FarmerProfile from './pages/FarmerProfile';
+import Farmers from './pages/Farmers';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Orders from './pages/Orders';
@@ -46,6 +47,7 @@ function AppLayout() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/viewed" element={<Viewed />} />
           <Route path="/farmer/:id" element={<FarmerProfile />} />
+          <Route path="/farmers" element={<Farmers />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/orders" element={<Orders />} />

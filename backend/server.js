@@ -72,6 +72,20 @@ app.get('/api/products/:id', async (req, res) => {
   }
 });
 
+// Get all farmers
+app.get('/api/farmers', async (req, res) => {
+  try {
+    const farmers = await prisma.farmer.findMany({
+      orderBy: { rating: 'desc' },
+      include: { products: true }
+    });
+    res.json(farmers);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to fetch farmers' });
+  }
+});
+
 // Get a single farmer by ID
 app.get('/api/farmers/:id', async (req, res) => {
   try {
