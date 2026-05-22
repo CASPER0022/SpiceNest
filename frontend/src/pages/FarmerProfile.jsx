@@ -56,7 +56,7 @@ export default function FarmerProfile() {
       {/* Farmer Header */}
       <div className="bg-white rounded-3xl shadow-xl overflow-hidden mb-12 border border-gray-100">
         <div className="h-48 md:h-64 bg-emerald-700 relative">
-          <img src="https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200&q=80" alt="Farm Background" className="w-full h-full object-cover" />
+          <img src={farmer.id === 1 ? "/images/farmers/raju/farm1.jpg" : "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200&q=80"} alt="Farm Background" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-black/40"></div>
         </div>
         <div className="px-6 sm:px-10 pb-10 relative">
