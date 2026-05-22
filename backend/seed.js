@@ -13,13 +13,13 @@ async function main() {
       name: 'Raju John',
       rating: 4.9,
       about: 'A passionate 3rd-generation spice farmer from the lush hills of Kerala, Raju John is dedicated to sustainable and organic farming practices. His black pepper vines are cultivated under the natural canopy of the rainforest, ensuring the boldest flavors and highest quality.',
-      image: 'https://images.unsplash.com/photo-1595858801948-4e1b8b8ba868?w=800&q=80',
+      image: '/images/farmers/raju/raju.jpeg',
     },
     create: {
       name: 'Raju John',
       rating: 4.9,
       about: 'A passionate 3rd-generation spice farmer from the lush hills of Kerala, Raju John is dedicated to sustainable and organic farming practices. His black pepper vines are cultivated under the natural canopy of the rainforest, ensuring the boldest flavors and highest quality.',
-      image: 'https://images.unsplash.com/photo-1595858801948-4e1b8b8ba868?w=800&q=80',
+      image: '/images/farmers/raju/raju.jpeg',
     }
   });
 
