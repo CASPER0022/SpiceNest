@@ -31,7 +31,7 @@ async function main() {
   await prisma.product.deleteMany({
     where: {
       name: {
-        notIn: ['Black Pepper', 'Cardamom', 'Coffee']
+        notIn: ['Black Pepper', 'Cardamom', 'Coffee', 'Nutmeg', 'Nutmeg Flower']
       }
     }
   });
@@ -59,6 +59,22 @@ async function main() {
       category: 'Beverages', 
       images: ['/images/coffee/coffee1.jpg', '/images/coffee/coffee2.jpg'], 
       description: 'Sourced from the shade-grown high elevation estates of Wayanad and Idukki, our premium single-origin Arabica-Robusta blend coffee is roasted to a perfect medium-dark level. With rich, bold earthy notes and a subtle chocolatey finish, it delivers an authentic South Indian filter coffee experience that stays true to its Western Ghats roots.', 
+      farmerId: raju.id 
+    },
+    { 
+      name: 'Nutmeg', 
+      price: 220.00, 
+      category: 'Whole Spices', 
+      images: ['/images/nutmeg/nutmeg.jpg', '/images/nutmeg/nutmeg2.jpg'], 
+      description: 'Sourced directly from the rich midlands of Kerala, our premium whole nutmegs are highly aromatic, warm, and sweet. Handpicked at full maturity when the outer fruit splits open, each kernel is carefully extracted and sun-dried to ensure maximum freshness and high essential oil content. Ideal for grating fresh into both sweet and savory dishes, baking, and traditional spice blends.', 
+      farmerId: raju.id 
+    },
+    { 
+      name: 'Nutmeg Flower', 
+      price: 290.00, 
+      category: 'Whole Spices', 
+      images: ['/images/nutmegflower/nutmegflower.jpg', '/images/nutmegflower/nutmegflower2.jpg'], 
+      description: 'Also known as Mace (Javitri), the nutmeg flower is the beautiful, lacy crimson outer webbing that wraps around the nutmeg shell. Hand-peeled carefully to keep the delicate blades intact and sun-dried until it turns a warm golden-orange, our premium nutmeg flower offers a highly refined, sweeter, and more delicate warmth than nutmeg itself. Highly prized in biryanis, slow-cooked curries, stews, and fine baking.', 
       farmerId: raju.id 
     }
   ];
