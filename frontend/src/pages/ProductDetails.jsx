@@ -7,10 +7,10 @@ import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
 const WEIGHT_OPTIONS = [
-  { label: '100g', multiplier: 1 },
-  { label: '250g', multiplier: 2.375 }, // Slight discount on bulk
-  { label: '500g', multiplier: 4.625 },
-  { label: '1kg', multiplier: 9.0625 },
+  { label: '100g', multiplier: 1, kg: 0.1 },
+  { label: '250g', multiplier: 2.375, kg: 0.25 }, // Slight discount on bulk
+  { label: '500g', multiplier: 4.625, kg: 0.5 },
+  { label: '1kg', multiplier: 9.0625, kg: 1.0 },
 ];
 
 export default function ProductDetails() {
@@ -67,6 +67,27 @@ export default function ProductDetails() {
         setLoading(false);
       });
   }, [id, API_URL]);
+
+  useEffect(() => {
+    if (product && product.stock !== undefined) {
+      // Find the first option that fits in stock
+      const firstAvailable = WEIGHT_OPTIONS.find(opt => opt.kg <= product.stock);
+      if (firstAvailable) {
+        setSelectedWeight(firstAvailable);
+      } else {
+        setSelectedWeight(WEIGHT_OPTIONS[0]);
+      }
+    }
+  }, [product]);
+
+  useEffect(() => {
+    if (product && product.stock !== undefined && selectedWeight) {
+      const maxQty = Math.floor(product.stock / selectedWeight.kg);
+      if (quantity > maxQty) {
+        setQuantity(Math.max(1, maxQty));
+      }
+    }
+  }, [selectedWeight, product]);
 
   const currentPrice = useMemo(() => {
     if (!product) return 0;
@@ -214,16 +235,26 @@ export default function ProductDetails() {
         {/* Right Column: Details */}
         <div className="flex flex-col">
           {/* Tags */}
-          <div className="flex flex-wrap gap-2 mb-3">
+          <div className="flex flex-wrap items-center gap-2 mb-3">
             <span className="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-bold rounded-full uppercase tracking-wider">
               {product.category}
             </span>
             <span className="px-3 py-1 text-emerald-600 text-[10px] font-bold rounded-full uppercase tracking-wider bg-emerald-50/50">
               Organic
             </span>
-            <span className="px-3 py-1 bg-gray-50 text-gray-500 text-[10px] font-bold rounded-full uppercase tracking-wider">
-              Natural
-            </span>
+            {product.stock !== undefined && (
+              product.stock >= 0.1 ? (
+                <span className="inline-flex items-center px-3 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-extrabold rounded-full border border-emerald-100 uppercase tracking-wider">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>
+                  {product.stock.toFixed(2)} kg in stock
+                </span>
+              ) : (
+                <span className="inline-flex items-center px-3 py-1 bg-rose-50 text-rose-700 text-[10px] font-extrabold rounded-full border border-rose-100 uppercase tracking-wider">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 mr-1.5 animate-pulse"></span>
+                  Out of Stock
+                </span>
+              )
+            )}
           </div>
 
           <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-2 leading-tight">
@@ -291,20 +322,26 @@ export default function ProductDetails() {
           <div className="mb-6">
             <h3 className="text-sm font-bold text-gray-900 mb-2">Select Weight</h3>
             <div className="flex flex-wrap gap-2">
-              {WEIGHT_OPTIONS.map((option) => (
-                <button
-                  key={option.label}
-                  onClick={() => setSelectedWeight(option)}
-                  className={`flex flex-col items-center justify-center w-14 sm:w-16 py-1.5 border rounded-2xl transition-all ${
-                    selectedWeight.label === option.label 
-                      ? 'border-emerald-600 bg-emerald-50 text-emerald-800' 
-                      : 'border-gray-200 text-gray-600 hover:border-emerald-300'
-                  }`}
-                >
-                  <span className="font-bold text-sm">{option.label}</span>
-                  <span className="text-[10px] opacity-80">₹{Math.round(product.price * option.multiplier)}</span>
-                </button>
-              ))}
+              {WEIGHT_OPTIONS.map((option) => {
+                const isOptionDisabled = product.stock !== undefined && option.kg > product.stock;
+                return (
+                  <button
+                    key={option.label}
+                    disabled={isOptionDisabled}
+                    onClick={() => setSelectedWeight(option)}
+                    className={`flex flex-col items-center justify-center w-14 sm:w-16 py-1.5 border rounded-2xl transition-all ${
+                      isOptionDisabled
+                        ? 'bg-gray-50 border-gray-150 text-gray-300 cursor-not-allowed line-through opacity-50'
+                        : selectedWeight.label === option.label 
+                          ? 'border-emerald-600 bg-emerald-50 text-emerald-800 shadow-sm shadow-emerald-600/5' 
+                          : 'border-gray-200 text-gray-600 hover:border-emerald-300'
+                    }`}
+                  >
+                    <span className="font-bold text-sm">{option.label}</span>
+                    <span className="text-[10px] opacity-80">₹{Math.round(product.price * option.multiplier)}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -323,7 +360,20 @@ export default function ProductDetails() {
                   {quantity}
                 </div>
                 <button 
-                  onClick={() => setQuantity(quantity + 1)}
+                  onClick={() => {
+                    const nextQty = quantity + 1;
+                    if (product.stock !== undefined && nextQty * selectedWeight.kg > product.stock) {
+                      toast.error(`Cannot add more. Only ${product.stock.toFixed(2)} kg available in stock.`, {
+                        style: {
+                          borderRadius: '10px',
+                          background: '#333',
+                          color: '#fff',
+                        }
+                      });
+                      return;
+                    }
+                    setQuantity(nextQty);
+                  }}
                   className="p-3 px-4 text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition-colors border-l border-gray-100"
                 >
                   <Plus size={18} strokeWidth={2.5} />
@@ -333,20 +383,29 @@ export default function ProductDetails() {
           </div>
 
           {/* Action Buttons */}
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            <button 
-              onClick={handleAddToCart}
-              className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-4 px-4 rounded-xl flex items-center justify-center transition-all shadow-lg shadow-emerald-700/20 active:scale-[0.98]"
-            >
-              <ShoppingCart size={18} className="mr-2" /> Add to Cart
-            </button>
-            <button 
-              onClick={handleBuyNow}
-              className="bg-white hover:bg-gray-50 text-emerald-700 border border-gray-200 font-bold py-4 px-4 rounded-xl flex items-center justify-center transition-all shadow-sm active:scale-[0.98]"
-            >
-              <span className="mr-2 text-emerald-500">⚡</span> Buy Now
-            </button>
-          </div>
+          {product.stock !== undefined && product.stock < 0.1 ? (
+            <div className="mb-6 p-4 bg-rose-50 border border-rose-150 text-rose-800 rounded-2xl text-center font-bold text-sm flex items-center justify-center space-x-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
+              <span>Currently Out of Stock. Raju John is preparing the next fresh harvest! 🌿</span>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              <button 
+                onClick={handleAddToCart}
+                disabled={product.stock !== undefined && (selectedWeight.kg * quantity > product.stock)}
+                className="bg-emerald-700 hover:bg-emerald-800 disabled:bg-gray-300 disabled:cursor-not-allowed disabled:shadow-none text-white font-bold py-4 px-4 rounded-xl flex items-center justify-center transition-all shadow-lg shadow-emerald-700/20 active:scale-[0.98]"
+              >
+                <ShoppingCart size={18} className="mr-2" /> Add to Cart
+              </button>
+              <button 
+                onClick={handleBuyNow}
+                disabled={product.stock !== undefined && (selectedWeight.kg * quantity > product.stock)}
+                className="bg-white hover:bg-gray-50 disabled:bg-gray-50 disabled:text-gray-300 disabled:cursor-not-allowed text-emerald-700 border border-gray-200 font-bold py-4 px-4 rounded-xl flex items-center justify-center transition-all shadow-sm active:scale-[0.98]"
+              >
+                <span className="mr-2 text-emerald-500">⚡</span> Buy Now
+              </button>
+            </div>
+          )}
 
           {/* Meta Actions */}
           <div className="grid grid-cols-2 gap-3 mb-8">

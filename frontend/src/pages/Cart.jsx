@@ -4,6 +4,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { loadStripe } from '@stripe/stripe-js';
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 
 // Use a dummy key for testing, replace with real Publishable Key later!
 const stripePromise = loadStripe('pk_test_TYooMQauvdEDq54NiTphI7jx');
@@ -69,7 +70,9 @@ export default function Cart() {
     const missing = required.filter(field => !address[field]?.trim());
     
     if (missing.length > 0) {
-      alert(`Please fill in all required fields.`);
+      toast.error('Please fill in all required address fields.', {
+        style: { borderRadius: '10px', background: '#333', color: '#fff' }
+      });
       return false;
     }
     
@@ -77,7 +80,9 @@ export default function Cart() {
     
     const token = localStorage.getItem('token');
     if (!token) {
-      alert("Your session has expired. Please log in again.");
+      toast.error('Your session has expired. Please log in again.', {
+        style: { borderRadius: '10px', background: '#333', color: '#fff' }
+      });
       navigate('/login');
       return false;
     }
@@ -100,7 +105,9 @@ export default function Cart() {
       setIsEditingAddress(false);
       return true;
     } catch (error) {
-      alert("Failed to save address: " + error.message);
+      toast.error('Failed to save address: ' + error.message, {
+        style: { borderRadius: '10px', background: '#333', color: '#fff' }
+      });
       return false;
     } finally {
       setIsSavingAddress(false);
@@ -119,7 +126,9 @@ export default function Cart() {
     const isComplete = required.every(field => address[field]?.trim());
 
     if (!isComplete) {
-       alert("Please complete all required shipping address fields.");
+       toast.error('Please complete all required shipping address fields.', {
+         style: { borderRadius: '10px', background: '#333', color: '#fff' }
+       });
        setIsEditingAddress(true);
        return;
     }
@@ -132,7 +141,9 @@ export default function Cart() {
 
     // 4. Final validation check
     if (!user.address && !address.houseNo) {
-       alert("A shipping address is required to proceed.");
+       toast.error('A shipping address is required to proceed.', {
+         style: { borderRadius: '10px', background: '#333', color: '#fff' }
+       });
        setIsEditingAddress(true);
        return;
     }
@@ -159,7 +170,10 @@ export default function Cart() {
       
     } catch (error) {
       console.error(error);
-      alert('Checkout Failed: \n\n' + error.message);
+      toast.error('Checkout Failed: ' + error.message, {
+        duration: 5000,
+        style: { borderRadius: '10px', background: '#333', color: '#fff' }
+      });
     } finally {
       setIsProcessing(false);
     }

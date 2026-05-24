@@ -12,6 +12,24 @@ const prisma = new PrismaClient();
 const router = express.Router();
 
 // ==========================================
+// HELPERS
+// ==========================================
+function parseWeightToKg(weightStr) {
+  if (!weightStr) return 0.1;
+  const lower = weightStr.toLowerCase().trim();
+  if (lower.endsWith('kg')) {
+    const val = parseFloat(lower.replace('kg', ''));
+    return isNaN(val) ? 1.0 : val;
+  }
+  if (lower.endsWith('g')) {
+    const val = parseFloat(lower.replace('g', ''));
+    return isNaN(val) ? 0.1 : val / 1000.0;
+  }
+  const val = parseFloat(lower);
+  return isNaN(val) ? 0.1 : val;
+}
+
+// ==========================================
 // STRIPE CHECKOUT ROUTE
 // ==========================================
 router.post('/create-checkout-session', async (req, res) => {
@@ -35,6 +53,26 @@ router.post('/create-checkout-session', async (req, res) => {
 
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 
+    // Verify stock levels before proceeding to payment
+    for (const item of items) {
+      const dbProduct = await prisma.product.findUnique({
+        where: { id: parseInt(item.id, 10) }
+      });
+
+      if (!dbProduct) {
+        return res.status(400).json({ error: `Product '${item.name}' not found.` });
+      }
+
+      const itemWeightKg = parseWeightToKg(item.weight);
+      const totalRequestedKg = itemWeightKg * item.quantity;
+
+      if (dbProduct.stock < totalRequestedKg) {
+        return res.status(400).json({ 
+          error: `Insufficient stock for ${dbProduct.name}. Only ${dbProduct.stock.toFixed(2)} kg available, but you requested ${(totalRequestedKg).toFixed(2)} kg.`
+        });
+      }
+    }
+
     // 1. Transform our cart items into the format Stripe expects
     const lineItems = items.map((item) => {
       let imageUrl = item.image;
@@ -42,11 +80,13 @@ router.post('/create-checkout-session', async (req, res) => {
         imageUrl = `${frontendUrl}${imageUrl}`;
       }
 
+      const displayName = item.weight ? `${item.name} (${item.weight})` : item.name;
+
       return {
         price_data: {
           currency: 'inr',
           product_data: {
-            name: item.name,
+            name: displayName,
             images: imageUrl ? [imageUrl] : [],
           },
           unit_amount: Math.round(item.price * 100), 
@@ -138,20 +178,27 @@ router.get('/confirm-order', async (req, res) => {
     const userId = parseInt(session.metadata.userId, 10);
     const address = session.metadata.address;
 
-    const orderItemsData = lineItems.data.map(item => {
-      const product = products.find(p => p.name === item.description);
-      if (!product) {
-        throw new Error(`Product not found in database: ${item.description}`);
-      }
-      return {
-        productId: product.id,
-        productName: product.name,
-        productImage: product.images && product.images.length > 0 ? product.images[0] : '',
-        quantity: item.quantity,
-        price: item.amount_total / 100 / item.quantity,
-        weight: '100g' // Default weight
-      };
-    });
+    const orderItemsData = lineItems.data
+      .filter(item => item.description !== 'Shipping Charges')
+      .map(item => {
+        // Parse description e.g. "Black Pepper (250g)"
+        const match = item.description.match(/^(.+?)\s*(?:\(([^)]+)\))?$/);
+        const name = match ? match[1].trim() : item.description;
+        const weight = match && match[2] ? match[2].trim() : '100g';
+
+        const product = products.find(p => p.name === name);
+        if (!product) {
+          throw new Error(`Product not found in database: ${name}`);
+        }
+        return {
+          productId: product.id,
+          productName: product.name,
+          productImage: product.images && product.images.length > 0 ? product.images[0] : '',
+          quantity: item.quantity,
+          price: item.amount_total / 100 / item.quantity,
+          weight: weight
+        };
+      });
 
     const order = await prisma.order.create({
       data: {
@@ -165,6 +212,22 @@ router.get('/confirm-order', async (req, res) => {
       },
       include: { items: { include: { product: true } } }
     });
+
+    // Decrement stock for each item in the order
+    for (const item of orderItemsData) {
+      const itemWeightKg = parseWeightToKg(item.weight);
+      const totalDeductionKg = itemWeightKg * item.quantity;
+      
+      await prisma.product.update({
+        where: { id: item.productId },
+        data: {
+          stock: {
+            decrement: totalDeductionKg
+          }
+        }
+      });
+      console.log(`Decremented stock for product ${item.productName} by ${totalDeductionKg} kg.`);
+    }
     
     // 5. Send response to user immediately (don't block the UI)
     res.json({ success: true, order });

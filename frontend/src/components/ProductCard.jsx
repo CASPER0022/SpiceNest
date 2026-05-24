@@ -5,10 +5,12 @@ import toast from 'react-hot-toast';
 
 export default function ProductCard({ product }) {
   const { addToCart } = useCart();
+  const isOutOfStock = product.stock !== undefined && product.stock < 0.1;
 
   const handleAddToCart = (e) => {
     e.preventDefault();
     e.stopPropagation();
+    if (isOutOfStock) return;
     addToCart(product, '100g'); // Default to 100g
     toast.success(`${product.name} added to cart!`, {
       icon: '🌶️',
@@ -21,9 +23,20 @@ export default function ProductCard({ product }) {
   };
 
   return (
-    <Link to={`/product/${product.id}`} className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 group flex flex-col cursor-pointer block">
+    <Link to={`/product/${product.id}`} className={`bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 group flex flex-col cursor-pointer block ${isOutOfStock ? 'opacity-85' : ''}`}>
       <div className="relative h-48 overflow-hidden bg-gray-200 shrink-0">
-        <img src={(product.images && product.images[0]) || '/images/placeholder.jpg'} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+        <img 
+          src={(product.images && product.images[0]) || '/images/placeholder.jpg'} 
+          alt={product.name} 
+          className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${isOutOfStock ? 'filter grayscale brightness-75' : ''}`} 
+        />
+        {isOutOfStock && (
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-[1.5px] flex items-center justify-center z-10">
+            <span className="bg-rose-600 text-white text-[10px] font-black tracking-widest px-4 py-2 rounded-xl shadow-lg uppercase border border-rose-500 transform scale-100">
+              Out of Stock
+            </span>
+          </div>
+        )}
       </div>
       <div className="p-5 flex flex-col flex-grow">
         <div className="text-xs text-emerald-600 font-semibold uppercase tracking-wider mb-1">{product.category}</div>
@@ -32,9 +45,14 @@ export default function ProductCard({ product }) {
         <div className="flex items-center justify-between mt-auto">
           <span className="text-xl font-bold text-gray-900">₹{product.price.toFixed(2)}</span>
           <button 
+            disabled={isOutOfStock}
             onClick={handleAddToCart}
-            className="bg-emerald-100 hover:bg-emerald-600 text-emerald-700 hover:text-white rounded-full p-2 transition-colors duration-200 flex-shrink-0 relative z-10"
-            title="Add to Cart"
+            className={`rounded-full p-2 transition-colors duration-200 flex-shrink-0 relative z-10 ${
+              isOutOfStock 
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                : 'bg-emerald-100 hover:bg-emerald-600 text-emerald-700 hover:text-white'
+            }`}
+            title={isOutOfStock ? "Out of Stock" : "Add to Cart"}
           >
             <ShoppingCart size={20} />
           </button>

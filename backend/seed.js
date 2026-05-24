@@ -44,7 +44,8 @@ async function main() {
       category: 'Whole Spices', 
       images: ['/images/pepper/pepper-1.jpg', '/images/pepper/pepper-2.jpg', '/images/pepper/pepper-3.jpg'], 
       description: 'Freshly sourced from the spice farms of Idukki, our black pepper is packed with bold aroma and natural flavour. Carefully harvested and traditionally processed by local farmers, each batch brings the authentic taste of Kerala straight to your kitchen. Pure, fresh, and full of richness — made for everyday cooking with real farm-grown quality.', 
-      farmerId: raju.id 
+      farmerId: raju.id,
+      stock: 10.0
     },
     { 
       name: 'Cardamom', 
@@ -52,7 +53,8 @@ async function main() {
       category: 'Whole Spices', 
       images: ['/images/cardamom/cardamom1.jpg', '/images/cardamom/cardamom2.jpg'], 
       description: 'Freshly handpicked from the high altitudes of Idukki, Kerala, our premium green cardamom pods boast a vibrant green color, full-bodied pods, and an intense, sweet-spicy aroma. Traditionally dried to lock in maximum volatile oils, these green pods are perfect for tea, traditional sweets, and exotic culinary dishes.', 
-      farmerId: raju.id 
+      farmerId: raju.id,
+      stock: 10.0
     },
     { 
       name: 'Coffee', 
@@ -60,7 +62,8 @@ async function main() {
       category: 'Beverages', 
       images: ['/images/coffee/coffee1.jpg', '/images/coffee/coffee2.jpg'], 
       description: 'Sourced from the shade-grown high elevation estates of Wayanad and Idukki, our premium single-origin Arabica-Robusta blend coffee is roasted to a perfect medium-dark level. With rich, bold earthy notes and a subtle chocolatey finish, it delivers an authentic South Indian filter coffee experience that stays true to its Western Ghats roots.', 
-      farmerId: raju.id 
+      farmerId: raju.id,
+      stock: 10.0
     },
     { 
       name: 'Nutmeg', 
@@ -68,7 +71,8 @@ async function main() {
       category: 'Whole Spices', 
       images: ['/images/nutmeg/nutmeg.jpg', '/images/nutmeg/nutmeg2.jpg'], 
       description: 'Sourced directly from the rich midlands of Kerala, our premium whole nutmegs are highly aromatic, warm, and sweet. Handpicked at full maturity when the outer fruit splits open, each kernel is carefully extracted and sun-dried to ensure maximum freshness and high essential oil content. Ideal for grating fresh into both sweet and savory dishes, baking, and traditional spice blends.', 
-      farmerId: raju.id 
+      farmerId: raju.id,
+      stock: 10.0
     },
     { 
       name: 'Nutmeg Flower', 
@@ -76,7 +80,8 @@ async function main() {
       category: 'Whole Spices', 
       images: ['/images/nutmegflower/nutmegflower.jpg', '/images/nutmegflower/nutmegflower2.jpg'], 
       description: 'Also known as Mace (Javitri), the nutmeg flower is the beautiful, lacy crimson outer webbing that wraps around the nutmeg shell. Hand-peeled carefully to keep the delicate blades intact and sun-dried until it turns a warm golden-orange, our premium nutmeg flower offers a highly refined, sweeter, and more delicate warmth than nutmeg itself. Highly prized in biryanis, slow-cooked curries, stews, and fine baking.', 
-      farmerId: raju.id 
+      farmerId: raju.id,
+      stock: 10.0
     }
   ];
 
