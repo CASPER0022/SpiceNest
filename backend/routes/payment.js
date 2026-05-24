@@ -17,7 +17,7 @@ const router = express.Router();
 router.post('/create-checkout-session', async (req, res) => {
   try {
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-    const { items, userId, address } = req.body;
+    const { items, userId, address, discount } = req.body;
 
     // Capture the client IP address securely
     const clientIpRaw = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
@@ -54,6 +54,14 @@ router.post('/create-checkout-session', async (req, res) => {
         quantity: item.quantity,
       };
     });
+
+    // Apply coupon discount dynamically by reducing the unit_amount of the first line item
+    let discountPaisa = discount ? Math.round(discount * 100) : 0;
+    if (discountPaisa > 0 && lineItems.length > 0) {
+      const firstItem = lineItems[0];
+      const deduction = Math.floor(discountPaisa / firstItem.quantity);
+      firstItem.price_data.unit_amount = Math.max(100, firstItem.price_data.unit_amount - deduction);
+    }
 
     // 2. Add shipping fee if subtotal is below ₹500
     const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);

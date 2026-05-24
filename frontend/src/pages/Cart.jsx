@@ -28,6 +28,10 @@ export default function Cart() {
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [isSavingAddress, setIsSavingAddress] = useState(false);
 
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState(null); // { code: 'STARTER', discount: 70 }
+  const [couponError, setCouponError] = useState('');
+
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
   // Initialize address state when user loads
@@ -137,7 +141,8 @@ export default function Cart() {
         body: JSON.stringify({ 
           items: cartItems,
           userId: user.id,
-          address: JSON.stringify(address) // Use the fresh local state!
+          address: JSON.stringify(address), // Use the fresh local state!
+          discount: appliedCoupon ? appliedCoupon.discount : 0 // Pass the discount amount
         }),
       });
       
@@ -319,6 +324,55 @@ export default function Cart() {
               )}
             </div>
 
+            {/* Coupon Code Section */}
+            <div className="mb-6 p-4 border border-dashed border-emerald-200 bg-emerald-50/20 rounded-xl">
+              <h3 className="text-sm font-bold text-gray-900 mb-2 uppercase tracking-wider opacity-70">Have a Coupon?</h3>
+              {appliedCoupon ? (
+                <div className="flex items-center justify-between bg-emerald-100 text-emerald-800 p-2.5 rounded-lg text-sm font-black border border-emerald-200">
+                  <span>🎉 Code: {appliedCoupon.code} (-₹{appliedCoupon.discount})</span>
+                  <button 
+                    onClick={() => setAppliedCoupon(null)} 
+                    className="text-xs bg-emerald-200 hover:bg-emerald-300 text-emerald-950 font-bold px-2 py-1 rounded cursor-pointer"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex space-x-2">
+                    <input
+                      type="text"
+                      placeholder="Enter code (e.g. STARTER)"
+                      value={couponCode}
+                      onChange={(e) => {
+                        setCouponCode(e.target.value);
+                        setCouponError('');
+                      }}
+                      className="flex-grow p-2.5 border border-gray-300 rounded-lg text-sm uppercase outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                    <button
+                      onClick={() => {
+                        if (couponCode.trim().toUpperCase() === 'STARTER') {
+                          setAppliedCoupon({ code: 'STARTER', discount: 70 });
+                          setCouponCode('');
+                          setCouponError('');
+                        } else if (!couponCode.trim()) {
+                          setCouponError('Please enter a coupon code.');
+                        } else {
+                          setCouponError('Invalid coupon code.');
+                        }
+                      }}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg text-xs cursor-pointer transition-colors"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                  {couponError && <p className="text-xs text-red-500 font-bold">{couponError}</p>}
+                  <p className="text-[10px] text-gray-400 font-semibold">Try code <span className="font-bold text-emerald-600">STARTER</span> for ₹70 discount!</p>
+                </div>
+              )}
+            </div>
+
             {/* Total Section */}
             <div className="space-y-3 mb-6">
               <div className="flex justify-between text-gray-600 font-medium">
@@ -329,9 +383,17 @@ export default function Cart() {
                 <span>Shipping</span>
                 <span>{cartTotal < 500 ? '₹100.00' : 'Free'}</span>
               </div>
+              {appliedCoupon && (
+                <div className="flex justify-between text-emerald-600 font-black">
+                  <span>Discount ({appliedCoupon.code})</span>
+                  <span>-₹{appliedCoupon.discount.toFixed(2)}</span>
+                </div>
+              )}
               <div className="border-t pt-4 flex justify-between items-end">
                 <span className="text-lg font-bold text-gray-900">Total</span>
-                <span className="text-3xl font-black text-emerald-600">₹{(cartTotal + (cartTotal < 500 ? 100 : 0)).toFixed(2)}</span>
+                <span className="text-3xl font-black text-emerald-600">
+                  ₹{(Math.max(0, cartTotal + (cartTotal < 500 ? 100 : 0) - (appliedCoupon ? appliedCoupon.discount : 0))).toFixed(2)}
+                </span>
               </div>
             </div>
 
