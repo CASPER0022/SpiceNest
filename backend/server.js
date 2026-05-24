@@ -18,6 +18,7 @@ import authRoutes from './routes/auth.js';
 import paymentRoutes from './routes/payment.js';
 import cartRoutes from './routes/cart.js';
 import reviewsRoutes from './routes/reviews.js';
+import { verifyToken } from './routes/auth.js';
 
 // ==========================================
 // Middleware (Software that runs before your routes)
@@ -110,6 +111,41 @@ app.get('/api/products/:id', async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch product' });
+  }
+});
+
+// Update a single product (Admin only!)
+app.put('/api/products/:id', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { price, stock, isArchived, name, description, category } = req.body;
+
+    const user = await prisma.user.findUnique({
+      where: { id: parseInt(req.user.id, 10) }
+    });
+
+    const adminEmails = ['heyitsmealbinjohn@gmail.com', 'bibinjohn2018@gmail.com'];
+    if (!user || !adminEmails.includes(user.email)) {
+      return res.status(403).json({ error: 'Access denied: Admins only' });
+    }
+
+    const updatedData = {};
+    if (price !== undefined) updatedData.price = parseFloat(price);
+    if (stock !== undefined) updatedData.stock = parseFloat(stock);
+    if (isArchived !== undefined) updatedData.isArchived = Boolean(isArchived);
+    if (name !== undefined) updatedData.name = name;
+    if (description !== undefined) updatedData.description = description;
+    if (category !== undefined) updatedData.category = category;
+
+    const updatedProduct = await prisma.product.update({
+      where: { id: parseInt(id, 10) },
+      data: updatedData
+    });
+
+    res.json({ success: true, product: updatedProduct });
+  } catch (error) {
+    console.error('Update product error:', error);
+    res.status(500).json({ error: 'Failed to update product: ' + error.message });
   }
 });
 

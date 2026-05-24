@@ -22,7 +22,7 @@ export default function Dashboard() {
   const [orders, setOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('analytics'); // 'analytics' | 'orders'
+  const [activeTab, setActiveTab] = useState('analytics'); // 'analytics' | 'orders' | 'products'
   const [timeFilter, setTimeFilter] = useState('Last 7 days'); // 'Year' | 'Last month' | 'This month' | 'Last 7 days'
   const [expandedOrders, setExpandedOrders] = useState({});
   const [hoveredPoint, setHoveredPoint] = useState(null); // { x, y, date, value } for graph hover
@@ -35,6 +35,18 @@ export default function Dashboard() {
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [editAddressForm, setEditAddressForm] = useState(null);
   const [updatingAddress, setUpdatingAddress] = useState(false);
+
+  // Product Management States
+  const [products, setProducts] = useState([]);
+  const [editingProductId, setEditingProductId] = useState(null);
+  const [editProductForm, setEditProductForm] = useState({
+    price: 0,
+    stock: 0,
+    name: '',
+    description: '',
+    category: ''
+  });
+  const [savingProduct, setSavingProduct] = useState(false);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
   const adminEmails = ['heyitsmealbinjohn@gmail.com', 'bibinjohn2018@gmail.com'];
@@ -106,6 +118,13 @@ export default function Dashboard() {
 
         const data = await res.json();
         setOrders(data);
+
+        // Fetch products list too!
+        const prodRes = await fetch(`${API_URL}/api/products`);
+        if (prodRes.ok) {
+          const prodData = await prodRes.json();
+          setProducts(prodData);
+        }
       } catch (err) {
         console.error(err);
         toast.error(err.message || 'Error fetching analytics');
@@ -294,6 +313,65 @@ export default function Dashboard() {
       toast.error(err.message || 'Error updating address');
     } finally {
       setUpdatingAddress(false);
+    }
+  };
+
+  const startEditingProduct = (product) => {
+    setEditingProductId(product.id);
+    setEditProductForm({
+      price: product.price,
+      stock: product.stock !== undefined ? product.stock : 10.0,
+      name: product.name,
+      description: product.description,
+      category: product.category
+    });
+  };
+
+  const handleProductSave = async (productId) => {
+    if (editProductForm.price <= 0) {
+      toast.error('Price must be greater than zero.');
+      return;
+    }
+    if (editProductForm.stock < 0) {
+      toast.error('Stock cannot be negative.');
+      return;
+    }
+
+    setSavingProduct(true);
+    const token = localStorage.getItem('token');
+    
+    try {
+      const res = await fetch(`${API_URL}/api/products/${productId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          price: parseFloat(editProductForm.price),
+          stock: parseFloat(editProductForm.stock),
+          name: editProductForm.name,
+          description: editProductForm.description,
+          category: editProductForm.category
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to update product');
+      }
+
+      setProducts(prevProducts => 
+        prevProducts.map(p => p.id === productId ? { ...p, ...data.product } : p)
+      );
+      
+      toast.success(`${editProductForm.name} updated successfully! 🌿`);
+      setEditingProductId(null);
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || 'Error updating product');
+    } finally {
+      setSavingProduct(false);
     }
   };
 
@@ -913,6 +991,16 @@ export default function Dashboard() {
           >
             Order Registry Details
           </button>
+          <button 
+            onClick={() => setActiveTab('products')}
+            className={`text-xs font-black uppercase tracking-wider px-6 py-2.5 rounded-full transition-all ${
+              activeTab === 'products' 
+                ? 'bg-white text-emerald-700 shadow-md transform scale-105' 
+                : 'text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            Product Management
+          </button>
         </div>
       </div>
 
@@ -1130,7 +1218,7 @@ export default function Dashboard() {
           )}
 
         </div>
-      ) : (
+      ) : activeTab === 'orders' ? (
         
         /* Order Registry Details Tab */
         <div className="space-y-6">
@@ -1189,7 +1277,6 @@ export default function Dashboard() {
                     </tr>
                   ) : (
                     filteredRegistryOrders.map((order) => {
-                      const isExpanded = !!expandedOrders[order.id];
                       const address = parseAddress(order.address);
                       const displayOrderId = order.id;
 
@@ -1225,20 +1312,20 @@ export default function Dashboard() {
                         <td className="px-6 py-5 whitespace-nowrap">
                           <div className="relative inline-flex items-center">
                             <select
-                              value={order.status}
-                              onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                              className={`appearance-none inline-flex items-center text-[10px] font-black uppercase tracking-wider px-3 py-1.5 pr-8 rounded-full border cursor-pointer focus:outline-none transition-all shadow-sm ${
-                                statusStyles[order.status] || 'bg-emerald-50 text-emerald-700 border-emerald-150'
-                              }`}
+                               value={order.status}
+                               onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                               className={`appearance-none inline-flex items-center text-[10px] font-black uppercase tracking-wider px-3 py-1.5 pr-8 rounded-full border cursor-pointer focus:outline-none transition-all shadow-sm ${
+                                 statusStyles[order.status] || 'bg-emerald-50 text-emerald-700 border-emerald-150'
+                               }`}
                             >
-                              <option value="PAID">PAID</option>
-                              <option value="Processing">Processing</option>
-                              <option value="On Hold">On Hold</option>
-                              <option value="Completed">Completed</option>
-                              <option value="Cancelled">Cancelled</option>
-                              <option value="Pending Payment">Pending Payment</option>
-                              <option value="Refunded">Refunded</option>
-                              <option value="Failed">Failed</option>
+                               <option value="PAID">PAID</option>
+                               <option value="Processing">Processing</option>
+                               <option value="On Hold">On Hold</option>
+                               <option value="Completed">Completed</option>
+                               <option value="Cancelled">Cancelled</option>
+                               <option value="Pending Payment">Pending Payment</option>
+                               <option value="Refunded">Refunded</option>
+                               <option value="Failed">Failed</option>
                             </select>
                             <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center px-1 text-gray-500">
                               <ChevronDown size={12} />
@@ -1266,6 +1353,157 @@ export default function Dashboard() {
             </table>
           </div>
         </div>
+        </div>
+      ) : (
+        /* Product Management Tab */
+        <div className="space-y-8 animate-fadeIn">
+          <div className="bg-white rounded-3xl border border-gray-150 p-6 md:p-8 shadow-sm">
+            <div className="flex items-center justify-between mb-8 border-b border-gray-50 pb-4">
+              <div>
+                <h3 className="text-lg font-black text-gray-900 tracking-tight">Product Catalog Inventory</h3>
+                <p className="text-xs text-gray-400 font-bold mt-1">Manage spice prices, live stock levels, and catalog info.</p>
+              </div>
+              <span className="text-xs font-black bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full border border-emerald-100">
+                {products.length} Spices Listed
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Spice Image & Name</th>
+                    <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Category</th>
+                    <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Price (Base)</th>
+                    <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Current Stock</th>
+                    <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {products.map((prod) => {
+                    const isEditing = editingProductId === prod.id;
+                    const prodImage = prod.images && prod.images.length > 0 ? prod.images[0] : '/images/placeholder.jpg';
+
+                    return (
+                      <tr key={prod.id} className="hover:bg-gray-50/50 transition-colors">
+                        {/* Name and Image */}
+                        <td className="py-5 pr-4 flex items-start gap-4">
+                          <img src={prodImage} alt={prod.name} className="w-14 h-14 rounded-2xl object-cover border border-gray-100 shadow-sm shrink-0 bg-gray-50" />
+                          <div className="space-y-1 flex-grow">
+                            {isEditing ? (
+                              <div className="space-y-2">
+                                <input
+                                  type="text"
+                                  value={editProductForm.name}
+                                  onChange={(e) => setEditProductForm(prev => ({ ...prev, name: e.target.value }))}
+                                  className="text-xs font-extrabold text-gray-800 bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-emerald-500 focus:bg-white w-full max-w-[200px]"
+                                />
+                                <textarea
+                                  value={editProductForm.description}
+                                  onChange={(e) => setEditProductForm(prev => ({ ...prev, description: e.target.value }))}
+                                  className="text-[10px] font-semibold text-gray-500 bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-emerald-500 focus:bg-white w-full max-w-[300px] h-16 resize-none block"
+                                />
+                              </div>
+                            ) : (
+                              <>
+                                <span className="text-sm font-extrabold text-gray-800 block leading-none">{prod.name}</span>
+                                <p className="text-[10px] text-gray-400 font-semibold line-clamp-2 max-w-[300px] leading-relaxed">{prod.description}</p>
+                              </>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Category */}
+                        <td className="py-5 pr-4">
+                          {isEditing ? (
+                            <input
+                              type="text"
+                              value={editProductForm.category}
+                              onChange={(e) => setEditProductForm(prev => ({ ...prev, category: e.target.value }))}
+                              className="text-xs font-bold text-gray-600 bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-emerald-500 w-28"
+                            />
+                          ) : (
+                            <span className="text-xs font-bold text-emerald-700 bg-emerald-50/70 border border-emerald-100/50 px-2.5 py-1 rounded-full">{prod.category}</span>
+                          )}
+                        </td>
+
+                        {/* Price */}
+                        <td className="py-5 pr-4 text-right">
+                          {isEditing ? (
+                            <div className="inline-flex items-center gap-1">
+                              <span className="text-xs font-black text-gray-400">₹</span>
+                              <input
+                                type="number"
+                                step="any"
+                                value={editProductForm.price}
+                                onChange={(e) => setEditProductForm(prev => ({ ...prev, price: e.target.value }))}
+                                className="text-xs font-black text-gray-800 bg-white border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-emerald-500 w-16 text-right"
+                              />
+                            </div>
+                          ) : (
+                            <span className="text-sm font-black text-gray-800">₹{prod.price.toFixed(2)}</span>
+                          )}
+                        </td>
+
+                        {/* Stock */}
+                        <td className="py-5 pr-4 text-right">
+                          {isEditing ? (
+                            <div className="inline-flex items-center gap-1">
+                              <input
+                                type="number"
+                                step="any"
+                                value={editProductForm.stock}
+                                onChange={(e) => setEditProductForm(prev => ({ ...prev, stock: e.target.value }))}
+                                className="text-xs font-black text-gray-800 bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-emerald-500 w-20 text-right"
+                              />
+                              <span className="text-[10px] font-black text-gray-400 uppercase">kg</span>
+                            </div>
+                          ) : (
+                            <span className={`text-xs font-black px-2.5 py-1 rounded-full border ${
+                              prod.stock >= 0.1 
+                                ? 'bg-emerald-50/50 text-emerald-800 border-emerald-100' 
+                                : 'bg-rose-50/50 text-rose-800 border-rose-100 animate-pulse'
+                            }`}>
+                              {prod.stock !== undefined ? `${prod.stock.toFixed(2)} kg` : '10.00 kg'}
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Action buttons */}
+                        <td className="py-5 text-center">
+                          {isEditing ? (
+                            <div className="flex flex-col sm:flex-row items-center justify-center gap-1.5">
+                              <button
+                                onClick={() => handleProductSave(prod.id)}
+                                disabled={savingProduct}
+                                className="text-[9px] font-black uppercase tracking-wider px-3 py-2 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white transition-all shadow-sm cursor-pointer w-full"
+                              >
+                                {savingProduct ? 'Saving' : 'Save'}
+                              </button>
+                              <button
+                                onClick={() => setEditingProductId(null)}
+                                disabled={savingProduct}
+                                className="text-[9px] font-black uppercase tracking-wider px-3 py-2 rounded-full border border-gray-200 bg-white hover:bg-gray-50 text-gray-500 transition-all cursor-pointer w-full"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => startEditingProduct(prod)}
+                              className="text-[9px] font-black uppercase tracking-wider px-3.5 py-2.5 rounded-full border border-emerald-250 hover:bg-emerald-600 hover:text-white text-emerald-700 transition-all cursor-pointer shadow-sm hover:shadow"
+                            >
+                              Edit details
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
 
