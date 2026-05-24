@@ -4,6 +4,11 @@ const { PrismaClient } = pkg;
 const prisma = new PrismaClient();
 
 async function main() {
+  if (process.env.NODE_ENV === 'production') {
+    console.warn('⚠️ Safety block: Refusing to run seed script in production to protect customer data!');
+    return;
+  }
+
   console.log('Syncing database with spices... 🌿');
 
   // 1. Create or Update Farmer Raju John
