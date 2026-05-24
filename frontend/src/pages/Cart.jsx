@@ -178,7 +178,7 @@ export default function Cart() {
       <div className="flex flex-col lg:flex-row gap-8">
         
         {/* Cart Items */}
-        <div className="flex-grow">
+        <div className="flex-grow space-y-6">
           <div className="bg-white shadow rounded-lg overflow-hidden border border-gray-100">
             <ul className="divide-y divide-gray-100">
               {cartItems.map((item) => {
@@ -203,6 +203,55 @@ export default function Cart() {
                 </li>
               )})}
             </ul>
+          </div>
+
+          {/* Coupon Code Section */}
+          <div className="p-5 bg-white border border-gray-100 rounded-2xl shadow-md">
+            <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wider opacity-70">Have a Coupon?</h3>
+            {appliedCoupon ? (
+              <div className="flex items-center justify-between bg-emerald-100 text-emerald-800 p-3 rounded-xl text-sm font-black border border-emerald-200">
+                <span>🎉 Coupon Applied: {appliedCoupon.code} (-₹{appliedCoupon.discount})</span>
+                <button 
+                  onClick={() => setAppliedCoupon(null)} 
+                  className="text-xs bg-emerald-200 hover:bg-emerald-300 text-emerald-950 font-bold px-3 py-1.5 rounded-lg cursor-pointer transition-colors"
+                >
+                  Remove Coupon
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex space-x-3">
+                  <input
+                    type="text"
+                    placeholder="Enter code (e.g. STARTER)"
+                    value={couponCode}
+                    onChange={(e) => {
+                      setCouponCode(e.target.value);
+                      setCouponError('');
+                    }}
+                    className="flex-grow p-3 border border-gray-300 rounded-xl text-sm uppercase outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <button
+                    onClick={() => {
+                      if (couponCode.trim().toUpperCase() === 'STARTER') {
+                        setAppliedCoupon({ code: 'STARTER', discount: 70 });
+                        setCouponCode('');
+                        setCouponError('');
+                      } else if (!couponCode.trim()) {
+                        setCouponError('Please enter a coupon code.');
+                      } else {
+                        setCouponError('Invalid coupon code.');
+                      }
+                    }}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-3 rounded-xl text-sm cursor-pointer transition-colors shadow-md shadow-emerald-600/10"
+                  >
+                    Apply Coupon
+                  </button>
+                </div>
+                {couponError && <p className="text-xs text-red-500 font-bold">{couponError}</p>}
+                <p className="text-[11px] text-gray-400 font-semibold">Get dynamic discount: use code <span className="font-bold text-emerald-600">STARTER</span> for an instant ₹70 off!</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -320,55 +369,6 @@ export default function Cart() {
                   <p className="font-medium text-gray-900 flex items-center">
                     <span className="text-gray-500 font-normal mr-2">Email:</span> {address.email}
                   </p>
-                </div>
-              )}
-            </div>
-
-            {/* Coupon Code Section */}
-            <div className="mb-6 p-4 border border-dashed border-emerald-200 bg-emerald-50/20 rounded-xl">
-              <h3 className="text-sm font-bold text-gray-900 mb-2 uppercase tracking-wider opacity-70">Have a Coupon?</h3>
-              {appliedCoupon ? (
-                <div className="flex items-center justify-between bg-emerald-100 text-emerald-800 p-2.5 rounded-lg text-sm font-black border border-emerald-200">
-                  <span>🎉 Code: {appliedCoupon.code} (-₹{appliedCoupon.discount})</span>
-                  <button 
-                    onClick={() => setAppliedCoupon(null)} 
-                    className="text-xs bg-emerald-200 hover:bg-emerald-300 text-emerald-950 font-bold px-2 py-1 rounded cursor-pointer"
-                  >
-                    Remove
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <div className="flex space-x-2">
-                    <input
-                      type="text"
-                      placeholder="Enter code (e.g. STARTER)"
-                      value={couponCode}
-                      onChange={(e) => {
-                        setCouponCode(e.target.value);
-                        setCouponError('');
-                      }}
-                      className="flex-grow p-2.5 border border-gray-300 rounded-lg text-sm uppercase outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
-                    <button
-                      onClick={() => {
-                        if (couponCode.trim().toUpperCase() === 'STARTER') {
-                          setAppliedCoupon({ code: 'STARTER', discount: 70 });
-                          setCouponCode('');
-                          setCouponError('');
-                        } else if (!couponCode.trim()) {
-                          setCouponError('Please enter a coupon code.');
-                        } else {
-                          setCouponError('Invalid coupon code.');
-                        }
-                      }}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg text-xs cursor-pointer transition-colors"
-                    >
-                      Apply
-                    </button>
-                  </div>
-                  {couponError && <p className="text-xs text-red-500 font-bold">{couponError}</p>}
-                  <p className="text-[10px] text-gray-400 font-semibold">Try code <span className="font-bold text-emerald-600">STARTER</span> for ₹70 discount!</p>
                 </div>
               )}
             </div>
