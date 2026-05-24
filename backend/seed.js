@@ -25,7 +25,8 @@ async function main() {
 
   console.log(`Synced Farmer: ${raju.name}`);
 
-  // 2. Clear existing orders, and unneeded products to prevent foreign key errors
+  // 2. Clear existing reviews, orders, and unneeded products to prevent foreign key errors
+  await prisma.review.deleteMany({});
   await prisma.orderItem.deleteMany({});
   await prisma.order.deleteMany({});
   await prisma.product.deleteMany({
@@ -285,7 +286,67 @@ async function main() {
     }
   }
 
-  console.log('✅ Sync complete! Product Catalog updated and 18 historical orders successfully re-seeded!');
+  console.log('🌱 Seeding realistic customer reviews for products and farmers...');
+  // Farmer reviews
+  if (raju) {
+    if (albin) {
+      await prisma.review.create({
+        data: { userId: albin.id, farmerId: raju.id, rating: 5, comment: "Raju's spices are absolute premium quality. You can really taste the Western Ghats canopy in his black pepper and cardamom. Highly recommended!" }
+      });
+    }
+    if (anjali) {
+      await prisma.review.create({
+        data: { userId: anjali.id, farmerId: raju.id, rating: 5, comment: "I've visited Idukki and seen Raju's farm — he practices 100% natural, ethical direct-trade farming. His green cardamoms are the most fragrant in the state." }
+      });
+    }
+    if (casper) {
+      await prisma.review.create({
+        data: { userId: casper.id, farmerId: raju.id, rating: 4, comment: "Fantastic direct trade spices. Authentic aroma and bold flavors. Prompt delivery and excellent quality." }
+      });
+    }
+  }
+
+  // Product reviews
+  if (pepper) {
+    if (albin) {
+      await prisma.review.create({
+        data: { userId: albin.id, productId: pepper.id, rating: 5, comment: "This black pepper is outstanding! Bold heat and very rich woody notes. Handpicked quality is superior." }
+      });
+    }
+    if (anjali) {
+      await prisma.review.create({
+        data: { userId: anjali.id, productId: pepper.id, rating: 5, comment: "Exactly what I was looking for. Super fresh, bold grains with deep authentic aroma. Essential for my daily cooking!" }
+      });
+    }
+  }
+
+  if (cardamom) {
+    if (casper) {
+      await prisma.review.create({
+        data: { userId: casper.id, productId: cardamom.id, rating: 5, comment: "Plump green pods that are incredibly fragrant. Perfect for morning tea. Best cardamom I have ordered online." }
+      });
+    }
+    if (anjali) {
+      await prisma.review.create({
+        data: { userId: anjali.id, productId: cardamom.id, rating: 4, comment: "Very large, high quality green cardamom pods. Rich oil content. A little goes a long way." }
+      });
+    }
+  }
+
+  if (coffee) {
+    if (albin) {
+      await prisma.review.create({
+        data: { userId: albin.id, productId: coffee.id, rating: 5, comment: "A stunning medium-dark roast with chocolatey undertones. Works great in a French press or South Indian filter." }
+      });
+    }
+    if (testUser) {
+      await prisma.review.create({
+        data: { userId: testUser.id, productId: coffee.id, rating: 5, comment: "Incredible morning brew! Smooth, bold, low acidity. Highly recommend to any coffee lover." }
+      });
+    }
+  }
+
+  console.log('✅ Sync complete! Product Catalog updated, 18 historical orders, and realistic reviews successfully seeded!');
 }
 
 main()

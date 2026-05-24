@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ChevronLeft, ShoppingCart, Star, Heart, Share2, Truck, ShieldCheck, Leaf, Plus, Minus } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useViewed } from '../context/ViewedContext';
+import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
 const WEIGHT_OPTIONS = [
@@ -17,6 +18,7 @@ export default function ProductDetails() {
   const navigate = useNavigate();
   const { addToCart } = useCart();
   const { addToViewed } = useViewed();
+  const { user } = useAuth();
   
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -24,6 +26,25 @@ export default function ProductDetails() {
   const [selectedWeight, setSelectedWeight] = useState(WEIGHT_OPTIONS[0]);
   const [quantity, setQuantity] = useState(1);
   const [activeImage, setActiveImage] = useState(null);
+
+  const [newRating, setNewRating] = useState(5);
+  const [newComment, setNewComment] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
+
+  const existingReview = useMemo(() => {
+    if (!product || !product.reviews || !user) return null;
+    return product.reviews.find(r => r.userId === user.id);
+  }, [product, user]);
+
+  useEffect(() => {
+    if (existingReview) {
+      setNewRating(existingReview.rating);
+      setNewComment(existingReview.comment);
+    } else {
+      setNewRating(5);
+      setNewComment('');
+    }
+  }, [existingReview]);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -79,6 +100,51 @@ export default function ProductDetails() {
         color: '#fff',
       },
     });
+  };
+
+  const handleSubmitReview = async (e) => {
+    e.preventDefault();
+    if (!newComment.trim()) {
+      toast.error('Please enter a comment.');
+      return;
+    }
+    
+    setSubmittingReview(true);
+    const token = localStorage.getItem('token');
+    
+    try {
+      const res = await fetch(`${API_URL}/api/reviews`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          rating: newRating,
+          comment: newComment,
+          productId: product.id
+        })
+      });
+      
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to submit review');
+      }
+      
+      toast.success('Thank you! Your review has been saved.');
+      setNewComment('');
+      
+      // Reload product details to update reviews and calculated rating
+      const updatedRes = await fetch(`${API_URL}/api/products/${id}`);
+      if (updatedRes.ok) {
+        const updatedProduct = await updatedRes.json();
+        setProduct(updatedProduct);
+      }
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSubmittingReview(false);
+    }
   };
 
   const handleBuyNow = () => {
@@ -166,11 +232,28 @@ export default function ProductDetails() {
 
           <div className="flex items-center space-x-4 mb-6">
             <div className="flex text-amber-400">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} size={18} fill={i < 4 ? "currentColor" : "none"} className={i < 4 ? "" : "text-gray-300"} />
-              ))}
+              {[...Array(5)].map((_, i) => {
+                const isFilled = i < Math.round(product.rating);
+                return (
+                  <Star key={i} size={18} fill={isFilled ? "currentColor" : "none"} className={isFilled ? "" : "text-gray-300"} />
+                );
+              })}
             </div>
-            <span className="text-sm font-medium text-gray-500">4.9 (118 reviews)</span>
+            <span className="text-sm font-bold text-gray-600">
+              {product.rating ? product.rating.toFixed(1) : '0.0'} ({product.reviewsCount || 0} {product.reviewsCount === 1 ? 'review' : 'reviews'})
+            </span>
+            <span className="text-gray-300">|</span>
+            <button 
+              onClick={() => {
+                const element = document.getElementById('review-form-section');
+                if (element) {
+                  element.scrollIntoView({ behavior: 'smooth' });
+                }
+              }}
+              className="text-xs font-black text-emerald-600 hover:text-emerald-700 hover:underline cursor-pointer transition-all uppercase tracking-wider"
+            >
+              {existingReview ? 'Edit Review' : 'Add Review'}
+            </button>
           </div>
 
           <div className="flex items-end space-x-4 mb-6">
@@ -298,6 +381,118 @@ export default function ProductDetails() {
             </div>
           </div>
           
+        </div>
+      </div>
+
+      {/* Reviews Section */}
+      <div className="mt-8 border-t border-gray-200 pt-8">
+        <h2 className="text-2xl font-black text-gray-900 mb-8 tracking-tight">Customer Reviews</h2>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+          {/* Reviews Stats Summary */}
+          <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-lg flex flex-col justify-center items-center text-center h-fit">
+            <span className="text-5xl font-black text-emerald-800 mb-2">
+              {product.rating ? product.rating.toFixed(1) : '0.0'}
+            </span>
+            <div className="flex text-amber-400 mb-2">
+              {[...Array(5)].map((_, i) => (
+                <Star key={i} size={20} fill={i < Math.round(product.rating) ? "currentColor" : "none"} className={i < Math.round(product.rating) ? "" : "text-gray-300"} />
+              ))}
+            </div>
+            <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">
+              Based on {product.reviewsCount || 0} {product.reviewsCount === 1 ? 'review' : 'reviews'}
+            </span>
+          </div>
+
+          {/* Reviews List & Write Form */}
+          <div className="lg:col-span-2 space-y-8" id="review-form-section">
+            {/* Review Form */}
+            {user ? (
+              <form onSubmit={handleSubmitReview} className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-md space-y-5">
+                <h3 className="text-lg font-black text-gray-900 tracking-tight">
+                  {existingReview ? 'Edit Your Review' : 'Write a Review'}
+                </h3>
+                
+                <div className="flex items-center space-x-3">
+                  <span className="text-sm font-bold text-gray-700">Your Rating:</span>
+                  <div className="flex text-amber-400">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        type="button"
+                        key={star}
+                        onClick={() => setNewRating(star)}
+                        className="hover:scale-110 transition-transform cursor-pointer focus:outline-none"
+                      >
+                        <Star size={24} fill={star <= newRating ? "currentColor" : "none"} className={star <= newRating ? "" : "text-gray-300"} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label htmlFor="comment" className="text-sm font-bold text-gray-700 block">Comments</label>
+                  <textarea
+                    id="comment"
+                    rows={4}
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Share your experience with this premium spice..."
+                    className="w-full rounded-2xl border border-gray-250 p-4 text-sm focus:border-emerald-500 focus:outline-none transition-colors"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={submittingReview}
+                  className="bg-emerald-700 hover:bg-emerald-800 disabled:bg-emerald-450 text-white font-bold py-3 px-8 rounded-xl transition-all shadow-md active:scale-[0.98] text-sm cursor-pointer"
+                >
+                  {submittingReview ? 'Submitting...' : existingReview ? 'Update Review' : 'Submit Review'}
+                </button>
+              </form>
+            ) : (
+              <div className="bg-emerald-50/50 rounded-3xl p-6 sm:p-8 border border-emerald-100/50 text-center">
+                <p className="text-sm font-bold text-emerald-800 mb-2">Want to review this spice?</p>
+                <p className="text-xs text-emerald-600/90 mb-4">Please sign in to share your experience with other customers.</p>
+                <Link to="/login" className="inline-block bg-white text-emerald-700 border border-emerald-200 font-bold py-2 px-6 rounded-xl hover:bg-emerald-600 hover:text-white hover:border-transparent transition-colors text-sm">
+                  Sign In to Review
+                </Link>
+              </div>
+            )}
+
+            {/* Reviews List */}
+            <div className="space-y-6">
+              {product.reviews && product.reviews.length > 0 ? (
+                product.reviews.map((rev) => (
+                  <div key={rev.id} className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-black text-sm uppercase shrink-0">
+                          {rev.user?.name ? rev.user.name.charAt(0) : 'U'}
+                        </div>
+                        <div>
+                          <p className="text-sm font-black text-gray-900">{rev.user?.name || 'Anonymous User'}</p>
+                          <div className="flex text-amber-400 mt-0.5">
+                            {[...Array(5)].map((_, i) => (
+                              <Star key={i} size={14} fill={i < rev.rating ? "currentColor" : "none"} className={i < rev.rating ? "" : "text-gray-300"} />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-xs font-semibold text-gray-400">
+                        {new Date(rev.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                      </span>
+                    </div>
+                    <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap pl-1">{rev.comment}</p>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-10 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                  <p className="text-gray-400 text-sm font-semibold">No reviews yet for this product.</p>
+                  <p className="text-gray-400 text-xs mt-1">Be the first to share your feedback!</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

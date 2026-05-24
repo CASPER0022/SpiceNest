@@ -32,6 +32,7 @@ model Product {
   updatedAt   DateTime @updatedAt
   orderItems  OrderItem[]
   cartItems   CartItem[]
+  reviews     Review[]
 }
 
 model User {
@@ -47,6 +48,7 @@ model User {
   updatedAt        DateTime  @updatedAt
   orders           Order[]
   cartItems        CartItem[]
+  reviews          Review[]
 }
 
 model Order {
@@ -83,6 +85,7 @@ model Farmer {
   about     String
   image     String
   products  Product[]
+  reviews   Review[]
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -109,5 +112,25 @@ model CartItem {
   updatedAt DateTime @updatedAt
 
   @@unique([userId, productId, weight])
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  rating    Int      // 1 to 5 stars
+  comment   String   @db.Text
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  productId Int?
+  product   Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  farmerId  Int?
+  farmer    Farmer?  @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, productId])
+  @@unique([userId, farmerId])
 }
 

@@ -17,6 +17,7 @@ const PORT = process.env.PORT || 5000;
 import authRoutes from './routes/auth.js';
 import paymentRoutes from './routes/payment.js';
 import cartRoutes from './routes/cart.js';
+import reviewsRoutes from './routes/reviews.js';
 
 // ==========================================
 // Middleware (Software that runs before your routes)
@@ -37,15 +38,36 @@ app.use('/api/payment', paymentRoutes);
 // Cart Routes
 app.use('/api/cart', cartRoutes);
 
+// Review Routes
+app.use('/api/reviews', reviewsRoutes);
+
 // Get all spices from the Neon Database!
 app.get('/api/products', async (req, res) => {
   try {
     const products = await prisma.product.findMany({
       where: { isArchived: false },
       orderBy: { id: 'desc' },
-      include: { farmer: true }
+      include: { 
+        farmer: true,
+        reviews: true
+      }
     });
-    res.json(products);
+
+    const productsWithRatings = products.map(product => {
+      const reviewsCount = product.reviews.length;
+      const rating = reviewsCount > 0 
+        ? parseFloat((product.reviews.reduce((acc, curr) => acc + curr.rating, 0) / reviewsCount).toFixed(1))
+        : 0; // Default to 0 when there are no reviews
+      
+      const { reviews, ...productData } = product;
+      return {
+        ...productData,
+        rating,
+        reviewsCount
+      };
+    });
+
+    res.json(productsWithRatings);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch products' });
@@ -58,14 +80,33 @@ app.get('/api/products/:id', async (req, res) => {
     const { id } = req.params;
     const product = await prisma.product.findUnique({
       where: { id: parseInt(id) },
-      include: { farmer: true }
+      include: { 
+        farmer: true,
+        reviews: {
+          include: {
+            user: {
+              select: { name: true }
+            }
+          },
+          orderBy: { createdAt: 'desc' }
+        }
+      }
     });
     
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
     }
     
-    res.json(product);
+    const reviewsCount = product.reviews.length;
+    const rating = reviewsCount > 0 
+      ? parseFloat((product.reviews.reduce((acc, curr) => acc + curr.rating, 0) / reviewsCount).toFixed(1))
+      : 0; // Default to 0 when there are no reviews
+
+    res.json({
+      ...product,
+      rating,
+      reviewsCount
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch product' });
@@ -76,10 +117,30 @@ app.get('/api/products/:id', async (req, res) => {
 app.get('/api/farmers', async (req, res) => {
   try {
     const farmers = await prisma.farmer.findMany({
-      orderBy: { rating: 'desc' },
-      include: { products: true }
+      include: { 
+        products: true,
+        reviews: true
+      }
     });
-    res.json(farmers);
+
+    const farmersWithRatings = farmers.map(farmer => {
+      const reviewsCount = farmer.reviews.length;
+      const rating = reviewsCount > 0 
+        ? parseFloat((farmer.reviews.reduce((acc, curr) => acc + curr.rating, 0) / reviewsCount).toFixed(1))
+        : farmer.rating; // Fallback to seed rating
+
+      const { reviews, ...farmerData } = farmer;
+      return {
+        ...farmerData,
+        rating,
+        reviewsCount
+      };
+    });
+
+    // Sort by rating desc
+    farmersWithRatings.sort((a, b) => b.rating - a.rating);
+
+    res.json(farmersWithRatings);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch farmers' });
@@ -92,14 +153,33 @@ app.get('/api/farmers/:id', async (req, res) => {
     const { id } = req.params;
     const farmer = await prisma.farmer.findUnique({
       where: { id: parseInt(id) },
-      include: { products: true }
+      include: { 
+        products: true,
+        reviews: {
+          include: {
+            user: {
+              select: { name: true }
+            }
+          },
+          orderBy: { createdAt: 'desc' }
+        }
+      }
     });
     
     if (!farmer) {
       return res.status(404).json({ error: 'Farmer not found' });
     }
     
-    res.json(farmer);
+    const reviewsCount = farmer.reviews.length;
+    const rating = reviewsCount > 0 
+      ? parseFloat((farmer.reviews.reduce((acc, curr) => acc + curr.rating, 0) / reviewsCount).toFixed(1))
+      : farmer.rating;
+
+    res.json({
+      ...farmer,
+      rating,
+      reviewsCount
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch farmer' });

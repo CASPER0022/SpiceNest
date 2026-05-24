@@ -99,7 +99,7 @@ export default function Farmers() {
                   {/* Floating Rating Badge */}
                   <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-md text-amber-600 font-extrabold text-xs px-3.5 py-1.5 rounded-full border border-amber-100 shadow-md flex items-center gap-1">
                     <Star fill="currentColor" size={14} />
-                    {farmer.rating}
+                    {farmer.rating ? farmer.rating.toFixed(1) : '0.0'} ({farmer.reviewsCount || 0})
                   </div>
                 </div>
 
