@@ -8,6 +8,7 @@ const IMAGES = [
   '/images/homepage/homepage-bg3.jpg',
   '/images/homepage/homepage-bg4.jpg',
   '/images/homepage/homepage-bg5.jpg',
+  '/images/homepage/homepage-bg6.jpg'
 ];
 
 const FEATURES = [
