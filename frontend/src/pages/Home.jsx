@@ -6,6 +6,8 @@ const IMAGES = [
   '/images/homepage/homepage-bg1.jpg',
   '/images/homepage/homepage-bg2.jpg',
   '/images/homepage/homepage-bg3.jpg',
+  '/images/homepage/homepage-bg4.jpg',
+  '/images/homepage/homepage-bg5.jpg',
 ];
 
 const FEATURES = [
@@ -19,13 +21,13 @@ export default function Home() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [scrollY, setScrollY] = useState(0);
 
-  // Handle the automatic image slider
+  // Handle the automatic image slider with dynamic reset on slide change
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentImageIndex((prev) => (prev + 1) % IMAGES.length);
     }, 5000); // Auto-slide every 5 seconds
     return () => clearInterval(interval);
-  }, []);
+  }, [currentImageIndex]);
 
   // Handle the scroll event for smooth, proportional shrinking
   useEffect(() => {
@@ -50,6 +52,15 @@ export default function Home() {
   return (
     // Outer wrapper with bg-gray-50 so when the hero shrinks, it reveals the clean background
     <div className="bg-gray-50 min-h-screen">
+      <style>{`
+        @keyframes progressFill {
+          from { width: 0%; }
+          to { width: 100%; }
+        }
+        .animate-progress-fill {
+          animation: progressFill 5000ms linear forwards;
+        }
+      `}</style>
 
       {/* The Hero Container that uses high-performance clip-path to shrink horizontally on scroll */}
       <div
@@ -113,6 +124,28 @@ export default function Home() {
               Explore Collection
             </Link>
           </div>
+        </div>
+
+        {/* Carousel Indicators (Zomato/Tesla/Ather style progress-bar indicators) */}
+        <div className="absolute bottom-10 md:bottom-24 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 md:gap-3">
+          {IMAGES.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => setCurrentImageIndex(index)}
+              className="h-[3px] w-10 md:w-14 rounded-full bg-white/20 overflow-hidden relative focus:outline-none group cursor-pointer transition-all duration-300 hover:bg-white/40"
+              aria-label={`Go to slide ${index + 1}`}
+            >
+              <div
+                className={`h-full rounded-full bg-white transition-all ${
+                  index === currentImageIndex
+                    ? 'animate-progress-fill'
+                    : index < currentImageIndex
+                      ? 'w-full opacity-60'
+                      : 'w-0'
+                }`}
+              />
+            </button>
+          ))}
         </div>
 
         {/* Ather-Style Bottom Feature Ticker */}
