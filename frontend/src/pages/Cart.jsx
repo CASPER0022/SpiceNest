@@ -8,6 +8,11 @@ import { useState, useEffect } from 'react';
 // Use a dummy key for testing, replace with real Publishable Key later!
 const stripePromise = loadStripe('pk_test_TYooMQauvdEDq54NiTphI7jx');
 
+const AVAILABLE_COUPONS = [
+  { code: 'STARTER', discount: 70, description: '₹70 off on your first premium spice purchase!' },
+  { code: 'SPICE50', discount: 50, description: '₹50 off on our organic Western Ghats spices!' }
+];
+
 export default function Cart() {
   const { cartItems, updateQuantity, removeFromCart, cartTotal } = useCart();
   const { user, updateAddress } = useAuth();
@@ -219,7 +224,7 @@ export default function Cart() {
                 </button>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div className="flex space-x-3">
                   <input
                     type="text"
@@ -233,8 +238,9 @@ export default function Cart() {
                   />
                   <button
                     onClick={() => {
-                      if (couponCode.trim().toUpperCase() === 'STARTER') {
-                        setAppliedCoupon({ code: 'STARTER', discount: 70 });
+                      const matched = AVAILABLE_COUPONS.find(c => c.code === couponCode.trim().toUpperCase());
+                      if (matched) {
+                        setAppliedCoupon(matched);
                         setCouponCode('');
                         setCouponError('');
                       } else if (!couponCode.trim()) {
@@ -245,11 +251,40 @@ export default function Cart() {
                     }}
                     className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-3 rounded-xl text-sm cursor-pointer transition-colors shadow-md shadow-emerald-600/10"
                   >
-                    Apply Coupon
+                    Apply
                   </button>
                 </div>
                 {couponError && <p className="text-xs text-red-500 font-bold">{couponError}</p>}
-                <p className="text-[11px] text-gray-400 font-semibold">Get dynamic discount: use code <span className="font-bold text-emerald-600">STARTER</span> for an instant ₹70 off!</p>
+                
+                {/* Available Coupons list (Zomato/Swiggy style) */}
+                <div className="pt-4 border-t border-gray-150">
+                  <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-3">Available Coupons</h4>
+                  <div className="space-y-3">
+                    {AVAILABLE_COUPONS.map((coupon) => (
+                      <div 
+                        key={coupon.code} 
+                        className="flex items-center justify-between p-3.5 bg-emerald-50/20 border border-dashed border-emerald-200 rounded-2xl hover:bg-emerald-50/40 transition-all duration-200 group"
+                      >
+                        <div className="space-y-1">
+                          <span className="inline-block bg-emerald-100 text-emerald-800 text-[10px] font-black tracking-widest px-2.5 py-1 rounded-md border border-emerald-250 uppercase">
+                            {coupon.code}
+                          </span>
+                          <p className="text-xs text-gray-500 font-bold leading-relaxed pr-4">{coupon.description}</p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setAppliedCoupon(coupon);
+                            setCouponCode('');
+                            setCouponError('');
+                          }}
+                          className="text-xs font-black text-emerald-700 hover:text-emerald-50 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-600 border border-emerald-200 hover:border-transparent py-2 px-5 rounded-xl cursor-pointer transition-all duration-200 shrink-0 shadow-sm hover:shadow-md"
+                        >
+                          Apply
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
           </div>
