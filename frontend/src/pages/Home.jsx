@@ -102,7 +102,7 @@ export default function Home() {
               Natural Flavors
               {/* The signature Ather-style rounded highlight around the text */}
               <span className="absolute inset-0 border-2 border-emerald-400 rounded-[2rem] -m-2 opacity-60 md:-m-3 md:rounded-[3rem] pointer-events-none hidden md:block"></span>
-            </span> <br className="hidden md:inline" /> from the farms in Idukki
+            </span> <br className="hidden md:inline" /> from the farms of Idukki
           </h1>
 
           {/* Subtext (Reduced Size) */}
