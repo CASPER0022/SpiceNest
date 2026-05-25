@@ -8,10 +8,10 @@ import { useWishlist } from '../context/WishlistContext';
 import toast from 'react-hot-toast';
 
 const WEIGHT_OPTIONS = [
-  { label: '100g', multiplier: 1, kg: 0.1 },
-  { label: '250g', multiplier: 2.375, kg: 0.25 }, // Slight discount on bulk
-  { label: '500g', multiplier: 4.625, kg: 0.5 },
-  { label: '1kg', multiplier: 9.0625, kg: 1.0 },
+  { label: '100g', multiplier: 1.0, kg: 0.1 },
+  { label: '250g', multiplier: 2.5, kg: 0.25 },
+  { label: '500g', multiplier: 5.0, kg: 0.5 },
+  { label: '1kg', multiplier: 10.0, kg: 1.0 },
 ];
 
 export default function ProductDetails() {

@@ -44,7 +44,7 @@ export default function CartDrawer() {
         <div className="px-5 py-3 bg-gray-50 border-b border-gray-100 text-sm">
           {amountAwayFromFreeDelivery > 0 ? (
             <>
-              <p className="text-gray-600 mb-2">Add <span className="font-bold text-gray-900">₹{amountAwayFromFreeDelivery.toFixed(2)}</span> more for <span className="font-bold text-gray-900">Free Delivery</span></p>
+              <p className="text-gray-600 mb-2">Add <span className="font-bold text-gray-900">₹{Math.round(amountAwayFromFreeDelivery)}</span> more for <span className="font-bold text-gray-900">Free Delivery</span></p>
               <div className="w-full bg-gray-200 rounded-full h-1.5">
                 <div 
                   className="bg-emerald-600 h-1.5 rounded-full transition-all duration-500" 
@@ -93,7 +93,7 @@ export default function CartDrawer() {
                           <button onClick={() => updateQuantity(itemId, item.quantity + 1)} className="p-1 hover:bg-gray-100 text-gray-600"><Plus size={14} /></button>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="font-bold text-gray-900">₹{item.price.toFixed(2)}</span>
+                          <span className="font-bold text-gray-900">₹{Math.round(item.price)}</span>
                           <button onClick={() => removeFromCart(itemId)} className="text-gray-400 hover:text-red-500 transition-colors">
                             <Trash2 size={16} />
                           </button>
@@ -112,7 +112,7 @@ export default function CartDrawer() {
           <div className="p-5 border-t border-gray-100 bg-white">
             <div className="flex justify-between items-center mb-4">
               <span className="text-gray-600 font-medium text-lg">Subtotal</span>
-              <span className="text-2xl font-black text-gray-900">₹{cartTotal.toFixed(2)}</span>
+              <span className="text-2xl font-black text-gray-900">₹{Math.round(cartTotal)}</span>
             </div>
             <p className="text-xs text-gray-500 text-center mb-4">
               Inclusive of all taxes. Shipping calculated at checkout.

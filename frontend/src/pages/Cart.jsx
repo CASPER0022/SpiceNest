@@ -201,7 +201,7 @@ export default function Cart() {
                   <img src={item.images ? item.images[0] : item.image} alt={item.name} className="w-20 h-20 object-cover rounded-xl mb-4 sm:mb-0 shadow-sm" />
                   <div className="sm:ml-6 flex-grow mb-4 sm:mb-0">
                     <h3 className="text-lg font-bold text-gray-900">{item.name} <span className="text-sm text-gray-500 font-normal">({item.weight || '100g'})</span></h3>
-                    <p className="text-emerald-600 font-bold">₹{item.price.toFixed(2)}</p>
+                    <p className="text-emerald-600 font-bold">₹{Math.round(item.price)}</p>
                   </div>
                   <div className="flex items-center space-x-4">
                     <div className="flex items-center border rounded-lg overflow-hidden">
@@ -434,34 +434,35 @@ export default function Cart() {
             {/* Total Section */}
             {(() => {
               const discountedSubtotal = Math.max(0, cartTotal - (appliedCoupon ? appliedCoupon.discount : 0));
-              const gstAmount = discountedSubtotal * (5 / 105);
+              // Calculate exact 5% inclusive GST of the discounted subtotal, rounded to nearest integer
+              const gstAmount = Math.round(discountedSubtotal * 0.05);
               const shippingCharges = cartTotal < 500 ? 100 : 0;
-              const finalTotal = discountedSubtotal + shippingCharges;
+              const finalTotal = Math.round(discountedSubtotal + shippingCharges);
 
               return (
                 <div className="space-y-3 mb-6">
                   <div className="flex justify-between text-gray-600 font-medium">
                     <span>Subtotal</span>
-                    <span>₹{cartTotal.toFixed(2)}</span>
+                    <span>₹{Math.round(cartTotal)}</span>
                   </div>
                   <div className="flex justify-between text-gray-600 font-medium">
                     <span>Shipping</span>
-                    <span>{shippingCharges > 0 ? `₹${shippingCharges.toFixed(2)}` : 'Free'}</span>
+                    <span>{shippingCharges > 0 ? `₹${Math.round(shippingCharges)}` : 'Free'}</span>
                   </div>
                   {appliedCoupon && (
                     <div className="flex justify-between text-emerald-600 font-black">
                       <span>Discount ({appliedCoupon.code})</span>
-                      <span>-₹{appliedCoupon.discount.toFixed(2)}</span>
+                      <span>-₹{Math.round(appliedCoupon.discount)}</span>
                     </div>
                   )}
                   <div className="flex justify-between text-gray-400 text-xs italic">
                     <span>Includes GST (5%)</span>
-                    <span>₹{gstAmount.toFixed(2)}</span>
+                    <span>₹{gstAmount}</span>
                   </div>
                   <div className="border-t pt-4 flex justify-between items-end">
                     <span className="text-lg font-bold text-gray-900">Total</span>
                     <span className="text-3xl font-black text-emerald-600">
-                      ₹{finalTotal.toFixed(2)}
+                      ₹{finalTotal}
                     </span>
                   </div>
                 </div>
