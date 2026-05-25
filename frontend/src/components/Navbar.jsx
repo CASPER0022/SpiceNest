@@ -2,13 +2,32 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingCart, User, Menu, X } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function Navbar() {
   const { cartCount, setIsCartOpen } = useCart();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [wishlistCount, setWishlistCount] = useState(0);
+
+  useEffect(() => {
+    const updateCount = () => {
+      const saved = localStorage.getItem('wishlist');
+      const list = saved ? JSON.parse(saved) : [];
+      setWishlistCount(list.length);
+    };
+
+    updateCount();
+    window.addEventListener('storage', updateCount);
+    window.addEventListener('wishlist-update', updateCount);
+
+    return () => {
+      window.removeEventListener('storage', updateCount);
+      window.removeEventListener('wishlist-update', updateCount);
+    };
+  }, []);
+
   const isAdmin = user && ['heyitsmealbinjohn@gmail.com', 'bibinjohn2018@gmail.com'].includes(user.email);
 
   const handleLogout = () => {
@@ -42,7 +61,14 @@ export default function Navbar() {
             <Link to="/" className={`inline-flex items-center px-1 pt-1 text-sm font-bold transition-colors ${textClass}`}>Home</Link>
             <Link to="/shop" className={`inline-flex items-center px-1 pt-1 text-sm font-bold transition-colors ${mutedTextClass}`}>Shop</Link>
             <Link to="/farmers" className={`inline-flex items-center px-1 pt-1 text-sm font-bold transition-colors ${mutedTextClass}`}>Our Farmers</Link>
-            <Link to="/viewed" className={`inline-flex items-center px-1 pt-1 text-sm font-bold transition-colors ${mutedTextClass}`}>Viewed</Link>
+            <Link to="/wishlist" className={`inline-flex items-center px-1 pt-1 text-sm font-bold relative mr-4 transition-colors ${mutedTextClass}`}>
+              Wishlist
+              {wishlistCount > 0 && (
+                <span className="absolute -top-2 -right-3 bg-rose-500 text-white rounded-full text-[10px] font-bold w-4 h-4 flex items-center justify-center animate-fadeIn">
+                  {wishlistCount}
+                </span>
+              )}
+            </Link>
             <Link to="/track-order" className={`inline-flex items-center px-1 pt-1 text-sm font-bold transition-colors ${mutedTextClass}`}>Track Order</Link>
             {user && (
               <Link to="/orders" className={`inline-flex items-center px-1 pt-1 text-sm font-bold transition-colors ${mutedTextClass}`}>My Orders</Link>
@@ -99,6 +125,14 @@ export default function Navbar() {
             <Link to="/" onClick={() => setIsMenuOpen(false)} className="block pl-6 pr-4 py-4 text-base font-bold text-gray-900 border-b border-gray-50">Home</Link>
             <Link to="/shop" onClick={() => setIsMenuOpen(false)} className="block pl-6 pr-4 py-4 text-base font-bold text-gray-600 border-b border-gray-50">Shop</Link>
             <Link to="/farmers" onClick={() => setIsMenuOpen(false)} className="block pl-6 pr-4 py-4 text-base font-bold text-gray-600 border-b border-gray-50">Our Farmers</Link>
+            <Link to="/wishlist" onClick={() => setIsMenuOpen(false)} className="block pl-6 pr-4 py-4 text-base font-bold text-gray-600 border-b border-gray-50">
+              Wishlist
+              {wishlistCount > 0 && (
+                <span className="inline-block bg-rose-500 text-white rounded-full text-[10px] font-bold px-2 py-0.5 ml-2 animate-fadeIn">
+                  {wishlistCount}
+                </span>
+              )}
+            </Link>
             <Link to="/track-order" onClick={() => setIsMenuOpen(false)} className="block pl-6 pr-4 py-4 text-base font-bold text-gray-600 border-b border-gray-50">Track Order</Link>
             {user && (
               <Link to="/orders" onClick={() => setIsMenuOpen(false)} className="block pl-6 pr-4 py-4 text-base font-bold text-gray-600 border-b border-gray-50">My Orders</Link>

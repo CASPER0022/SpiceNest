@@ -16,7 +16,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Success from './pages/Success';
 import Profile from './pages/Profile';
-import Viewed from './pages/Viewed';
+import Wishlist from './pages/Wishlist';
 import FarmerProfile from './pages/FarmerProfile';
 import Farmers from './pages/Farmers';
 import ForgotPassword from './pages/ForgotPassword';
@@ -46,7 +46,7 @@ function AppLayout() {
           <Route path="/signup" element={<Signup />} />
           <Route path="/success" element={<Success />} />
           <Route path="/profile" element={<Profile />} />
-          <Route path="/viewed" element={<Viewed />} />
+          <Route path="/wishlist" element={<Wishlist />} />
           <Route path="/farmer/:id" element={<FarmerProfile />} />
           <Route path="/farmers" element={<Farmers />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />

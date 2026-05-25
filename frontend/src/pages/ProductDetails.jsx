@@ -47,11 +47,13 @@ export default function ProductDetails() {
       list = list.filter(item => item.id !== product.id);
       localStorage.setItem('wishlist', JSON.stringify(list));
       setIsInWishlist(false);
+      window.dispatchEvent(new Event('wishlist-update'));
       toast.success('Removed from Wishlist!', { icon: '💔' });
     } else {
       list.push(product);
       localStorage.setItem('wishlist', JSON.stringify(list));
       setIsInWishlist(true);
+      window.dispatchEvent(new Event('wishlist-update'));
       toast.success('Added to Wishlist! 💖', {
         style: {
           borderRadius: '10px',
