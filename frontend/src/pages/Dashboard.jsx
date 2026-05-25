@@ -29,6 +29,8 @@ export default function Dashboard() {
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const [selectedCustomerEmail, setSelectedCustomerEmail] = useState(null);
+  const [selectedProductAnalyticsId, setSelectedProductAnalyticsId] = useState(null);
   const [adminMessage, setAdminMessage] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -629,17 +631,17 @@ export default function Dashboard() {
       let email = '';
       let name = '';
       
-      try {
-        const address = parseAddress(order.address);
-        email = address.email ? address.email.toLowerCase().trim() : '';
-        name = address.fullName ? address.fullName.trim() : '';
-      } catch (e) {}
-
-      if (!email && order.user) {
-        email = order.user.email ? order.user.email.toLowerCase().trim() : '';
-      }
-      if (!name && order.user) {
+      if (order.userId && order.user && order.user.email) {
+        // Registered customer: STRICTLY use account email
+        email = order.user.email.toLowerCase().trim();
         name = order.user.name ? order.user.name.trim() : '';
+      } else {
+        // Guest checkout: Validate based on shipping address email
+        try {
+          const address = parseAddress(order.address);
+          email = address.email ? address.email.toLowerCase().trim() : '';
+          name = address.fullName ? address.fullName.trim() : '';
+        } catch (e) {}
       }
 
       if (!email) return;
@@ -687,6 +689,97 @@ export default function Dashboard() {
         tagColor
       };
     }).sort((a, b) => b.totalSpent - a.totalSpent);
+  };
+
+  const getCustomerDetailData = (customerEmail) => {
+    const customerOrders = orders.filter(order => {
+      let email = '';
+      if (order.userId && order.user && order.user.email) {
+        email = order.user.email.toLowerCase().trim();
+      } else {
+        try {
+          const address = parseAddress(order.address);
+          email = address.email ? address.email.toLowerCase().trim() : '';
+        } catch (e) {}
+      }
+      return email === customerEmail.toLowerCase().trim();
+    });
+
+    const totalSpent = customerOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+    const ordersCount = customerOrders.length;
+    const name = customerOrders[0]?.user?.name || parseAddress(customerOrders[0]?.address).fullName || 'Customer';
+
+    // Group purchases by product
+    const productCounts = {};
+    customerOrders.forEach(o => {
+      o.items.forEach(item => {
+        const prodName = item.productName || (item.product && item.product.name) || 'Unknown Product';
+        productCounts[prodName] = (productCounts[prodName] || 0) + item.quantity;
+      });
+    });
+
+    const topProducts = Object.entries(productCounts)
+      .map(([name, qty]) => ({ name, qty }))
+      .sort((a, b) => b.qty - a.qty);
+
+    return {
+      name,
+      email: customerEmail,
+      totalSpent,
+      ordersCount,
+      orders: customerOrders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
+      topProducts
+    };
+  };
+
+  const getProductDetailData = (productId) => {
+    const product = products.find(p => p.id === productId) || {};
+    
+    // Filter orders that contain this product
+    const productOrders = [];
+    orders.forEach(order => {
+      const matchingItems = order.items.filter(item => item.productId === productId);
+      if (matchingItems.length > 0) {
+        matchingItems.forEach(item => {
+          let customerName = order.user?.name;
+          let customerEmail = order.user?.email;
+          try {
+            const addr = parseAddress(order.address);
+            customerName = addr.fullName || customerName;
+            customerEmail = addr.email || customerEmail;
+          } catch (e) {}
+
+          productOrders.push({
+            orderId: order.id,
+            date: order.createdAt,
+            customerName: customerName || 'Guest Customer',
+            customerEmail: customerEmail || '',
+            quantity: item.quantity,
+            weight: item.weight,
+            price: item.price,
+            total: item.price * item.quantity,
+            status: order.status
+          });
+        });
+      }
+    });
+
+    const totalRevenue = productOrders.reduce((sum, o) => sum + o.total, 0);
+    const totalUnitsSold = productOrders.reduce((sum, o) => sum + o.quantity, 0);
+    
+    // Group weight selections
+    const weightStats = {};
+    productOrders.forEach(o => {
+      weightStats[o.weight] = (weightStats[o.weight] || 0) + o.quantity;
+    });
+
+    return {
+      product,
+      orders: productOrders.sort((a, b) => new Date(b.date) - new Date(a.date)),
+      totalRevenue,
+      totalUnitsSold,
+      weightStats
+    };
   };
 
   const graph = generateGraphData();
@@ -1072,6 +1165,465 @@ export default function Dashboard() {
     );
   }
 
+  // Selected Customer Detail View
+  if (selectedCustomerEmail) {
+    const custData = getCustomerDetailData(selectedCustomerEmail);
+    const sortedOrders = [...custData.orders].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    
+    let cumulative = 0;
+    const graphPoints = sortedOrders.map((o, idx) => {
+      cumulative += o.totalAmount;
+      return {
+        label: new Date(o.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }),
+        value: cumulative,
+        orderId: o.id
+      };
+    });
+
+    const svgWidth = 600;
+    const svgHeight = 250;
+    const padding = { top: 30, right: 30, bottom: 40, left: 60 };
+    const maxVal = Math.max(...graphPoints.map(p => p.value), 500);
+
+    const getX = (idx) => padding.left + (idx / (graphPoints.length - 1 || 1)) * (svgWidth - padding.left - padding.right);
+    const getY = (val) => svgHeight - padding.bottom - (val / maxVal) * (svgHeight - padding.top - padding.bottom);
+
+    let pathD = '';
+    let areaD = '';
+    if (graphPoints.length > 0) {
+      graphPoints.forEach((pt, idx) => {
+        const x = getX(idx);
+        const y = getY(pt.value);
+        if (idx === 0) {
+          pathD = `M ${x} ${y}`;
+          areaD = `M ${x} ${svgHeight - padding.bottom} L ${x} ${y}`;
+        } else {
+          pathD += ` L ${x} ${y}`;
+          areaD += ` L ${x} ${y}`;
+        }
+      });
+      areaD += ` L ${getX(graphPoints.length - 1)} ${svgHeight - padding.bottom} Z`;
+    }
+
+    let tag = 'New';
+    let tagColor = 'bg-blue-50 text-blue-700 border-blue-200';
+    if (custData.ordersCount > 5) {
+      tag = 'Regular Customer';
+      tagColor = 'bg-purple-50 text-purple-700 border-purple-200';
+    } else if (custData.ordersCount >= 2) {
+      tag = 'Returner';
+      tagColor = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+    }
+
+    const firstOrder = sortedOrders[0];
+    const isRegistered = firstOrder ? !!firstOrder.userId : false;
+
+    return (
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20 min-h-[85vh] animate-fadeIn">
+        <button
+          onClick={() => setSelectedCustomerEmail(null)}
+          className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-gray-500 hover:text-emerald-750 transition-colors mb-8 cursor-pointer"
+        >
+          <ArrowLeft size={16} /> Back to Dashboard
+        </button>
+
+        <div className="bg-white rounded-3xl border border-gray-150 p-6 md:p-8 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8">
+          <div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 tracking-tight">{custData.name}</h2>
+              <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${tagColor}`}>
+                {tag}
+              </span>
+              <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded ${isRegistered ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-500'}`}>
+                {isRegistered ? 'Member Account' : 'Guest Checkout'}
+              </span>
+            </div>
+            <p className="text-xs text-gray-505 font-bold mt-2 flex items-center gap-1.5">
+              <Mail size={14} className="text-gray-400" />
+              <span>{custData.email}</span>
+            </p>
+          </div>
+          <div className="text-left md:text-right">
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Lifetime Value (Spent)</span>
+            <span className="text-2xl font-black text-emerald-600 tracking-tight mt-1 block">₹{custData.totalSpent.toFixed(2)}</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-8">
+            <div className="bg-white rounded-3xl border border-gray-150 p-6 md:p-8 shadow-sm">
+              <div className="mb-6 flex justify-between items-center">
+                <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Cumulative Growth Chart</span>
+                <span className="text-[10px] text-emerald-600 bg-emerald-50 font-bold px-2 py-0.5 rounded">₹ Spending Progress</span>
+              </div>
+              
+              <div className="relative">
+                {graphPoints.length === 0 ? (
+                  <p className="text-center text-gray-400 text-xs py-10">No orders logged.</p>
+                ) : (
+                  <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="w-full h-auto overflow-visible select-none">
+                    <defs>
+                      <linearGradient id="custAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#10b981" stopOpacity="0.2" />
+                        <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+                      </linearGradient>
+                    </defs>
+
+                    {[0, 0.25, 0.5, 0.75, 1].map((ratio, gridIdx) => {
+                      const gridY = padding.top + ratio * (svgHeight - padding.top - padding.bottom);
+                      const gridVal = maxVal * (1 - ratio);
+                      return (
+                        <g key={gridIdx} className="opacity-45">
+                          <line x1={padding.left} y1={gridY} x2={svgWidth - padding.right} y2={gridY} stroke="#e5e7eb" strokeWidth="1" strokeDasharray="4 4" />
+                          <text x={padding.left - 10} y={gridY + 4} textAnchor="end" className="text-[9px] fill-gray-400 font-bold">₹{Math.round(gridVal)}</text>
+                        </g>
+                      );
+                    })}
+
+                    {areaD && <path d={areaD} fill="url(#custAreaGrad)" />}
+                    {pathD && <path d={pathD} fill="none" stroke="#10b981" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />}
+
+                    {graphPoints.map((pt, idx) => {
+                      const x = getX(idx);
+                      const y = getY(pt.value);
+                      return (
+                        <g key={idx} className="cursor-pointer">
+                          <circle cx={x} cy={y} r="5" fill="#ffffff" stroke="#10b981" strokeWidth="2.5" />
+                          <text x={x} y={svgHeight - padding.bottom + 18} textAnchor="middle" className="text-[9px] fill-gray-450 font-bold">{pt.label}</text>
+                        </g>
+                      );
+                    })}
+                  </svg>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-white rounded-3xl border border-gray-150 p-6 md:p-8 shadow-sm">
+              <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-6">Customer Order Registry</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-gray-150">
+                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Order ID</th>
+                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Date Placed</th>
+                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
+                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Items Quantity</th>
+                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Amount Paid</th>
+                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {custData.orders.map((o) => {
+                      const totalQty = o.items.reduce((sum, item) => sum + item.quantity, 0);
+                      return (
+                        <tr key={o.id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="py-3 text-sm font-bold text-gray-800">#{o.id}</td>
+                          <td className="py-3 text-xs font-medium text-gray-550">
+                            {new Date(o.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </td>
+                          <td className="py-3">
+                            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border ${statusStyles[o.status] || 'bg-emerald-50 border-emerald-100 text-emerald-700'}`}>
+                              {o.status}
+                            </span>
+                          </td>
+                          <td className="py-3 text-right text-xs font-bold text-gray-800">{totalQty} units</td>
+                          <td className="py-3 text-right text-xs font-black text-emerald-600">₹{o.totalAmount.toFixed(2)}</td>
+                          <td className="py-3 text-center">
+                            <button
+                              onClick={() => {
+                                setSelectedOrderId(o.id);
+                                setSelectedCustomerEmail(null);
+                              }}
+                              className="text-[9px] font-black uppercase tracking-wider px-3 py-1.5 bg-gray-100 hover:bg-emerald-650 hover:text-white rounded-lg transition-colors cursor-pointer"
+                            >
+                              View Invoice
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+
+          <div className="space-y-8">
+            <div className="bg-white rounded-3xl border border-gray-150 p-6 shadow-sm">
+              <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-6">Flavor Preferences</h3>
+              {custData.topProducts.length === 0 ? (
+                <p className="text-gray-400 text-xs py-4 text-center">No purchases recorded yet.</p>
+              ) : (
+                <div className="space-y-4">
+                  {custData.topProducts.map((p, idx) => {
+                    const maxQty = Math.max(...custData.topProducts.map(p => p.qty), 1);
+                    const widthPercent = (p.qty / maxQty) * 100;
+                    return (
+                      <div key={idx} className="space-y-1.5">
+                        <div className="flex justify-between text-xs font-bold text-gray-800">
+                          <span className="truncate pr-4">{p.name}</span>
+                          <span>{p.qty} units</span>
+                        </div>
+                        <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                          <div className="bg-emerald-500 h-full rounded-full transition-all duration-500" style={{ width: `${widthPercent}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="bg-emerald-50/50 rounded-3xl border border-emerald-100 p-6 space-y-4">
+              <h3 className="text-xs font-black text-emerald-800 uppercase tracking-widest">Cohort Loyalty Metric</h3>
+              <div className="space-y-2 text-sm text-emerald-950 font-bold">
+                <div className="flex justify-between">
+                  <span className="font-normal text-emerald-700">Loyalty Class:</span>
+                  <span>{tag}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-normal text-emerald-700">Orders Frequency:</span>
+                  <span>{custData.ordersCount} purchased</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-normal text-emerald-700">Average Order Size:</span>
+                  <span>₹{(custData.totalSpent / (custData.ordersCount || 1)).toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Selected Product Detail View
+  if (selectedProductAnalyticsId) {
+    const prodData = getProductDetailData(selectedProductAnalyticsId);
+    const sortedProdOrders = [...prodData.orders].sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    const dailyStats = {};
+    sortedProdOrders.forEach(o => {
+      const dateLabel = new Date(o.date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+      dailyStats[dateLabel] = (dailyStats[dateLabel] || 0) + o.quantity;
+    });
+
+    const graphPoints = Object.entries(dailyStats).map(([date, val]) => ({
+      label: date,
+      value: val
+    }));
+
+    const svgWidth = 600;
+    const svgHeight = 250;
+    const padding = { top: 30, right: 30, bottom: 40, left: 60 };
+    const maxVal = Math.max(...graphPoints.map(p => p.value), 10);
+
+    const getX = (idx) => padding.left + (idx / (graphPoints.length - 1 || 1)) * (svgWidth - padding.left - padding.right);
+    const getY = (val) => svgHeight - padding.bottom - (val / maxVal) * (svgHeight - padding.top - padding.bottom);
+
+    let pathD = '';
+    let areaD = '';
+    if (graphPoints.length > 0) {
+      graphPoints.forEach((pt, idx) => {
+        const x = getX(idx);
+        const y = getY(pt.value);
+        if (idx === 0) {
+          pathD = `M ${x} ${y}`;
+          areaD = `M ${x} ${svgHeight - padding.bottom} L ${x} ${y}`;
+        } else {
+          pathD += ` L ${x} ${y}`;
+          areaD += ` L ${x} ${y}`;
+        }
+      });
+      areaD += ` L ${getX(graphPoints.length - 1)} ${svgHeight - padding.bottom} Z`;
+    }
+
+    const prodImage = prodData.product.images && prodData.product.images.length > 0 ? prodData.product.images[0] : '/images/placeholder.jpg';
+
+    return (
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20 min-h-[85vh] animate-fadeIn">
+        <button
+          onClick={() => setSelectedProductAnalyticsId(null)}
+          className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-gray-500 hover:text-emerald-700 transition-colors mb-8 cursor-pointer"
+        >
+          <ArrowLeft size={16} /> Back to Dashboard
+        </button>
+
+        <div className="bg-white rounded-3xl border border-gray-150 p-6 md:p-8 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8">
+          <div className="flex items-center gap-4">
+            <img src={prodImage} alt={prodData.product.name} className="w-16 h-16 rounded-2xl object-cover border border-gray-100 shadow-inner bg-gray-50" />
+            <div>
+              <div className="flex items-center gap-3 flex-wrap">
+                <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 tracking-tight">{prodData.product.name}</h2>
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
+                  {prodData.product.category}
+                </span>
+              </div>
+              <p className="text-xs text-gray-405 font-bold mt-1">Base Price: ₹{prodData.product.price?.toFixed(2)}</p>
+            </div>
+          </div>
+          <div className="text-left md:text-right">
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Total Product Revenue</span>
+            <span className="text-2xl font-black text-emerald-600 tracking-tight mt-1 block">₹{prodData.totalRevenue.toFixed(2)}</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-8">
+            <div className="bg-white rounded-3xl border border-gray-150 p-6 md:p-8 shadow-sm">
+              <div className="mb-6 flex justify-between items-center">
+                <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Units Sold Daily Trend</span>
+                <span className="text-[10px] text-emerald-600 bg-emerald-50 font-bold px-2 py-0.5 rounded">Quantity (Units)</span>
+              </div>
+              
+              <div className="relative">
+                {graphPoints.length === 0 ? (
+                  <p className="text-center text-gray-400 text-xs py-10">No sales recorded yet.</p>
+                ) : (
+                  <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="w-full h-auto overflow-visible select-none">
+                    <defs>
+                      <linearGradient id="prodAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#10b981" stopOpacity="0.2" />
+                        <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+                      </linearGradient>
+                    </defs>
+
+                    {[0, 0.25, 0.5, 0.75, 1].map((ratio, gridIdx) => {
+                      const gridY = padding.top + ratio * (svgHeight - padding.top - padding.bottom);
+                      const gridVal = maxVal * (1 - ratio);
+                      return (
+                        <g key={gridIdx} className="opacity-45">
+                          <line x1={padding.left} y1={gridY} x2={svgWidth - padding.right} y2={gridY} stroke="#e5e7eb" strokeWidth="1" strokeDasharray="4 4" />
+                          <text x={padding.left - 10} y={gridY + 4} textAnchor="end" className="text-[9px] fill-gray-400 font-bold">{Math.round(gridVal)} units</text>
+                        </g>
+                      );
+                    })}
+
+                    {areaD && <path d={areaD} fill="url(#prodAreaGrad)" />}
+                    {pathD && <path d={pathD} fill="none" stroke="#10b981" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />}
+
+                    {graphPoints.map((pt, idx) => {
+                      const x = getX(idx);
+                      const y = getY(pt.value);
+                      return (
+                        <g key={idx} className="cursor-pointer">
+                          <circle cx={x} cy={y} r="5" fill="#ffffff" stroke="#10b981" strokeWidth="2.5" />
+                          <text x={x} y={svgHeight - padding.bottom + 18} textAnchor="middle" className="text-[9px] fill-gray-450 font-bold">{pt.label}</text>
+                        </g>
+                      );
+                    })}
+                  </svg>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-white rounded-3xl border border-gray-150 p-6 md:p-8 shadow-sm">
+              <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-6">Product Order Registry</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-gray-150">
+                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Order ID</th>
+                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Date Mapped</th>
+                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Customer Details</th>
+                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Size (Weight)</th>
+                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Quantity</th>
+                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Transaction Total</th>
+                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Invoice</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {prodData.orders.map((o, idx) => {
+                      return (
+                        <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="py-3 text-sm font-bold text-gray-800">#{o.orderId}</td>
+                          <td className="py-3 text-xs font-medium text-gray-550">
+                            {new Date(o.date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </td>
+                          <td className="py-3 pr-4">
+                            <div className="flex flex-col">
+                              <span className="text-xs font-bold text-gray-855">{o.customerName}</span>
+                              <span className="text-[9px] text-gray-400 font-semibold">{o.customerEmail}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 text-center">
+                            <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
+                              {o.weight}
+                            </span>
+                          </td>
+                          <td className="py-3 text-right text-xs font-bold text-gray-800">{o.quantity} units</td>
+                          <td className="py-3 text-right text-xs font-black text-emerald-600">₹{o.total.toFixed(2)}</td>
+                          <td className="py-3 text-center">
+                            <button
+                              onClick={() => {
+                                setSelectedOrderId(o.orderId);
+                                setSelectedProductAnalyticsId(null);
+                              }}
+                              className="text-[9px] font-black uppercase tracking-wider px-3 py-1.5 bg-gray-100 hover:bg-emerald-600 hover:text-white rounded-lg transition-colors cursor-pointer"
+                            >
+                              View Invoice
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+
+          <div className="space-y-8">
+            <div className="bg-white rounded-3xl border border-gray-150 p-6 shadow-sm">
+              <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-6">Weight Preference Breakdown</h3>
+              {Object.keys(prodData.weightStats).length === 0 ? (
+                <p className="text-gray-400 text-xs py-4 text-center">No purchases recorded yet.</p>
+              ) : (
+                <div className="space-y-4">
+                  {Object.entries(prodData.weightStats).map(([w, qty], idx) => {
+                    const maxQty = Math.max(...Object.values(prodData.weightStats), 1);
+                    const widthPercent = (qty / maxQty) * 100;
+                    return (
+                      <div key={idx} className="space-y-1.5">
+                        <div className="flex justify-between text-xs font-bold text-gray-800">
+                          <span className="bg-emerald-50 px-2 py-0.5 rounded text-[10px] font-black text-emerald-800 uppercase tracking-wider border border-emerald-100">{w}</span>
+                          <span>{qty} units</span>
+                        </div>
+                        <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                          <div className="bg-emerald-500 h-full rounded-full transition-all duration-500" style={{ width: `${widthPercent}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="bg-emerald-50/50 rounded-3xl border border-emerald-100 p-6 space-y-4">
+              <h3 className="text-xs font-black text-emerald-800 uppercase tracking-widest">Inventory Status Metric</h3>
+              <div className="space-y-2 text-sm text-emerald-950 font-bold">
+                <div className="flex justify-between">
+                  <span className="font-normal text-emerald-700">Units Sold:</span>
+                  <span>{prodData.totalUnitsSold} units</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-normal text-emerald-700">Live Inventory:</span>
+                  <span>{prodData.product.stock?.toFixed(2)} kg</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-normal text-emerald-700">Average Order Size:</span>
+                  <span>{(prodData.totalUnitsSold / (prodData.orders.length || 1)).toFixed(1)} units</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (authLoading || loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20 min-h-[70vh]">
@@ -1411,7 +1963,7 @@ export default function Dashboard() {
                       );
                     }
                     return prodAnalytics.map((item) => (
-                      <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
+                      <tr key={item.id} onClick={() => setSelectedProductAnalyticsId(item.id)} className="hover:bg-gray-50/50 transition-colors cursor-pointer">
                         <td className="py-4 pr-4 flex items-center gap-3">
                           <img src={item.image} alt={item.name} className="w-10 h-10 rounded-xl object-cover border border-gray-100 bg-gray-50" />
                           <span className="text-sm font-bold text-gray-800">{item.name}</span>
@@ -1485,7 +2037,7 @@ export default function Dashboard() {
                       );
                     }
                     return custAnalytics.map((cust) => (
-                      <tr key={cust.email} className="hover:bg-gray-50/50 transition-colors">
+                      <tr key={cust.email} onClick={() => setSelectedCustomerEmail(cust.email)} className="hover:bg-gray-50/50 transition-colors cursor-pointer">
                         <td className="py-4 pr-4">
                           <div className="flex items-center gap-3">
                             <div className="w-9 h-9 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-700 font-black text-xs uppercase shadow-inner">
