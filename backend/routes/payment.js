@@ -128,7 +128,7 @@ router.post('/create-checkout-session', async (req, res) => {
       success_url: `${frontendUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${frontendUrl}/cart`,
       metadata: {
-        userId: userId.toString(),
+        userId: userId ? userId.toString() : 'guest',
         address: addressWithIp // This is the JSON string of the address with embedded IP
       }
     });
@@ -175,7 +175,7 @@ router.get('/confirm-order', async (req, res) => {
     const products = await prisma.product.findMany();
     
     // 4. Create the Order in our database
-    const userId = parseInt(session.metadata.userId, 10);
+    const userId = session.metadata.userId === 'guest' ? null : parseInt(session.metadata.userId, 10);
     const address = session.metadata.address;
 
     const orderItemsData = lineItems.data
@@ -487,6 +487,97 @@ router.put('/admin/orders/:id/address', verifyToken, async (req, res) => {
   } catch (error) {
     console.error('Update order address error:', error);
     res.status(500).json({ error: 'Failed to update order address' });
+  }
+});
+
+// ==========================================
+// PUBLIC TRACK ORDER ROUTE
+// ==========================================
+router.get('/track-order', async (req, res) => {
+  try {
+    const { id, email } = req.query;
+
+    if (!id || !email) {
+      return res.status(400).json({ error: 'Order ID and Email Address are required' });
+    }
+
+    const orderId = parseInt(id, 10);
+    if (isNaN(orderId)) {
+      return res.status(400).json({ error: 'Invalid Order ID format' });
+    }
+
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        user: {
+          select: {
+            email: true
+          }
+        },
+        items: {
+          include: {
+            product: true
+          }
+        },
+        messages: {
+          orderBy: {
+            createdAt: 'desc'
+          }
+        }
+      }
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Try to identify if a user is logged in via Authorization header
+    let loggedInUser = null;
+    const authHeader = req.headers['authorization'] || req.headers['Authorization'];
+    if (authHeader) {
+      const token = authHeader.split(' ')[1];
+      if (token && token !== 'null' && token !== 'undefined') {
+        try {
+          const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key-for-learning';
+          const jwt = (await import('jsonwebtoken')).default;
+          const verified = jwt.verify(token, JWT_SECRET);
+          loggedInUser = await prisma.user.findUnique({
+            where: { id: parseInt(verified.id, 10) }
+          });
+        } catch (err) {
+          console.error('Track order token verification error:', err.message);
+        }
+      }
+    }
+
+    let parsedAddress = {};
+    try {
+      parsedAddress = JSON.parse(order.address);
+    } catch (e) {
+      console.error('Error parsing order address for verification:', e);
+    }
+
+    const checkoutEmail = parsedAddress.email ? parsedAddress.email.toLowerCase().trim() : '';
+    const userEmail = order.user?.email ? order.user.email.toLowerCase().trim() : '';
+    const queryEmail = email.toLowerCase().trim();
+
+    if (loggedInUser) {
+      // Logged in: either checkout email or associated registered email is acceptable
+      if (queryEmail !== checkoutEmail && queryEmail !== userEmail) {
+        return res.status(403).json({ error: 'Verification failed: Email does not match this Order' });
+      }
+    } else {
+      // Logged out: strictly match checkout email (with fallback to userEmail for older orders where checkoutEmail is empty)
+      const strictTargetEmail = checkoutEmail || userEmail;
+      if (queryEmail !== strictTargetEmail) {
+        return res.status(403).json({ error: 'Verification failed: Email does not match this Order' });
+      }
+    }
+
+    res.json({ success: true, order });
+  } catch (error) {
+    console.error('Track order lookup error:', error);
+    res.status(500).json({ error: 'Failed to retrieve order tracking info' });
   }
 });
 

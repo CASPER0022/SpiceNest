@@ -115,13 +115,7 @@ export default function Cart() {
   };
 
   const handleCheckout = async () => {
-    // 1. Must be logged in
-    if (!user) {
-      navigate('/login');
-      return;
-    }
-
-    // 2. Validate Address Completion
+    // 1. Validate Address Completion
     const required = ['fullName', 'mobileNumber', 'email', 'pincode', 'houseNo', 'area', 'city', 'state'];
     const isComplete = required.every(field => address[field]?.trim());
 
@@ -133,14 +127,14 @@ export default function Cart() {
        return;
     }
 
-    // 3. Must save address if currently editing
-    if (isEditingAddress) {
+    // 2. Must save address if currently editing and user is logged in
+    if (isEditingAddress && user) {
       const saved = await handleSaveAddress();
       if (!saved) return; 
     }
 
-    // 4. Final validation check
-    if (!user.address && !address.houseNo) {
+    // 3. Final validation check
+    if (!address.houseNo) {
        toast.error('A shipping address is required to proceed.', {
          style: { borderRadius: '10px', background: '#333', color: '#fff' }
        });
@@ -148,7 +142,7 @@ export default function Cart() {
        return;
     }
 
-    // 5. Initiate Stripe Checkout
+    // 4. Initiate Stripe Checkout
     setIsProcessing(true);
     try {
       const res = await fetch(`${API_URL}/api/payment/create-checkout-session`, {
@@ -156,7 +150,7 @@ export default function Cart() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           items: cartItems,
-          userId: user.id,
+          userId: user ? user.id : null,
           address: JSON.stringify(address), // Use the fresh local state!
           discount: appliedCoupon ? appliedCoupon.discount : 0 // Pass the discount amount
         }),
@@ -316,20 +310,24 @@ export default function Cart() {
                   <MapPin size={18} className="mr-2 text-emerald-600" />
                   Shipping Address
                 </h3>
-                {!isEditingAddress && user?.address && (
+                {!isEditingAddress && (
                   <button onClick={() => setIsEditingAddress(true)} className="text-emerald-600 hover:text-emerald-700 text-sm font-bold flex items-center">
                     <Edit2 size={14} className="mr-1" /> Edit
                   </button>
                 )}
               </div>
 
-              {!user ? (
-                <div className="text-sm text-gray-600 bg-white p-3 rounded-lg border border-gray-200">
-                  <p>You must log in to add a shipping address and complete your purchase.</p>
-                  <Link to="/login" className="text-emerald-600 font-bold mt-2 inline-block">Login or Create Account →</Link>
-                </div>
-              ) : isEditingAddress ? (
+              {isEditingAddress ? (
                 <div className="space-y-4">
+                  {!user && (
+                    <div className="mb-4 text-xs text-gray-600 bg-emerald-50/50 border border-emerald-100 p-3.5 rounded-xl">
+                      <p className="font-bold text-emerald-800 mb-1">Checking out as a Guest</p>
+                      <p className="mb-2 leading-relaxed">Save addresses and track orders in real time by logging in.</p>
+                      <Link to="/login?redirect=cart" className="text-emerald-700 font-black hover:underline">
+                        Login or Create Account →
+                      </Link>
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 gap-3">
                     <input
                       type="text"
@@ -399,11 +397,22 @@ export default function Cart() {
                   </div>
                   
                   <button 
-                    onClick={handleSaveAddress}
+                    onClick={user ? handleSaveAddress : () => {
+                      const required = ['fullName', 'mobileNumber', 'email', 'pincode', 'houseNo', 'area', 'city', 'state'];
+                      const missing = required.filter(field => !address[field]?.trim());
+                      
+                      if (missing.length > 0) {
+                        toast.error('Please fill in all required address fields.', {
+                          style: { borderRadius: '10px', background: '#333', color: '#fff' }
+                        });
+                        return;
+                      }
+                      setIsEditingAddress(false);
+                    }}
                     disabled={isSavingAddress}
                     className="w-full bg-emerald-600 text-white font-bold py-3 px-4 rounded-xl text-sm hover:bg-emerald-700 transition-colors flex items-center justify-center disabled:opacity-50 shadow-md"
                   >
-                    {isSavingAddress ? 'Saving...' : <><Check size={16} className="mr-2" /> Save & Deliver Here</>}
+                    {isSavingAddress ? 'Saving...' : <><Check size={16} className="mr-2" /> {user ? 'Save & Deliver Here' : 'Use this Address'}</>}
                   </button>
                 </div>
               ) : (
@@ -453,7 +462,7 @@ export default function Cart() {
             >
               {isProcessing ? 'Connecting...' : (
                 <>
-                  {!user ? 'Login to Checkout' : 'Proceed to Payment'} 
+                  {!user ? 'Checkout as Guest' : 'Proceed to Payment'} 
                   <ArrowRight size={20} className="ml-2" />
                 </>
               )}

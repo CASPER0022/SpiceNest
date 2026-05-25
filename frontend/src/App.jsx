@@ -23,6 +23,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Orders from './pages/Orders';
 import Dashboard from './pages/Dashboard';
+import TrackOrder from './pages/TrackOrder';
 
 // Main App Layout component to handle routing logic like dynamic padding
 function AppLayout() {
@@ -52,6 +53,7 @@ function AppLayout() {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/orders" element={<Orders />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/track-order" element={<TrackOrder />} />
         </Routes>
       </main>
       <Footer />

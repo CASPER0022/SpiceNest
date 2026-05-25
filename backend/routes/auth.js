@@ -36,6 +36,30 @@ router.post('/register', async (req, res) => {
       data: { name, email: normalizedEmail, password: hashedPassword }
     });
 
+    // 4. Automatically claim guest orders
+    try {
+      const guestOrders = await prisma.order.findMany({
+        where: { userId: null }
+      });
+
+      for (const order of guestOrders) {
+        try {
+          const parsedAddr = JSON.parse(order.address);
+          if (parsedAddr && parsedAddr.email && parsedAddr.email.toLowerCase().trim() === normalizedEmail) {
+            await prisma.order.update({
+              where: { id: order.id },
+              data: { userId: newUser.id }
+            });
+            console.log(`Linked guest order #${order.id} to new user ${newUser.id}`);
+          }
+        } catch (addrErr) {
+          // ignore parsing error
+        }
+      }
+    } catch (claimErr) {
+      console.error('Failed to auto-claim guest orders:', claimErr);
+    }
+
     res.status(201).json({ message: 'User registered successfully!' });
   } catch (error) {
     console.error(error);
