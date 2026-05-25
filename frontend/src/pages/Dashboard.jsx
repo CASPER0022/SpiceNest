@@ -22,7 +22,7 @@ export default function Dashboard() {
   const [orders, setOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('analytics'); // 'analytics' | 'orders' | 'products'
+  const [activeTab, setActiveTab] = useState('analytics'); // 'analytics' | 'productAnalytics' | 'customerAnalytics' | 'orders' | 'products'
   const [timeFilter, setTimeFilter] = useState('Last 7 days'); // 'Year' | 'Last month' | 'This month' | 'Last 7 days'
   const [expandedOrders, setExpandedOrders] = useState({});
   const [hoveredPoint, setHoveredPoint] = useState(null); // { x, y, date, value } for graph hover
@@ -556,6 +556,139 @@ export default function Dashboard() {
     };
   };
 
+  const calculateProductAnalytics = () => {
+    const productStats = {};
+
+    products.forEach(p => {
+      productStats[p.id] = {
+        id: p.id,
+        name: p.name,
+        category: p.category,
+        price: p.price,
+        stock: p.stock,
+        image: p.images && p.images.length > 0 ? p.images[0] : '/images/placeholder.jpg',
+        quantitySold: 0,
+        revenue: 0,
+        weights: {},
+        ordersCount: 0
+      };
+    });
+
+    filteredOrders.forEach(order => {
+      order.items.forEach(item => {
+        const prodId = item.productId;
+        if (!prodId) return;
+        
+        if (!productStats[prodId]) {
+          productStats[prodId] = {
+            id: prodId,
+            name: item.productName || 'Deleted Product',
+            category: 'N/A',
+            price: item.price,
+            stock: 0,
+            image: item.productImage || '/images/placeholder.jpg',
+            quantitySold: 0,
+            revenue: 0,
+            weights: {},
+            ordersCount: 0
+          };
+        }
+
+        const stats = productStats[prodId];
+        stats.quantitySold += item.quantity;
+        stats.revenue += item.price * item.quantity;
+        stats.ordersCount += 1;
+
+        if (item.weight) {
+          stats.weights[item.weight] = (stats.weights[item.weight] || 0) + item.quantity;
+        }
+      });
+    });
+
+    return Object.values(productStats).map(stats => {
+      let topWeight = 'N/A';
+      let maxWeightQty = 0;
+      Object.entries(stats.weights).forEach(([w, qty]) => {
+        if (qty > maxWeightQty) {
+          maxWeightQty = qty;
+          topWeight = w;
+        }
+      });
+
+      return {
+        ...stats,
+        topWeight
+      };
+    }).sort((a, b) => b.revenue - a.revenue);
+  };
+
+  const calculateCustomerAnalytics = () => {
+    const customers = {};
+
+    orders.forEach(order => {
+      let email = '';
+      let name = '';
+      
+      try {
+        const address = parseAddress(order.address);
+        email = address.email ? address.email.toLowerCase().trim() : '';
+        name = address.fullName ? address.fullName.trim() : '';
+      } catch (e) {}
+
+      if (!email && order.user) {
+        email = order.user.email ? order.user.email.toLowerCase().trim() : '';
+      }
+      if (!name && order.user) {
+        name = order.user.name ? order.user.name.trim() : '';
+      }
+
+      if (!email) return;
+
+      if (!customers[email]) {
+        customers[email] = {
+          name: name || 'Anonymous Guest',
+          email,
+          ordersCount: 0,
+          totalSpent: 0,
+          lastOrderDate: order.createdAt,
+          isRegistered: !!order.userId
+        };
+      }
+
+      const cust = customers[email];
+      cust.ordersCount += 1;
+      cust.totalSpent += order.totalAmount;
+      if (new Date(order.createdAt) > new Date(cust.lastOrderDate)) {
+        cust.lastOrderDate = order.createdAt;
+      }
+      if (order.userId) {
+        cust.isRegistered = true;
+      }
+      if (name && cust.name === 'Anonymous Guest') {
+        cust.name = name;
+      }
+    });
+
+    return Object.values(customers).map(cust => {
+      let tag = 'New';
+      let tagColor = 'bg-blue-50 text-blue-700 border-blue-200';
+      
+      if (cust.ordersCount > 5) {
+        tag = 'Regular Customer';
+        tagColor = 'bg-purple-50 text-purple-700 border-purple-200';
+      } else if (cust.ordersCount >= 2) {
+        tag = 'Returner';
+        tagColor = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      }
+
+      return {
+        ...cust,
+        tag,
+        tagColor
+      };
+    }).sort((a, b) => b.totalSpent - a.totalSpent);
+  };
+
   const graph = generateGraphData();
 
   const selectedOrder = orders.find(o => o.id === selectedOrderId);
@@ -970,36 +1103,56 @@ export default function Dashboard() {
         </div>
         
         {/* Navigation Tabs */}
-        <div className="flex bg-gray-100 p-1.5 rounded-full w-fit">
+        <div className="flex flex-wrap bg-gray-100 p-1.5 rounded-2xl md:rounded-full w-fit gap-1.5 md:gap-0">
           <button 
             onClick={() => setActiveTab('analytics')}
-            className={`text-xs font-black uppercase tracking-wider px-6 py-2.5 rounded-full transition-all ${
+            className={`text-xs font-black uppercase tracking-wider px-5 py-2.5 rounded-full transition-all ${
               activeTab === 'analytics' 
                 ? 'bg-white text-emerald-700 shadow-md transform scale-105' 
                 : 'text-gray-500 hover:text-gray-800'
             }`}
           >
-            Analytics Sales Dashboard
+            Sales Analytics
+          </button>
+          <button 
+            onClick={() => setActiveTab('productAnalytics')}
+            className={`text-xs font-black uppercase tracking-wider px-5 py-2.5 rounded-full transition-all ${
+              activeTab === 'productAnalytics' 
+                ? 'bg-white text-emerald-700 shadow-md transform scale-105' 
+                : 'text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            Product Sales
+          </button>
+          <button 
+            onClick={() => setActiveTab('customerAnalytics')}
+            className={`text-xs font-black uppercase tracking-wider px-5 py-2.5 rounded-full transition-all ${
+              activeTab === 'customerAnalytics' 
+                ? 'bg-white text-emerald-700 shadow-md transform scale-105' 
+                : 'text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            Customer Analytics
           </button>
           <button 
             onClick={() => setActiveTab('orders')}
-            className={`text-xs font-black uppercase tracking-wider px-6 py-2.5 rounded-full transition-all ${
+            className={`text-xs font-black uppercase tracking-wider px-5 py-2.5 rounded-full transition-all ${
               activeTab === 'orders' 
                 ? 'bg-white text-emerald-700 shadow-md transform scale-105' 
                 : 'text-gray-500 hover:text-gray-800'
             }`}
           >
-            Order Registry Details
+            Order Registry
           </button>
           <button 
             onClick={() => setActiveTab('products')}
-            className={`text-xs font-black uppercase tracking-wider px-6 py-2.5 rounded-full transition-all ${
+            className={`text-xs font-black uppercase tracking-wider px-5 py-2.5 rounded-full transition-all ${
               activeTab === 'products' 
                 ? 'bg-white text-emerald-700 shadow-md transform scale-105' 
                 : 'text-gray-500 hover:text-gray-800'
             }`}
           >
-            Product Management
+            Inventory
           </button>
         </div>
       </div>
@@ -1217,6 +1370,159 @@ export default function Dashboard() {
             </div>
           )}
 
+        </div>
+      ) : activeTab === 'productAnalytics' ? (
+        /* Product Sales Analytics Tab */
+        <div className="space-y-6 animate-fadeIn">
+          <div className="bg-white rounded-3xl border border-gray-150 p-6 md:p-8 shadow-sm">
+            <div className="flex items-center justify-between mb-8 border-b border-gray-50 pb-4">
+              <div>
+                <h3 className="text-lg font-black text-gray-900 tracking-tight">Product-Level Sales Analytics</h3>
+                <p className="text-xs text-gray-400 font-bold mt-1">Detailed performance, revenues, and purchase metrics by spice in current period.</p>
+              </div>
+              <span className="text-xs font-black bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full border border-emerald-100">
+                Sorted by Revenue
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Product Info</th>
+                    <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Category</th>
+                    <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Base Price</th>
+                    <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Quantity Sold</th>
+                    <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Total Revenue</th>
+                    <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Top Weight Preferred</th>
+                    <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Current Stock</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {(() => {
+                    const prodAnalytics = calculateProductAnalytics();
+                    if (prodAnalytics.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan={7} className="py-10 text-center text-gray-400 text-sm font-semibold">
+                            No product sales recorded in the selected period.
+                          </td>
+                        </tr>
+                      );
+                    }
+                    return prodAnalytics.map((item) => (
+                      <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="py-4 pr-4 flex items-center gap-3">
+                          <img src={item.image} alt={item.name} className="w-10 h-10 rounded-xl object-cover border border-gray-100 bg-gray-50" />
+                          <span className="text-sm font-bold text-gray-800">{item.name}</span>
+                        </td>
+                        <td className="py-4 pr-4">
+                          <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full">{item.category}</span>
+                        </td>
+                        <td className="py-4 pr-4 text-right text-xs font-bold text-gray-700">
+                          ₹{item.price.toFixed(2)}
+                        </td>
+                        <td className="py-4 pr-4 text-right text-sm font-black text-gray-800">
+                          {item.quantitySold} units
+                        </td>
+                        <td className="py-4 pr-4 text-right text-sm font-black text-emerald-600">
+                          ₹{item.revenue.toFixed(2)}
+                        </td>
+                        <td className="py-4 pr-4 text-center">
+                          <span className="text-xs font-black text-emerald-700 bg-emerald-50/50 border border-emerald-100 px-2 py-0.5 rounded">
+                            {item.topWeight}
+                          </span>
+                        </td>
+                        <td className="py-4 text-right">
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded border ${item.stock < 1 ? 'bg-red-50 text-red-600 border-red-100' : 'bg-gray-50 text-gray-600 border-gray-150'}`}>
+                            {item.stock.toFixed(2)} kg
+                          </span>
+                        </td>
+                      </tr>
+                    ));
+                  })()}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      ) : activeTab === 'customerAnalytics' ? (
+        /* Customer-Level Analytics Tab */
+        <div className="space-y-6 animate-fadeIn">
+          <div className="bg-white rounded-3xl border border-gray-150 p-6 md:p-8 shadow-sm">
+            <div className="flex items-center justify-between mb-8 border-b border-gray-50 pb-4">
+              <div>
+                <h3 className="text-lg font-black text-gray-900 tracking-tight">Customer Engagement & Loyalty Analytics</h3>
+                <p className="text-xs text-gray-400 font-bold mt-1">Cohort segmentation showing order count, spending loyalty, and automatically mapped tags.</p>
+              </div>
+              <span className="text-xs font-black bg-purple-50 text-purple-700 px-3 py-1.5 rounded-full border border-purple-100">
+                Sorted by Total Spent
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Customer Details</th>
+                    <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Loyalty Status Segment</th>
+                    <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Total Orders</th>
+                    <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Total Purchases Amount</th>
+                    <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Last Active Date</th>
+                    <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Checkout Mode</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {(() => {
+                    const custAnalytics = calculateCustomerAnalytics();
+                    if (custAnalytics.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan={6} className="py-10 text-center text-gray-400 text-sm font-semibold">
+                            No customer purchase records found.
+                          </td>
+                        </tr>
+                      );
+                    }
+                    return custAnalytics.map((cust) => (
+                      <tr key={cust.email} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="py-4 pr-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-700 font-black text-xs uppercase shadow-inner">
+                              {cust.name ? cust.name[0] : 'U'}
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-sm font-bold text-gray-800">{cust.name}</span>
+                              <span className="text-[10px] text-gray-400 font-semibold">{cust.email}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-4 pr-4">
+                          <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${cust.tagColor}`}>
+                            {cust.tag}
+                          </span>
+                        </td>
+                        <td className="py-4 pr-4 text-right text-sm font-black text-gray-800">
+                          {cust.ordersCount} orders
+                        </td>
+                        <td className="py-4 pr-4 text-right text-sm font-black text-emerald-600">
+                          ₹{cust.totalSpent.toFixed(2)}
+                        </td>
+                        <td className="py-4 pr-4 text-center text-xs text-gray-500 font-bold">
+                          {new Date(cust.lastOrderDate).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })}
+                        </td>
+                        <td className="py-4 text-center">
+                          <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded ${cust.isRegistered ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-500'}`}>
+                            {cust.isRegistered ? 'Member Account' : 'Guest Checkout'}
+                          </span>
+                        </td>
+                      </tr>
+                    ));
+                  })()}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       ) : activeTab === 'orders' ? (
         
