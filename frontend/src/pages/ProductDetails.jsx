@@ -26,8 +26,75 @@ export default function ProductDetails() {
   const [selectedWeight, setSelectedWeight] = useState(WEIGHT_OPTIONS[0]);
   const [quantity, setQuantity] = useState(1);
   const [activeImage, setActiveImage] = useState(null);
+  const [isInWishlist, setIsInWishlist] = useState(false);
 
   const [newRating, setNewRating] = useState(5);
+
+  useEffect(() => {
+    if (product) {
+      const saved = localStorage.getItem('wishlist');
+      const list = saved ? JSON.parse(saved) : [];
+      setIsInWishlist(list.some(item => item.id === product.id));
+    }
+  }, [product]);
+
+  const handleToggleWishlist = () => {
+    if (!product) return;
+    const saved = localStorage.getItem('wishlist');
+    let list = saved ? JSON.parse(saved) : [];
+    
+    if (isInWishlist) {
+      list = list.filter(item => item.id !== product.id);
+      localStorage.setItem('wishlist', JSON.stringify(list));
+      setIsInWishlist(false);
+      toast.success('Removed from Wishlist!', { icon: '💔' });
+    } else {
+      list.push(product);
+      localStorage.setItem('wishlist', JSON.stringify(list));
+      setIsInWishlist(true);
+      toast.success('Added to Wishlist! 💖', {
+        style: {
+          borderRadius: '10px',
+          background: '#333',
+          color: '#fff',
+        }
+      });
+    }
+  };
+
+  const handleShare = async () => {
+    if (!product) return;
+    const shareData = {
+      title: product.name,
+      text: `Check out ${product.name} on SpiceNest - direct from Western Ghats farms!`,
+      url: window.location.href
+    };
+
+    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+      try {
+        await navigator.share(shareData);
+        toast.success('Shared successfully!');
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error('Error sharing:', err);
+        }
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        toast.success('Product link copied to clipboard! 📋', {
+          style: {
+            borderRadius: '10px',
+            background: '#333',
+            color: '#fff',
+          }
+        });
+      } catch (err) {
+        console.error('Failed to copy link:', err);
+        toast.error('Could not copy link to clipboard.');
+      }
+    }
+  };
   const [newComment, setNewComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
 
@@ -409,10 +476,17 @@ export default function ProductDetails() {
 
           {/* Meta Actions */}
           <div className="grid grid-cols-2 gap-3 mb-8">
-             <button className="flex items-center justify-center py-3 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors">
-               <Heart size={18} className="mr-2 text-gray-400" /> Add to Wishlist
+             <button 
+               onClick={handleToggleWishlist}
+               className="flex items-center justify-center py-3 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+             >
+               <Heart size={18} className={`mr-2 ${isInWishlist ? 'text-red-500 fill-red-500' : 'text-gray-400'}`} /> 
+               {isInWishlist ? 'Wishlisted' : 'Add to Wishlist'}
              </button>
-             <button className="flex items-center justify-center py-3 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors">
+             <button 
+               onClick={handleShare}
+               className="flex items-center justify-center py-3 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+             >
                <Share2 size={18} className="mr-2 text-gray-400" /> Share
              </button>
           </div>
