@@ -434,9 +434,9 @@ export default function Cart() {
             {/* Total Section */}
             {(() => {
               const discountedSubtotal = Math.max(0, cartTotal - (appliedCoupon ? appliedCoupon.discount : 0));
-              const gstAmount = discountedSubtotal * 0.05;
+              const gstAmount = discountedSubtotal * (5 / 105);
               const shippingCharges = cartTotal < 500 ? 100 : 0;
-              const finalTotal = discountedSubtotal + gstAmount + shippingCharges;
+              const finalTotal = discountedSubtotal + shippingCharges;
 
               return (
                 <div className="space-y-3 mb-6">
@@ -454,8 +454,8 @@ export default function Cart() {
                       <span>-₹{appliedCoupon.discount.toFixed(2)}</span>
                     </div>
                   )}
-                  <div className="flex justify-between text-gray-600 font-medium">
-                    <span>GST (5%)</span>
+                  <div className="flex justify-between text-gray-400 text-xs italic">
+                    <span>Includes GST (5%)</span>
                     <span>₹{gstAmount.toFixed(2)}</span>
                   </div>
                   <div className="border-t pt-4 flex justify-between items-end">
