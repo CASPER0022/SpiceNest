@@ -89,7 +89,7 @@ router.post('/login', async (req, res) => {
     }
 
     // 3. Generate a JWT Token (a digital ID card)
-    const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '1d' });
+    const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '7d' });
 
     // 4. Send token back to frontend
     res.json({ token, user: { id: user.id, name: user.name, email: user.email, address: user.address } });
