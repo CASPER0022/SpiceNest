@@ -79,6 +79,8 @@ model OrderItem {
   quantity     Int
   price     Float
   weight    String
+  initialStock Float?
+  finalStock   Float?
 }
 
 model Farmer {

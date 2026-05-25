@@ -192,13 +192,24 @@ router.get('/confirm-order', async (req, res) => {
         if (!product) {
           throw new Error(`Product not found in database: ${name}`);
         }
+
+        const itemWeightKg = parseWeightToKg(weight);
+        const totalDeductionKg = itemWeightKg * item.quantity;
+        const initialStock = product.stock;
+        const finalStock = initialStock - totalDeductionKg;
+
+        // Update local object to support sequential deduction if same product has multiple line items
+        product.stock = finalStock;
+
         return {
           productId: product.id,
           productName: product.name,
           productImage: product.images && product.images.length > 0 ? product.images[0] : '',
           quantity: item.quantity,
           price: item.amount_total / 100 / item.quantity,
-          weight: weight
+          weight: weight,
+          initialStock: initialStock,
+          finalStock: finalStock
         };
       });
 
