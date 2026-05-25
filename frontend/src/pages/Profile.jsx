@@ -48,7 +48,7 @@ export default function Profile() {
 
   const quickActions = [
     { icon: Package, label: 'My Orders', desc: 'Track & manage orders', color: 'text-blue-600', bg: 'bg-blue-50', path: '/orders' },
-    { icon: Heart, label: 'Wishlist', desc: 'Items you loved', color: 'text-red-600', bg: 'bg-red-50' },
+    { icon: Heart, label: 'Wishlist', desc: 'Items you loved', color: 'text-red-600', bg: 'bg-red-50', path: '/wishlist' },
     { icon: Bell, label: 'Notifications', desc: 'Updates & offers', color: 'text-amber-600', bg: 'bg-amber-50' },
   ];
 

@@ -2,31 +2,15 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingCart, User, Menu, X } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { useWishlist } from '../context/WishlistContext';
 import { useState, useEffect } from 'react';
 
 export default function Navbar() {
   const { cartCount, setIsCartOpen } = useCart();
   const { user, logout } = useAuth();
+  const { wishlistCount } = useWishlist();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [wishlistCount, setWishlistCount] = useState(0);
-
-  useEffect(() => {
-    const updateCount = () => {
-      const saved = localStorage.getItem('wishlist');
-      const list = saved ? JSON.parse(saved) : [];
-      setWishlistCount(list.length);
-    };
-
-    updateCount();
-    window.addEventListener('storage', updateCount);
-    window.addEventListener('wishlist-update', updateCount);
-
-    return () => {
-      window.removeEventListener('storage', updateCount);
-      window.removeEventListener('wishlist-update', updateCount);
-    };
-  }, []);
 
   const isAdmin = user && ['heyitsmealbinjohn@gmail.com', 'bibinjohn2018@gmail.com'].includes(user.email);
 

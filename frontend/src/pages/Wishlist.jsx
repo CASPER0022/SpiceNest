@@ -1,25 +1,20 @@
-import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Heart, Trash2 } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
-import toast from 'react-hot-toast';
+import { useWishlist } from '../context/WishlistContext';
 
 export default function Wishlist() {
-  const [wishlist, setWishlist] = useState([]);
+  const { wishlistItems, clearWishlist, loading } = useWishlist();
 
-  useEffect(() => {
-    const saved = localStorage.getItem('wishlist');
-    setWishlist(saved ? JSON.parse(saved) : []);
-  }, []);
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-600"></div>
+      </div>
+    );
+  }
 
-  const clearWishlist = () => {
-    localStorage.removeItem('wishlist');
-    setWishlist([]);
-    window.dispatchEvent(new Event('wishlist-update'));
-    toast.success('Wishlist cleared!');
-  };
-
-  if (wishlist.length === 0) {
+  if (wishlistItems.length === 0) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-20 text-center animate-fadeIn">
         <div className="w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-6 border border-rose-100/50 shadow-inner">
@@ -50,7 +45,7 @@ export default function Wishlist() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {wishlist.map((product) => (
+        {wishlistItems.map((product) => (
           <ProductCard key={product.id} product={product} />
         ))}
       </div>

@@ -18,6 +18,7 @@ import authRoutes from './routes/auth.js';
 import paymentRoutes from './routes/payment.js';
 import cartRoutes from './routes/cart.js';
 import reviewsRoutes from './routes/reviews.js';
+import wishlistRoutes from './routes/wishlist.js';
 import { verifyToken } from './routes/auth.js';
 
 // ==========================================
@@ -41,6 +42,9 @@ app.use('/api/cart', cartRoutes);
 
 // Review Routes
 app.use('/api/reviews', reviewsRoutes);
+
+// Wishlist Routes
+app.use('/api/wishlist', wishlistRoutes);
 
 // Get all spices from the Neon Database!
 app.get('/api/products', async (req, res) => {

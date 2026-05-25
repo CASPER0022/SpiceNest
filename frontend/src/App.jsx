@@ -3,6 +3,7 @@ import { Toaster } from 'react-hot-toast';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
 import { ViewedProvider } from './context/ViewedContext';
+import { WishlistProvider } from './context/WishlistContext';
 import Navbar from './components/Navbar';
 import MobileBottomNav from './components/MobileBottomNav';
 import CartDrawer from './components/CartDrawer';
@@ -92,12 +93,14 @@ function App() {
   return (
     <AuthProvider>
       <CartProvider>
-        <ViewedProvider>
-          <Router>
-            <ScrollToTop />
-            <AppLayout />
-          </Router>
-        </ViewedProvider>
+        <WishlistProvider>
+          <ViewedProvider>
+            <Router>
+              <ScrollToTop />
+              <AppLayout />
+            </Router>
+          </ViewedProvider>
+        </WishlistProvider>
       </CartProvider>
     </AuthProvider>
   );

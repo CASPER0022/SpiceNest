@@ -4,6 +4,7 @@ import { ChevronLeft, ShoppingCart, Star, Heart, Share2, Truck, ShieldCheck, Lea
 import { useCart } from '../context/CartContext';
 import { useViewed } from '../context/ViewedContext';
 import { useAuth } from '../context/AuthContext';
+import { useWishlist } from '../context/WishlistContext';
 import toast from 'react-hot-toast';
 
 const WEIGHT_OPTIONS = [
@@ -26,43 +27,16 @@ export default function ProductDetails() {
   const [selectedWeight, setSelectedWeight] = useState(WEIGHT_OPTIONS[0]);
   const [quantity, setQuantity] = useState(1);
   const [activeImage, setActiveImage] = useState(null);
-  const [isInWishlist, setIsInWishlist] = useState(false);
-
-  const [newRating, setNewRating] = useState(5);
-
-  useEffect(() => {
-    if (product) {
-      const saved = localStorage.getItem('wishlist');
-      const list = saved ? JSON.parse(saved) : [];
-      setIsInWishlist(list.some(item => item.id === product.id));
-    }
-  }, [product]);
+  const { toggleWishlist, isInWishlist } = useWishlist();
+  const productWishlisted = product ? isInWishlist(product.id) : false;
 
   const handleToggleWishlist = () => {
-    if (!product) return;
-    const saved = localStorage.getItem('wishlist');
-    let list = saved ? JSON.parse(saved) : [];
-    
-    if (isInWishlist) {
-      list = list.filter(item => item.id !== product.id);
-      localStorage.setItem('wishlist', JSON.stringify(list));
-      setIsInWishlist(false);
-      window.dispatchEvent(new Event('wishlist-update'));
-      toast.success('Removed from Wishlist!', { icon: '💔' });
-    } else {
-      list.push(product);
-      localStorage.setItem('wishlist', JSON.stringify(list));
-      setIsInWishlist(true);
-      window.dispatchEvent(new Event('wishlist-update'));
-      toast.success('Added to Wishlist! 💖', {
-        style: {
-          borderRadius: '10px',
-          background: '#333',
-          color: '#fff',
-        }
-      });
+    if (product) {
+      toggleWishlist(product);
     }
   };
+
+  const [newRating, setNewRating] = useState(5);
 
   const handleShare = async () => {
     if (!product) return;
@@ -478,13 +452,13 @@ export default function ProductDetails() {
 
           {/* Meta Actions */}
           <div className="grid grid-cols-2 gap-3 mb-8">
-             <button 
-               onClick={handleToggleWishlist}
-               className="flex items-center justify-center py-3 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
-             >
-               <Heart size={18} className={`mr-2 ${isInWishlist ? 'text-red-500 fill-red-500' : 'text-gray-400'}`} /> 
-               {isInWishlist ? 'Wishlisted' : 'Add to Wishlist'}
-             </button>
+              <button 
+                onClick={handleToggleWishlist}
+                className="flex items-center justify-center py-3 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+              >
+                <Heart size={18} className={`mr-2 ${productWishlisted ? 'text-red-500 fill-red-500' : 'text-gray-400'}`} /> 
+                {productWishlisted ? 'Wishlisted' : 'Add to Wishlist'}
+              </button>
              <button 
                onClick={handleShare}
                className="flex items-center justify-center py-3 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
