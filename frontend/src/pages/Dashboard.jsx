@@ -1300,16 +1300,16 @@ export default function Dashboard() {
 
             <div className="bg-white rounded-3xl border border-gray-150 p-6 md:p-8 shadow-sm">
               <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-6">Customer Order Registry</h3>
-              <div className="overflow-x-auto">
+              <div className="overflow-auto max-h-[380px] pr-1">
                 <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-gray-150">
-                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Order ID</th>
-                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Date Placed</th>
-                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
-                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Items Quantity</th>
-                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Amount Paid</th>
-                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Action</th>
+                  <thead className="sticky top-0 bg-white z-10 shadow-[0_1px_0_0_rgba(229,231,235,0.2)]">
+                    <tr className="border-b border-gray-150 bg-white">
+                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest bg-white">Order ID</th>
+                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest bg-white">Date Placed</th>
+                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest bg-white">Status</th>
+                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right bg-white">Items Quantity</th>
+                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right bg-white">Amount Paid</th>
+                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center bg-white">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
@@ -1520,17 +1520,17 @@ export default function Dashboard() {
 
             <div className="bg-white rounded-3xl border border-gray-150 p-6 md:p-8 shadow-sm">
               <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-6">Product Order Registry</h3>
-              <div className="overflow-x-auto">
+              <div className="overflow-auto max-h-[380px] pr-1">
                 <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-gray-150">
-                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Order ID</th>
-                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Date Mapped</th>
-                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Customer Details</th>
-                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Size (Weight)</th>
-                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Quantity</th>
-                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Transaction Total</th>
-                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Invoice</th>
+                  <thead className="sticky top-0 bg-white z-10 shadow-[0_1px_0_0_rgba(229,231,235,0.2)]">
+                    <tr className="border-b border-gray-150 bg-white">
+                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest bg-white">Order ID</th>
+                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest bg-white">Date Mapped</th>
+                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest bg-white">Customer Details</th>
+                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center bg-white">Size (Weight)</th>
+                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right bg-white">Quantity</th>
+                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right bg-white">Transaction Total</th>
+                      <th className="py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center bg-white">Invoice</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
