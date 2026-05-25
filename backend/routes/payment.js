@@ -119,6 +119,24 @@ router.post('/create-checkout-session', async (req, res) => {
       });
     }
 
+    // 3. Add GST Tax (5%) calculated on the discounted subtotal
+    const discountAmount = discount ? parseFloat(discount) : 0;
+    const subtotalAfterCoupon = Math.max(0, subtotal - discountAmount);
+    const gstTaxAmount = subtotalAfterCoupon * 0.05;
+    if (gstTaxAmount > 0) {
+      lineItems.push({
+        price_data: {
+          currency: 'inr',
+          product_data: {
+            name: 'GST (5%)',
+            description: 'Goods and Services Tax on Spices',
+          },
+          unit_amount: Math.round(gstTaxAmount * 100), 
+        },
+        quantity: 1,
+      });
+    }
+
     // 3. Create a secure Checkout Session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -179,7 +197,7 @@ router.get('/confirm-order', async (req, res) => {
     const address = session.metadata.address;
 
     const orderItemsData = lineItems.data
-      .filter(item => item.description !== 'Shipping Charges')
+      .filter(item => item.description !== 'Shipping Charges' && item.description !== 'GST (5%)')
       .map(item => {
         // Parse description e.g. "Black Pepper (250g)"
         const match = item.description.match(/^(.+?)\s*(?:\(([^)]+)\))?$/);

@@ -432,28 +432,41 @@ export default function Cart() {
             </div>
 
             {/* Total Section */}
-            <div className="space-y-3 mb-6">
-              <div className="flex justify-between text-gray-600 font-medium">
-                <span>Subtotal</span>
-                <span>₹{cartTotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-gray-600 font-medium">
-                <span>Shipping</span>
-                <span>{cartTotal < 500 ? '₹100.00' : 'Free'}</span>
-              </div>
-              {appliedCoupon && (
-                <div className="flex justify-between text-emerald-600 font-black">
-                  <span>Discount ({appliedCoupon.code})</span>
-                  <span>-₹{appliedCoupon.discount.toFixed(2)}</span>
+            {(() => {
+              const discountedSubtotal = Math.max(0, cartTotal - (appliedCoupon ? appliedCoupon.discount : 0));
+              const gstAmount = discountedSubtotal * 0.05;
+              const shippingCharges = cartTotal < 500 ? 100 : 0;
+              const finalTotal = discountedSubtotal + gstAmount + shippingCharges;
+
+              return (
+                <div className="space-y-3 mb-6">
+                  <div className="flex justify-between text-gray-600 font-medium">
+                    <span>Subtotal</span>
+                    <span>₹{cartTotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-gray-600 font-medium">
+                    <span>Shipping</span>
+                    <span>{shippingCharges > 0 ? `₹${shippingCharges.toFixed(2)}` : 'Free'}</span>
+                  </div>
+                  {appliedCoupon && (
+                    <div className="flex justify-between text-emerald-600 font-black">
+                      <span>Discount ({appliedCoupon.code})</span>
+                      <span>-₹{appliedCoupon.discount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-gray-600 font-medium">
+                    <span>GST (5%)</span>
+                    <span>₹{gstAmount.toFixed(2)}</span>
+                  </div>
+                  <div className="border-t pt-4 flex justify-between items-end">
+                    <span className="text-lg font-bold text-gray-900">Total</span>
+                    <span className="text-3xl font-black text-emerald-600">
+                      ₹{finalTotal.toFixed(2)}
+                    </span>
+                  </div>
                 </div>
-              )}
-              <div className="border-t pt-4 flex justify-between items-end">
-                <span className="text-lg font-bold text-gray-900">Total</span>
-                <span className="text-3xl font-black text-emerald-600">
-                  ₹{(Math.max(0, cartTotal + (cartTotal < 500 ? 100 : 0) - (appliedCoupon ? appliedCoupon.discount : 0))).toFixed(2)}
-                </span>
-              </div>
-            </div>
+              );
+            })()}
 
             <button 
               onClick={handleCheckout} 
