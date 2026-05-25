@@ -206,6 +206,11 @@ export default function Dashboard() {
     setFilteredOrders(filtered);
   }, [orders, timeFilter, customStartDate, customEndDate]);
 
+  // Scroll to top automatically when navigating to any detail page or returning back
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [selectedOrderId, selectedCustomerEmail, selectedProductAnalyticsId]);
+
   const filteredRegistryOrders = orders.filter(order => {
     if (!searchQuery.trim()) return true;
     
