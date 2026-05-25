@@ -899,20 +899,23 @@ export default function Dashboard() {
                           <span className="text-xs text-gray-400 font-bold mt-1">Qty: {item.quantity} × ₹{item.price.toFixed(2)}</span>
                           
                           {/* Stock Log Details */}
-                          {item.initialStock !== undefined && item.initialStock !== null ? (
-                            <div className="text-[10px] text-gray-500 font-bold mt-2 bg-gray-50 border border-gray-150 p-2 rounded-xl flex flex-wrap items-center gap-x-2 gap-y-1 w-fit">
-                              <span className="text-emerald-700 font-black uppercase tracking-wider text-[8px] bg-emerald-50 px-1 py-0.5 rounded border border-emerald-100">Stock Log</span>
-                              <span>Deduction: <strong className="text-gray-700">{(parseWeightToKg(item.weight) * item.quantity).toFixed(2)} kg</strong></span>
-                              <span className="text-gray-300">•</span>
-                              <span>Initial: <strong className="text-gray-700">{item.initialStock.toFixed(2)} kg</strong></span>
-                              <span className="text-gray-300">•</span>
-                              <span>Final: <strong className="text-gray-700">{item.finalStock.toFixed(2)} kg</strong></span>
-                            </div>
-                          ) : (
-                            <div className="text-[9px] text-gray-400 font-bold mt-1.5 italic">
-                              Stock Log: Decremented {(parseWeightToKg(item.weight) * item.quantity).toFixed(2)} kg (Initial/Final states not archived)
-                            </div>
-                          )}
+                          <div className="text-[10px] text-gray-500 font-bold mt-2 bg-gray-50 border border-gray-150 p-2 rounded-xl flex flex-wrap items-center gap-x-2 gap-y-1 w-fit">
+                            <span className="text-emerald-700 font-black uppercase tracking-wider text-[8px] bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 shadow-sm">Stock Log</span>
+                            <span>Reduced: <strong className="text-gray-800">{(parseWeightToKg(item.weight) * item.quantity).toFixed(2)} kg</strong></span>
+                            {item.initialStock !== undefined && item.initialStock !== null ? (
+                              <>
+                                <span className="text-gray-300">•</span>
+                                <span>Initial: <strong className="text-gray-800">{item.initialStock.toFixed(2)} kg</strong></span>
+                                <span className="text-gray-300">•</span>
+                                <span>Final: <strong className="text-gray-800">{item.finalStock.toFixed(2)} kg</strong></span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-gray-300">•</span>
+                                <span className="text-gray-400 font-medium italic">Initial/Final states not archived</span>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
                       <span className="text-sm font-black text-gray-800">₹{(item.price * item.quantity).toFixed(2)}</span>
