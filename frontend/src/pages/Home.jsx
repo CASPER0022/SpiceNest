@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { ArrowRight, CheckCircle2 } from 'lucide-react';
+import ProductCard from '../components/ProductCard';
 
 const IMAGES = [
   '/images/homepage/homepage-bg1.jpg',
@@ -21,6 +22,26 @@ const FEATURES = [
 export default function Home() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [scrollY, setScrollY] = useState(0);
+  const [featuredProducts, setFeaturedProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+  useEffect(() => {
+    fetch(`${API_URL}/api/products`)
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to fetch products');
+        return res.json();
+      })
+      .then((data) => {
+        setFeaturedProducts(data.slice(0, 4));
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error('Error fetching featured products:', err);
+        setLoading(false);
+      });
+  }, []);
 
   // Handle the automatic image slider with dynamic reset on slide change
   useEffect(() => {
@@ -162,6 +183,44 @@ export default function Home() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Handpicked for You Section */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="flex justify-between items-end mb-10">
+          <div>
+            <p className="text-xs font-black text-emerald-600 uppercase tracking-widest mb-1.5">Handpicked for You</p>
+            <h2 className="text-3xl font-black text-gray-900 uppercase tracking-tight">Featured Spices</h2>
+          </div>
+          <Link 
+            to="/shop" 
+            className="text-xs font-black text-emerald-600 hover:text-emerald-700 uppercase tracking-widest flex items-center px-5 py-2.5 bg-emerald-50 rounded-full transition-all hover:scale-105 active:scale-95 shadow-sm cursor-pointer"
+          >
+            View All <ArrowRight size={14} className="ml-2" />
+          </Link>
+        </div>
+
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-pulse">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="bg-white rounded-xl h-80 shadow-sm border border-gray-100 p-5 flex flex-col justify-between">
+                <div className="bg-gray-200 h-48 rounded-xl mb-4 w-full"></div>
+                <div className="bg-gray-200 h-5 rounded-md mb-2 w-3/4"></div>
+                <div className="bg-gray-200 h-4 rounded-md w-1/2"></div>
+              </div>
+            ))}
+          </div>
+        ) : featuredProducts.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {featuredProducts.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-10 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+            <p className="text-gray-400 text-sm font-semibold">No featured spices available right now.</p>
+          </div>
+        )}
       </div>
 
       {/* Shopping Cards Section (Ather Style - Compact) */}
