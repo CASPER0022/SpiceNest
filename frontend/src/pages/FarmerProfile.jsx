@@ -123,7 +123,7 @@ export default function FarmerProfile() {
       {/* Farmer Header */}
       <div className="bg-white rounded-3xl shadow-xl overflow-hidden mb-12 border border-gray-100">
         <div className="h-48 md:h-64 bg-emerald-700 relative">
-          <img src={farmer.id === 1 ? "/images/farmers/raju/farm1.jpg" : "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200&q=80"} alt="Farm Background" className="w-full h-full object-cover" />
+          <img src={farmer.id === 1 ? "/images/farmers/raju/farm1.jpg" : farmer.id === 2 ? "/images/farmers/John/farm1.jpg" : "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200&q=80"} alt="Farm Background" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-black/40"></div>
         </div>
         <div className="px-6 sm:px-10 pb-10 relative">
@@ -208,7 +208,7 @@ export default function FarmerProfile() {
       </div>
 
       {/* Harvest & Farm Gallery */}
-      {farmer.id === 1 && (
+      {(farmer.id === 1 || farmer.id === 2) && (
         <div className="mt-16 bg-white rounded-3xl p-8 md:p-10 shadow-xl border border-gray-100 relative overflow-hidden">
           {/* Subtle background glow */}
           <div className="absolute top-0 right-0 w-80 h-80 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
@@ -224,15 +224,15 @@ export default function FarmerProfile() {
               Harvest & Farm Gallery
             </h2>
             <p className="text-gray-500 font-semibold mb-8 text-sm max-w-2xl leading-relaxed">
-              Take a virtual tour of Raju John's lush natural farming estates in Idukki, Kerala, where our premium spices are grown using 100% organic and sustainable traditions.
+              Take a virtual tour of {farmer.name}'s lush natural farming estates in Idukki, Kerala, where our premium spices are grown using 100% organic and sustainable traditions.
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* Farm Image 1 */}
               <div className="group relative rounded-2xl overflow-hidden shadow-md border border-gray-100 aspect-[4/3] bg-gray-50">
                 <img 
-                  src="/images/farmers/raju/farm1.jpg" 
-                  alt="Raju John's Spices Cultivation" 
+                  src={farmer.id === 1 ? "/images/farmers/raju/farm1.jpg" : "/images/farmers/John/farm1.jpg"} 
+                  alt={`${farmer.name}'s Spices Cultivation`} 
                   className="w-full h-full object-cover transition-transform duration-[1000ms] group-hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-90 transition-opacity" />
@@ -250,7 +250,7 @@ export default function FarmerProfile() {
               {/* Farm Image 2 */}
               <div className="group relative rounded-2xl overflow-hidden shadow-md border border-gray-100 aspect-[4/3] bg-gray-50">
                 <img 
-                  src="/images/farmers/raju/farm2.jpg" 
+                  src={farmer.id === 1 ? "/images/farmers/raju/farm2.jpg" : "/images/farmers/John/farm2.jpg"} 
                   alt="Harvesting Spices" 
                   className="w-full h-full object-cover transition-transform duration-[1000ms] group-hover:scale-105"
                 />

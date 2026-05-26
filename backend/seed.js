@@ -30,6 +30,25 @@ async function main() {
 
   console.log(`Synced Farmer: ${raju.name}`);
 
+  // Create or Update Farmer John
+  const john = await prisma.farmer.upsert({
+    where: { id: 2 }, 
+    update: {
+      name: 'John',
+      rating: 4.8,
+      about: 'A dedicated organic farmer from Idukki, Kerala, specializing in cultivating the highest grade of aromatic cloves. John focuses on chemical-free sun-drying to retain essential oils.',
+      image: '/images/farmers/John/john.jpeg',
+    },
+    create: {
+      name: 'John',
+      rating: 4.8,
+      about: 'A dedicated organic farmer from Idukki, Kerala, specializing in cultivating the highest grade of aromatic cloves. John focuses on chemical-free sun-drying to retain essential oils.',
+      image: '/images/farmers/John/john.jpeg',
+    }
+  });
+
+  console.log(`Synced Farmer: ${john.name}`);
+
   // 2. Clear existing reviews, orders, and unneeded products to prevent foreign key errors
   await prisma.review.deleteMany({});
   await prisma.orderItem.deleteMany({});
@@ -40,7 +59,7 @@ async function main() {
   await prisma.product.deleteMany({
     where: {
       name: {
-        notIn: ['Black Pepper', 'Cardamom', 'Coffee', 'Nutmeg', 'Nutmeg Flower']
+        notIn: ['Black Pepper', 'Cardamom', 'Coffee', 'Nutmeg', 'Nutmeg Flower', 'Cloves']
       }
     }
   });
@@ -89,6 +108,15 @@ async function main() {
       images: ['/images/nutmegflower/nutmegflower.jpg', '/images/nutmegflower/nutmegflower2.jpg'], 
       description: 'Also known as Mace (Javitri), the nutmeg flower is the beautiful, lacy crimson outer webbing that wraps around the nutmeg shell. Hand-peeled carefully to keep the delicate blades intact and sun-dried until it turns a warm golden-orange, our premium nutmeg flower offers a highly refined, sweeter, and more delicate warmth than nutmeg itself. Highly prized in biryanis, slow-cooked curries, stews, and fine baking.', 
       farmerId: raju.id,
+      stock: 10.0
+    },
+    { 
+      name: 'Cloves', 
+      price: 290.00, 
+      category: 'Whole Spices', 
+      images: ['/images/cloves/cloves1.jpg', '/images/cloves/cloves2.jpg'], 
+      description: "Directly harvested from John's spice estate in Kerala, our premium cloves are rich in essential oils and loaded with aromatic warmth. Traditionally hand-harvested and dried in natural sunlight, each clove offers an intensely sweet and spicy flavor perfect for baking, slow-roasted meats, and traditional masalas.", 
+      farmerId: john.id,
       stock: 10.0
     }
   ];
