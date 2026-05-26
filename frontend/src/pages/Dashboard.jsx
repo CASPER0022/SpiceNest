@@ -292,13 +292,14 @@ export default function Dashboard() {
       state: parsed.state || '',
       pincode: parsed.pincode || '',
       mobileNumber: parsed.mobileNumber || '',
+      email: parsed.email || '',
       clientIp: parsed.clientIp || ''
     });
     setIsEditingAddress(true);
   };
 
   const handleAddressSave = async (orderId) => {
-    const requiredFields = ['fullName', 'houseNo', 'area', 'city', 'state', 'pincode', 'mobileNumber'];
+    const requiredFields = ['fullName', 'houseNo', 'area', 'city', 'state', 'pincode', 'mobileNumber', 'email'];
     for (const field of requiredFields) {
       if (!editAddressForm[field] || !editAddressForm[field].trim()) {
         toast.error(`Please fill out the ${field} field.`);
@@ -975,6 +976,17 @@ export default function Dashboard() {
                         placeholder="Contact Phone"
                       />
                     </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Recipient Email (for notifications)</label>
+                    <input
+                      type="email"
+                      value={editAddressForm.email || ''}
+                      onChange={(e) => setEditAddressForm(prev => ({ ...prev, email: e.target.value }))}
+                      className="w-full text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all shadow-inner"
+                      placeholder="Recipient Email"
+                    />
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

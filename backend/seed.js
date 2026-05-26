@@ -34,6 +34,9 @@ async function main() {
   await prisma.review.deleteMany({});
   await prisma.orderItem.deleteMany({});
   await prisma.order.deleteMany({});
+
+  // Restart the order ID auto-increment sequence at 10000
+  await prisma.$executeRawUnsafe('ALTER SEQUENCE "Order_id_seq" RESTART WITH 10000;');
   await prisma.product.deleteMany({
     where: {
       name: {
