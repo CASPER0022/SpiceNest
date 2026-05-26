@@ -177,7 +177,7 @@ router.get('/confirm-order', async (req, res) => {
     const products = await prisma.product.findMany();
     
     // 4. Create the Order in our database
-    const userId = session.metadata.userId === 'guest' ? null : parseInt(session.metadata.userId, 10);
+    const userId = session.metadata.userId === 'guest' ? null : session.metadata.userId;
     const address = session.metadata.address;
 
     const orderItemsData = lineItems.data
@@ -267,7 +267,7 @@ router.get('/confirm-order', async (req, res) => {
 // ==========================================
 router.get('/my-orders', verifyToken, async (req, res) => {
   try {
-    const userId = parseInt(req.user.id, 10);
+    const userId = req.user.id;
     
     // Fetch all orders for this user, ordered by creation date (newest first)
     const orders = await prisma.order.findMany({
@@ -295,7 +295,7 @@ router.get('/my-orders', verifyToken, async (req, res) => {
 router.get('/admin/dashboard', verifyToken, async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
-      where: { id: parseInt(req.user.id, 10) }
+      where: { id: req.user.id }
     });
 
     const adminEmails = ['heyitsmealbinjohn@gmail.com', 'bibinjohn2018@gmail.com'];
@@ -339,7 +339,7 @@ router.get('/admin/dashboard', verifyToken, async (req, res) => {
 router.post('/admin/orders/:id/send-message', verifyToken, async (req, res) => {
   try {
     const adminUser = await prisma.user.findUnique({
-      where: { id: parseInt(req.user.id, 10) }
+      where: { id: req.user.id }
     });
 
     const adminEmails = ['heyitsmealbinjohn@gmail.com', 'bibinjohn2018@gmail.com'];
@@ -422,7 +422,7 @@ router.post('/admin/orders/:id/send-message', verifyToken, async (req, res) => {
 router.put('/admin/orders/:id/status', verifyToken, async (req, res) => {
   try {
     const adminUser = await prisma.user.findUnique({
-      where: { id: parseInt(req.user.id, 10) }
+      where: { id: req.user.id }
     });
 
     const adminEmails = ['heyitsmealbinjohn@gmail.com', 'bibinjohn2018@gmail.com'];
@@ -456,7 +456,7 @@ router.put('/admin/orders/:id/status', verifyToken, async (req, res) => {
 router.put('/admin/orders/:id/address', verifyToken, async (req, res) => {
   try {
     const adminUser = await prisma.user.findUnique({
-      where: { id: parseInt(req.user.id, 10) }
+      where: { id: req.user.id }
     });
 
     const adminEmails = ['heyitsmealbinjohn@gmail.com', 'bibinjohn2018@gmail.com'];

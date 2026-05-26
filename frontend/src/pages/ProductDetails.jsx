@@ -8,10 +8,10 @@ import { useWishlist } from '../context/WishlistContext';
 import toast from 'react-hot-toast';
 
 const WEIGHT_OPTIONS = [
-  { label: '100g', multiplier: 1.0, kg: 0.1 },
-  { label: '250g', multiplier: 2.5, kg: 0.25 },
-  { label: '500g', multiplier: 5.0, kg: 0.5 },
-  { label: '1kg', multiplier: 10.0, kg: 1.0 },
+  { label: '100g', multiplier: 1.0, kg: 0.1, discountPercent: 0 },
+  { label: '250g', multiplier: 2.5, kg: 0.25, discountPercent: 5 },
+  { label: '500g', multiplier: 5.0, kg: 0.5, discountPercent: 10 },
+  { label: '1kg', multiplier: 10.0, kg: 1.0, discountPercent: 15 },
 ];
 
 export default function ProductDetails() {
@@ -132,10 +132,15 @@ export default function ProductDetails() {
     }
   }, [selectedWeight, product]);
 
-  const currentPrice = useMemo(() => {
+  const originalPrice = useMemo(() => {
     if (!product) return 0;
     return product.price * selectedWeight.multiplier;
   }, [product, selectedWeight]);
+
+  const currentPrice = useMemo(() => {
+    if (!product) return 0;
+    return originalPrice * (1 - selectedWeight.discountPercent / 100);
+  }, [originalPrice, selectedWeight]);
 
   const handleAddToCart = () => {
     // Add multiple times based on quantity, or adjust addToCart to accept quantity.
@@ -289,7 +294,7 @@ export default function ProductDetails() {
               product.stock >= 0.1 ? (
                 <span className="inline-flex items-center px-3 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-extrabold rounded-full border border-emerald-100 uppercase tracking-wider">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>
-                  {product.stock.toFixed(2)} kg in stock
+                  In Stock
                 </span>
               ) : (
                 <span className="inline-flex items-center px-3 py-1 bg-rose-50 text-rose-700 text-[10px] font-extrabold rounded-full border border-rose-100 uppercase tracking-wider">
@@ -332,13 +337,13 @@ export default function ProductDetails() {
 
           <div className="flex items-end space-x-4 mb-6">
             <span className="text-4xl font-black text-gray-900">₹{Math.round(currentPrice)}</span>
-            <span className="text-lg text-gray-400 line-through font-medium pb-1">₹{Math.round(currentPrice * 1.1)}</span>
-            <span className="px-2 py-1 bg-red-500 text-white text-xs font-bold rounded mb-1.5">10% OFF</span>
+            {selectedWeight.discountPercent > 0 && (
+              <>
+                <span className="text-lg text-gray-400 line-through font-medium pb-1">₹{Math.round(originalPrice)}</span>
+                <span className="px-2 py-1 bg-red-500 text-white text-xs font-bold rounded mb-1.5">{selectedWeight.discountPercent}% OFF</span>
+              </>
+            )}
           </div>
-
-          <p className="text-gray-600 mb-8 leading-relaxed">
-            {product.description}
-          </p>
 
           {/* Sourced By */}
           {product.farmer && (
@@ -381,7 +386,7 @@ export default function ProductDetails() {
                     }`}
                   >
                     <span className="font-bold text-sm">{option.label}</span>
-                    <span className="text-[10px] opacity-80">₹{Math.round(product.price * option.multiplier)}</span>
+                    <span className="text-[10px] opacity-80">₹{Math.round(product.price * option.multiplier * (1 - option.discountPercent / 100))}</span>
                   </button>
                 );
               })}
@@ -466,6 +471,10 @@ export default function ProductDetails() {
                <Share2 size={18} className="mr-2 text-gray-400" /> Share
              </button>
           </div>
+
+          <p className="text-gray-600 mb-8 leading-relaxed">
+            {product.description}
+          </p>
 
           {/* Trust Badges */}
           <div className="space-y-2 mb-10">

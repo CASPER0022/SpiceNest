@@ -12,7 +12,7 @@ const router = express.Router();
 router.post('/', verifyToken, async (req, res) => {
   try {
     const { rating, comment, productId, farmerId } = req.body;
-    const userId = parseInt(req.user.id, 10);
+    const userId = req.user.id;
 
     // 1. Validation
     if (!rating || rating < 1 || rating > 5) {

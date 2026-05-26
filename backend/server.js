@@ -125,7 +125,7 @@ app.put('/api/products/:id', verifyToken, async (req, res) => {
     const { price, stock, isArchived, name, description, category } = req.body;
 
     const user = await prisma.user.findUnique({
-      where: { id: parseInt(req.user.id, 10) }
+      where: { id: req.user.id }
     });
 
     const adminEmails = ['heyitsmealbinjohn@gmail.com', 'bibinjohn2018@gmail.com'];

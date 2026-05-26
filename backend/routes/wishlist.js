@@ -11,7 +11,7 @@ const router = express.Router();
 // ==========================================
 router.get('/', verifyToken, async (req, res) => {
   try {
-    const userId = parseInt(req.user.id, 10);
+    const userId = req.user.id;
 
     const items = await prisma.wishlistItem.findMany({
       where: { userId },
@@ -41,7 +41,7 @@ router.get('/', verifyToken, async (req, res) => {
 // ==========================================
 router.post('/', verifyToken, async (req, res) => {
   try {
-    const userId = parseInt(req.user.id, 10);
+    const userId = req.user.id;
     const { productId } = req.body;
 
     if (!productId) {
@@ -85,7 +85,7 @@ router.post('/', verifyToken, async (req, res) => {
 // ==========================================
 router.post('/sync', verifyToken, async (req, res) => {
   try {
-    const userId = parseInt(req.user.id, 10);
+    const userId = req.user.id;
     const { items } = req.body;
 
     if (Array.isArray(items)) {
@@ -143,7 +143,7 @@ router.post('/sync', verifyToken, async (req, res) => {
 // ==========================================
 router.delete('/:productId', verifyToken, async (req, res) => {
   try {
-    const userId = parseInt(req.user.id, 10);
+    const userId = req.user.id;
     const productId = parseInt(req.params.productId, 10);
 
     if (isNaN(productId)) {
@@ -169,7 +169,7 @@ router.delete('/:productId', verifyToken, async (req, res) => {
 // ==========================================
 router.delete('/', verifyToken, async (req, res) => {
   try {
-    const userId = parseInt(req.user.id, 10);
+    const userId = req.user.id;
 
     await prisma.wishlistItem.deleteMany({
       where: { userId }

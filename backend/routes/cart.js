@@ -6,12 +6,24 @@ const { PrismaClient } = pkg;
 const prisma = new PrismaClient();
 const router = express.Router();
 
+function getWeightAdjustedPrice(basePrice, weight) {
+  const w = (weight || '100g').trim().toLowerCase();
+  if (w === '250g') {
+    return basePrice * 2.5 * 0.95;
+  } else if (w === '500g') {
+    return basePrice * 5.0 * 0.90;
+  } else if (w === '1kg') {
+    return basePrice * 10.0 * 0.85;
+  }
+  return basePrice;
+}
+
 // ==========================================
 // FETCH USER'S CART (GET /api/cart)
 // ==========================================
 router.get('/', verifyToken, async (req, res) => {
   try {
-    const userId = parseInt(req.user.id, 10);
+    const userId = req.user.id;
 
     const items = await prisma.cartItem.findMany({
       where: { userId },
@@ -23,7 +35,7 @@ router.get('/', verifyToken, async (req, res) => {
       id: item.productId,
       cartItemId: `${item.productId}-${item.weight}`,
       name: item.product.name,
-      price: item.product.price,
+      price: getWeightAdjustedPrice(item.product.price, item.weight),
       weight: item.weight,
       quantity: item.quantity,
       images: item.product.images,
@@ -43,7 +55,7 @@ router.get('/', verifyToken, async (req, res) => {
 // ==========================================
 router.post('/', verifyToken, async (req, res) => {
   try {
-    const userId = parseInt(req.user.id, 10);
+    const userId = req.user.id;
     const { productId, weight, quantity } = req.body;
 
     if (!productId || quantity === undefined) {
@@ -93,7 +105,7 @@ router.post('/', verifyToken, async (req, res) => {
 // ==========================================
 router.post('/sync', verifyToken, async (req, res) => {
   try {
-    const userId = parseInt(req.user.id, 10);
+    const userId = req.user.id;
     const { items } = req.body;
 
     if (Array.isArray(items)) {
@@ -140,7 +152,7 @@ router.post('/sync', verifyToken, async (req, res) => {
       id: item.productId,
       cartItemId: `${item.productId}-${item.weight}`,
       name: item.product.name,
-      price: item.product.price,
+      price: getWeightAdjustedPrice(item.product.price, item.weight),
       weight: item.weight,
       quantity: item.quantity,
       images: item.product.images,
@@ -160,7 +172,7 @@ router.post('/sync', verifyToken, async (req, res) => {
 // ==========================================
 router.delete('/:cartItemId', verifyToken, async (req, res) => {
   try {
-    const userId = parseInt(req.user.id, 10);
+    const userId = req.user.id;
     const { cartItemId } = req.params;
 
     // Parse "productId-weight" format
@@ -196,7 +208,7 @@ router.delete('/:cartItemId', verifyToken, async (req, res) => {
 // ==========================================
 router.delete('/', verifyToken, async (req, res) => {
   try {
-    const userId = parseInt(req.user.id, 10);
+    const userId = req.user.id;
 
     await prisma.cartItem.deleteMany({
       where: { userId }

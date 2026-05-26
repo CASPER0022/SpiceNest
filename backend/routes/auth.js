@@ -117,13 +117,31 @@ export const verifyToken = (req, res, next) => {
   }
 };
 
+// ==========================================
+// GET CURRENT USER / VERIFY TOKEN ROUTE (/api/auth/me)
+// ==========================================
+router.get('/me', verifyToken, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id }
+    });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json({ id: user.id, name: user.name, email: user.email, address: user.address });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to verify session' });
+  }
+});
+
 router.put('/update-address', verifyToken, async (req, res) => {
   try {
     const { address } = req.body;
     
     // Update the user's address in the database
     const updatedUser = await prisma.user.update({
-      where: { id: parseInt(req.user.id, 10) },
+      where: { id: req.user.id },
       data: { address }
     });
     
