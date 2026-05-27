@@ -49,7 +49,6 @@ export default function ProductDetails() {
     if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
       try {
         await navigator.share(shareData);
-        toast.success('Shared successfully!');
       } catch (err) {
         if (err.name !== 'AbortError') {
           console.error('Error sharing:', err);

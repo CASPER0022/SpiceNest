@@ -41,7 +41,7 @@ export default function ProductCard({ product }) {
       <div className="p-5 flex flex-col flex-grow">
         <div className="text-xs text-emerald-600 font-semibold uppercase tracking-wider mb-1">{product.category}</div>
         <h3 className="text-lg font-bold text-gray-900 mb-2">{product.name}</h3>
-        <p className="text-gray-600 text-sm mb-4 line-clamp-2">{product.description}</p>
+        <p className="text-gray-600 text-sm mb-4 hidden md:line-clamp-2">{product.description}</p>
         <div className="flex items-center justify-between mt-auto">
           <span className="text-xl font-bold text-gray-900">₹{Math.round(product.price)}</span>
           <button 
