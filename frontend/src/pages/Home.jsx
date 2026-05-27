@@ -20,7 +20,7 @@ const FEATURES = [
 ];
 
 export default function Home() {
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [currentImageIndex, setCurrentImageIndex] = useState(() => Math.floor(Math.random() * IMAGES.length));
   const [scrollY, setScrollY] = useState(0);
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
