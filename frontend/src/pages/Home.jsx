@@ -187,12 +187,12 @@ export default function Home() {
 
       {/* Shopping Cards Section (Ather Style - Compact) */}
       <div className="bg-gray-50 py-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           <h2 className="text-2xl md:text-3xl font-extrabold text-center text-gray-900 mb-10 tracking-tight">
             The SpiceNest Collection
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Card 1: Whole Spices */}
             <div className="relative group rounded-3xl overflow-hidden h-[380px] md:h-[450px] shadow-lg border border-gray-100">
               <img
@@ -250,6 +250,39 @@ export default function Home() {
                   <div className="flex flex-col sm:flex-row justify-center gap-2">
                     <Link to="/shop" className="bg-gray-100 hover:bg-white text-gray-900 font-bold py-2.5 px-6 rounded-full transition-all text-xs w-full sm:w-auto shadow-md transform hover:scale-105">
                       Shop Powders
+                    </Link>
+                    <Link to="/shop" className="bg-gray-950/80 hover:bg-black text-white font-bold py-2.5 px-6 rounded-full transition-all text-xs w-full sm:w-auto border border-gray-800 shadow-md transform hover:scale-105">
+                      Explore Range
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 3: Others */}
+            <div className="relative group rounded-3xl overflow-hidden h-[380px] md:h-[450px] shadow-lg border border-gray-100">
+              <img
+                src="/images/homepage/others.jpg"
+                alt="Others"
+                className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/10 to-black/80" />
+
+              <div className="absolute inset-0 flex flex-col justify-between p-6 text-center">
+                <div className="mt-2">
+                  <h3 className="text-2xl md:text-3xl font-extrabold text-white mb-2 tracking-tight">Others</h3>
+                  <span className="inline-block bg-white/20 backdrop-blur-md text-white text-[11px] md:text-xs font-bold px-4 py-1 rounded-full border border-white/20 shadow-sm">
+                    Beverages & More
+                  </span>
+                </div>
+
+                <div className="mb-2">
+                  <p className="text-gray-300 text-xs font-bold mb-0.5">Prices starting at</p>
+                  <p className="text-white text-lg md:text-xl font-bold mb-4">₹ 250 / 100g</p>
+
+                  <div className="flex flex-col sm:flex-row justify-center gap-2">
+                    <Link to="/shop" className="bg-gray-100 hover:bg-white text-gray-900 font-bold py-2.5 px-6 rounded-full transition-all text-xs w-full sm:w-auto shadow-md transform hover:scale-105">
+                      Shop Others
                     </Link>
                     <Link to="/shop" className="bg-gray-950/80 hover:bg-black text-white font-bold py-2.5 px-6 rounded-full transition-all text-xs w-full sm:w-auto border border-gray-800 shadow-md transform hover:scale-105">
                       Explore Range
