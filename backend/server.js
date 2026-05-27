@@ -196,6 +196,31 @@ app.post('/api/products', verifyToken, async (req, res) => {
   }
 });
 
+// Delete a product (Admin only!)
+app.delete('/api/products/:id', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id }
+    });
+
+    const adminEmails = ['heyitsmealbinjohn@gmail.com', 'bibinjohn2018@gmail.com'];
+    if (!user || !adminEmails.includes(user.email)) {
+      return res.status(403).json({ error: 'Access denied: Admins only' });
+    }
+
+    await prisma.product.delete({
+      where: { id: parseInt(id, 10) }
+    });
+
+    res.json({ success: true, message: 'Product deleted successfully' });
+  } catch (error) {
+    console.error('Delete product error:', error);
+    res.status(500).json({ error: 'Failed to delete product: ' + error.message });
+  }
+});
+
 // Get all farmers
 app.get('/api/farmers', async (req, res) => {
   try {

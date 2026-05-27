@@ -472,6 +472,34 @@ export default function Dashboard() {
     }
   };
 
+  const handleProductDelete = async (productId, productName) => {
+    if (!window.confirm(`Are you absolutely sure you want to delete ${productName}? This will permanently remove it from the database and the catalog.`)) {
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    
+    try {
+      const res = await fetch(`${API_URL}/api/products/${productId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to delete product');
+      }
+
+      setProducts(prevProducts => prevProducts.filter(p => p.id !== productId));
+      toast.success(`${productName} deleted successfully! 🗑️`);
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || 'Error deleting product');
+    }
+  };
+
 
 
   const formatDate = (dateStr) => {
@@ -2608,12 +2636,20 @@ export default function Dashboard() {
                               </button>
                             </div>
                           ) : (
-                            <button
-                              onClick={() => startEditingProduct(prod)}
-                              className="text-[9px] font-black uppercase tracking-wider px-3.5 py-2.5 rounded-full border border-emerald-250 hover:bg-emerald-600 hover:text-white text-emerald-700 transition-all cursor-pointer shadow-sm hover:shadow"
-                            >
-                              Edit details
-                            </button>
+                            <div className="flex flex-col sm:flex-row items-center justify-center gap-1.5">
+                              <button
+                                onClick={() => startEditingProduct(prod)}
+                                className="text-[9px] font-black uppercase tracking-wider px-3.5 py-2.5 rounded-full border border-emerald-250 hover:bg-emerald-600 hover:text-white text-emerald-700 transition-all cursor-pointer shadow-sm hover:shadow w-full sm:w-auto"
+                              >
+                                Edit details
+                              </button>
+                              <button
+                                onClick={() => handleProductDelete(prod.id, prod.name)}
+                                className="text-[9px] font-black uppercase tracking-wider px-3.5 py-2.5 rounded-full border border-rose-250 hover:bg-rose-600 hover:text-white text-rose-700 transition-all cursor-pointer shadow-sm hover:shadow w-full sm:w-auto"
+                              >
+                                Delete
+                              </button>
+                            </div>
                           )}
                         </td>
                       </tr>
