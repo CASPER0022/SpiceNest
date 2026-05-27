@@ -147,4 +147,46 @@ router.get('/farmer/:farmerId', async (req, res) => {
   }
 });
 
+// ==========================================
+// DELETE A REVIEW (DELETE /api/reviews/:id)
+// ==========================================
+router.delete('/:id', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    // Fetch user details from database to check email for admin check
+    const requestingUser = await prisma.user.findUnique({ where: { id: userId } });
+    if (!requestingUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const admins = ['heyitsmealbinjohn@gmail.com', 'bibinjohn2018@gmail.com'];
+    const isAdmin = admins.includes(requestingUser.email);
+
+    const reviewId = parseInt(id, 10);
+    const review = await prisma.review.findUnique({
+      where: { id: reviewId }
+    });
+
+    if (!review) {
+      return res.status(404).json({ error: 'Review not found' });
+    }
+
+    // Owner or admin is allowed to delete
+    if (review.userId !== userId && !isAdmin) {
+      return res.status(403).json({ error: 'Unauthorized to delete this review' });
+    }
+
+    await prisma.review.delete({
+      where: { id: reviewId }
+    });
+
+    res.json({ message: 'Review deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting review:', error);
+    res.status(500).json({ error: 'Failed to delete review' });
+  }
+});
+
 export default router;

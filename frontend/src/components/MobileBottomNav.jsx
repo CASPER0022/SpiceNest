@@ -1,19 +1,19 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, ShoppingBag, Clock, ShoppingCart, User } from 'lucide-react';
+import { Home, ShoppingBag, Heart, ShoppingCart, User } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { useViewed } from '../context/ViewedContext';
+import { useWishlist } from '../context/WishlistContext';
 
 export default function MobileBottomNav() {
   const location = useLocation();
   const { cartCount, setIsCartOpen } = useCart();
   const { user } = useAuth();
-  const { viewedProducts } = useViewed();
+  const { wishlistCount } = useWishlist();
 
   const navItems = [
     { name: 'Home', path: '/', icon: Home },
     { name: 'Shop', path: '/shop', icon: ShoppingBag },
-    { name: 'Viewed', path: '/viewed', icon: Clock, badge: viewedProducts.length },
+    { name: 'Wishlist', path: '/wishlist', icon: Heart, badge: wishlistCount },
     { name: 'Cart', path: '/cart', icon: ShoppingCart, onClick: () => setIsCartOpen(true), isAction: true },
     { name: 'Account', path: user ? '/profile' : '/login', icon: User },
   ];
@@ -40,9 +40,9 @@ export default function MobileBottomNav() {
                   {cartCount}
                 </span>
               )}
-              {item.name === 'Viewed' && viewedProducts.length > 0 && (
+              {item.name === 'Wishlist' && wishlistCount > 0 && (
                 <span className="absolute -top-1.5 -right-2 bg-emerald-600 text-white text-[9px] font-bold h-4 w-4 flex items-center justify-center rounded-full border-2 border-white shadow-sm">
-                  {viewedProducts.length}
+                  {wishlistCount}
                 </span>
               )}
             </div>

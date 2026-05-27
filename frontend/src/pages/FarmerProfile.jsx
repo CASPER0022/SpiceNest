@@ -94,6 +94,37 @@ export default function FarmerProfile() {
     }
   };
 
+  const isAdmin = useMemo(() => {
+    return user && ['heyitsmealbinjohn@gmail.com', 'bibinjohn2018@gmail.com'].includes(user.email);
+  }, [user]);
+
+  const handleDeleteReview = async (reviewId) => {
+    if (!window.confirm('Are you sure you want to delete this review?')) return;
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`${API_URL}/api/reviews/${reviewId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to delete review');
+      }
+      toast.success('Review deleted successfully.');
+      
+      // Reload farmer details
+      const updatedRes = await fetch(`${API_URL}/api/farmers/${id}`);
+      if (updatedRes.ok) {
+        const updatedFarmer = await updatedRes.json();
+        setFarmer(updatedFarmer);
+      }
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
@@ -363,9 +394,19 @@ export default function FarmerProfile() {
                           </div>
                         </div>
                       </div>
-                      <span className="text-xs font-semibold text-gray-400">
-                        {new Date(rev.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-                      </span>
+                      <div className="flex items-center space-x-3">
+                        <span className="text-xs font-semibold text-gray-400">
+                          {new Date(rev.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                        </span>
+                        {(user && (user.id === rev.userId || isAdmin)) && (
+                          <button
+                            onClick={() => handleDeleteReview(rev.id)}
+                            className="text-xs text-red-500 hover:text-red-755 font-bold hover:underline cursor-pointer transition-colors"
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap pl-1">{rev.comment}</p>
                   </div>

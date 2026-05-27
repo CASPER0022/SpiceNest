@@ -99,14 +99,14 @@ function AppLayout() {
           filter: drop-shadow(4px 4px 0px #000);
         }
       `}</style>
-      <div className="fixed bottom-20 md:bottom-8 right-6 md:right-8 z-50 flex flex-col items-center">
+      <div className="fixed bottom-20 md:bottom-8 right-6 md:right-8 z-50 flex items-center space-x-3">
         {/* Comic speech bubble */}
         {showBubble && (
-          <div className="absolute bottom-16 mb-2 transition-all duration-300 animate-bounce scale-100 origin-bottom">
+          <div className="relative transition-all duration-300 animate-bounce scale-100 origin-right">
             <div className="comic-bubble bg-white border-[3px] border-black text-black px-4 py-2 rounded-[20px] font-black text-xs tracking-wider uppercase text-center relative whitespace-nowrap rotate-[-3deg] shadow-sm">
               need hellp??
-              {/* Little pointer tail */}
-              <div className="absolute -bottom-3 right-6 w-4 h-4 bg-white border-r-[3px] border-b-[3px] border-black rotate-[45deg]" />
+              {/* Little pointer tail pointing right towards the WhatsApp icon */}
+              <div className="absolute top-1/2 -translate-y-1/2 -right-3.5 w-4 h-4 bg-white border-t-[3px] border-r-[3px] border-black rotate-[45deg]" />
             </div>
           </div>
         )}
@@ -115,7 +115,7 @@ function AppLayout() {
           href="https://wa.me/918921663449"
           target="_blank"
           rel="noopener noreferrer"
-          className="w-14 h-14 rounded-full bg-[#25D366] shadow-[0_4px_16px_rgba(37,211,102,0.4)] flex items-center justify-center animate-float-slow transition-all duration-300 hover:scale-110 hover:shadow-[0_6px_20px_rgba(37,211,102,0.6)] cursor-pointer group border border-white/10"
+          className="w-14 h-14 rounded-full bg-[#25D366] shadow-[0_4px_16px_rgba(37,211,102,0.4)] flex items-center justify-center animate-float-slow transition-all duration-300 hover:scale-110 hover:shadow-[0_6px_20px_rgba(37,211,102,0.6)] cursor-pointer group border border-white/10 shrink-0"
           aria-label="Contact support on WhatsApp"
         >
           <svg 
