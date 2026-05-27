@@ -1702,7 +1702,7 @@ export default function Dashboard() {
           <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight uppercase flex items-center gap-2.5">
             <Activity className="text-emerald-600" size={32} /> SpiceNest Admin Portal
           </h1>
-          <p className="text-gray-500 text-sm mt-1">Real-time agricultural market transactions & analytics.</p>
+
         </div>
         
         {/* Navigation Tabs */}
@@ -2056,7 +2056,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between mb-8 border-b border-gray-50 pb-4">
               <div>
                 <h3 className="text-lg font-black text-gray-900 tracking-tight">Customer Engagement & Loyalty Analytics</h3>
-                <p className="text-xs text-gray-400 font-bold mt-1">Cohort segmentation showing order count, spending loyalty, and automatically mapped tags.</p>
+
               </div>
               <span className="text-xs font-black bg-purple-50 text-purple-700 px-3 py-1.5 rounded-full border border-purple-100">
                 Sorted by Total Spent
