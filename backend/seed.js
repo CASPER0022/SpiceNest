@@ -49,6 +49,26 @@ async function main() {
 
   console.log(`Synced Farmer: ${john.name}`);
 
+  // Create or Update Farmer Bibin
+  const bibin = await prisma.farmer.upsert({
+    where: { id: 3 }, 
+    update: {
+      name: 'Bibin',
+      rating: 4.9,
+      about: 'A traditional organic farmer from Idukki, Kerala, Bibin specializes in preparing pure, sun-dried, stone-ground spice powders. By avoiding high-heat grinding, his techniques preserve the rich natural oils, bright colors, and intense flavors of chilli and coriander.',
+      image: '/images/farmers/bibin/bibin.jpeg',
+    },
+    create: {
+      id: 3,
+      name: 'Bibin',
+      rating: 4.9,
+      about: 'A traditional organic farmer from Idukki, Kerala, Bibin specializes in preparing pure, sun-dried, stone-ground spice powders. By avoiding high-heat grinding, his techniques preserve the rich natural oils, bright colors, and intense flavors of chilli and coriander.',
+      image: '/images/farmers/bibin/bibin.jpeg',
+    }
+  });
+
+  console.log(`Synced Farmer: ${bibin.name}`);
+
   // 2. Clear existing reviews, orders, and unneeded products to prevent foreign key errors
   await prisma.review.deleteMany({});
   await prisma.orderItem.deleteMany({});
@@ -59,7 +79,7 @@ async function main() {
   await prisma.product.deleteMany({
     where: {
       name: {
-        notIn: ['Black Pepper', 'Cardamom', 'Coffee', 'Nutmeg', 'Nutmeg Flower', 'Cloves']
+        notIn: ['Black Pepper', 'Cardamom', 'Coffee', 'Nutmeg', 'Nutmeg Flower', 'Cloves', 'Chilli Powder', 'Coriander Powder']
       }
     }
   });
@@ -117,6 +137,24 @@ async function main() {
       images: ['/images/cloves/cloves1.jpg', '/images/cloves/cloves2.jpg'], 
       description: "Directly harvested from John's spice estate in Kerala, our premium cloves are rich in essential oils and loaded with aromatic warmth. Traditionally hand-harvested and dried in natural sunlight, each clove offers an intensely sweet and spicy flavor perfect for baking, slow-roasted meats, and traditional masalas.", 
       farmerId: john.id,
+      stock: 10.0
+    },
+    { 
+      name: 'Chilli Powder', 
+      price: 150.00, 
+      category: 'Powders', 
+      images: ['/images/chilli powder/chilli powder.jpg'], 
+      description: 'Sourced from the sun-drenched organic farms of Bibin in Idukki, Kerala, our premium Chilli Powder is ground from carefully selected, hand-picked ripe red chillies. Processed traditionally in small batches to preserve its natural pungent heat and brilliant crimson color, it contains absolutely no added artificial colors or preservatives. Perfect for adding a fiery punch and vibrant red shade to your traditional curries, stews, and marinades.', 
+      farmerId: bibin.id,
+      stock: 10.0
+    },
+    { 
+      name: 'Coriander Powder', 
+      price: 120.00, 
+      category: 'Powders', 
+      images: ['/images/coriander powder/coriander powder.jpg'], 
+      description: 'Handcrafted from slow-dried, premium coriander seeds grown on Bibin’s organic spice estate, this Coriander Powder has a refreshing, warm, citrusy, and mildly sweet aroma. Ground at low temperatures to ensure the delicate volatile oils are locked in, our coriander powder offers unmatched freshness and depth of flavor. A staple spice to bring structural balance, rich aroma, and wholesome texture to any curry, lentil soup, or vegetable side dish.', 
+      farmerId: bibin.id,
       stock: 10.0
     }
   ];

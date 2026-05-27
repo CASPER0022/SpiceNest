@@ -229,7 +229,7 @@ export default function Home() {
             {/* Card 2: Powders */}
             <div className="relative group rounded-3xl overflow-hidden h-[380px] md:h-[450px] shadow-lg border border-gray-100">
               <img
-                src="https://images.unsplash.com/photo-1509358271058-acd22cc93898?q=80&w=2070&auto=format&fit=crop"
+                src="/images/chilli powder/chilli powder.jpg"
                 alt="Organic Powders"
                 className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
               />
