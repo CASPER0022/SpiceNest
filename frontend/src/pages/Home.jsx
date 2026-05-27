@@ -24,6 +24,7 @@ export default function Home() {
   const [scrollY, setScrollY] = useState(0);
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [mobileExpanded, setMobileExpanded] = useState(false);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -34,7 +35,7 @@ export default function Home() {
         return res.json();
       })
       .then((data) => {
-        setFeaturedProducts(data.slice(0, 4));
+        setFeaturedProducts(data.slice(0, 8));
         setLoading(false);
       })
       .catch((err) => {
@@ -321,11 +322,29 @@ export default function Home() {
             ))}
           </div>
         ) : featuredProducts.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
-            {featuredProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
+              {featuredProducts.map((product, index) => (
+                <div 
+                  key={product.id} 
+                  className={index >= 4 && !mobileExpanded ? "hidden lg:block" : "block"}
+                >
+                  <ProductCard product={product} />
+                </div>
+              ))}
+            </div>
+
+            {featuredProducts.length > 4 && (
+              <div className="flex justify-center mt-8 lg:hidden">
+                <button
+                  onClick={() => setMobileExpanded(!mobileExpanded)}
+                  className="text-xs font-black uppercase tracking-wider bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-6 py-3 rounded-full transition-all active:scale-95 shadow-sm border border-emerald-100/50 cursor-pointer"
+                >
+                  {mobileExpanded ? 'View Less' : 'View More Spices 🌶️'}
+                </button>
+              </div>
+            )}
+          </>
         ) : (
           <div className="text-center py-10 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
             <p className="text-gray-400 text-sm font-semibold">No featured spices available right now.</p>
