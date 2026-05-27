@@ -65,6 +65,80 @@ export default function Dashboard() {
   });
   const [savingProduct, setSavingProduct] = useState(false);
 
+  // Add Product States
+  const [isAddingProduct, setIsAddingProduct] = useState(false);
+  const [creatingProduct, setCreatingProduct] = useState(false);
+  const [addProductForm, setAddProductForm] = useState({
+    name: '',
+    price: '',
+    stock: '10.0',
+    category: 'Whole Spices',
+    farmerId: 1,
+    description: '',
+    image: ''
+  });
+
+  const handleProductCreate = async (e) => {
+    e.preventDefault();
+    if (parseFloat(addProductForm.price) <= 0) {
+      toast.error('Price must be greater than zero.');
+      return;
+    }
+    if (parseFloat(addProductForm.stock) < 0) {
+      toast.error('Stock cannot be negative.');
+      return;
+    }
+
+    setCreatingProduct(true);
+    const token = localStorage.getItem('token');
+    
+    try {
+      const res = await fetch(`${API_URL}/api/products`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: addProductForm.name,
+          price: parseFloat(addProductForm.price),
+          stock: parseFloat(addProductForm.stock),
+          category: addProductForm.category,
+          farmerId: addProductForm.farmerId,
+          description: addProductForm.description,
+          images: [addProductForm.image]
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to create product');
+      }
+
+      toast.success(`${data.product.name} added to Catalog successfully! 🌶️`);
+      
+      // Update local state by prepending the new product
+      setProducts(prevProducts => [data.product, ...prevProducts]);
+      
+      // Reset form
+      setAddProductForm({
+        name: '',
+        price: '',
+        stock: '10.0',
+        category: 'Whole Spices',
+        farmerId: 1,
+        description: '',
+        image: ''
+      });
+      setIsAddingProduct(false);
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || 'Error creating product');
+    } finally {
+      setCreatingProduct(false);
+    }
+  };
+
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
   const adminEmails = ['heyitsmealbinjohn@gmail.com', 'bibinjohn2018@gmail.com'];
 
@@ -2272,10 +2346,146 @@ export default function Dashboard() {
                 <h3 className="text-lg font-black text-gray-900 tracking-tight">Product Catalog Inventory</h3>
                 <p className="text-xs text-gray-400 font-bold mt-1">Manage spice prices, live stock levels, and catalog info.</p>
               </div>
-              <span className="text-xs font-black bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full border border-emerald-100">
-                {products.length} Spices Listed
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-black bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full border border-emerald-100">
+                  {products.length} Spices Listed
+                </span>
+                {!isAddingProduct && (
+                  <button
+                    onClick={() => setIsAddingProduct(true)}
+                    className="text-xs font-black uppercase tracking-wider bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-full transition-all shadow-md active:scale-95 cursor-pointer"
+                  >
+                    + Add Product
+                  </button>
+                )}
+              </div>
             </div>
+
+            {isAddingProduct && (
+              <form onSubmit={handleProductCreate} className="mb-8 p-6 bg-emerald-50/50 border border-emerald-150 rounded-3xl space-y-4 animate-fadeIn">
+                <h4 className="text-sm font-black text-emerald-800 uppercase tracking-widest mb-2 flex items-center">
+                  <span className="bg-emerald-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs mr-2 font-bold">+</span>
+                  Add New Spice Product
+                </h4>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  {/* Name */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Spice Name</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Ginger Powder"
+                      value={addProductForm.name}
+                      onChange={(e) => setAddProductForm(prev => ({ ...prev, name: e.target.value }))}
+                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-800 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                    />
+                  </div>
+
+                  {/* Price */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Price (Base per 100g)</label>
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      step="any"
+                      placeholder="e.g. 180"
+                      value={addProductForm.price}
+                      onChange={(e) => setAddProductForm(prev => ({ ...prev, price: e.target.value }))}
+                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-800 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                    />
+                  </div>
+
+                  {/* Stock */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Initial Stock (kg)</label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      step="any"
+                      placeholder="e.g. 10"
+                      value={addProductForm.stock}
+                      onChange={(e) => setAddProductForm(prev => ({ ...prev, stock: e.target.value }))}
+                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-800 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                    />
+                  </div>
+
+                  {/* Category */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Category</label>
+                    <select
+                      value={addProductForm.category}
+                      onChange={(e) => setAddProductForm(prev => ({ ...prev, category: e.target.value }))}
+                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-700 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                    >
+                      <option value="Whole Spices">Whole Spices</option>
+                      <option value="Powders">Powders</option>
+                      <option value="Beverages">Beverages</option>
+                    </select>
+                  </div>
+
+                  {/* Sourced From (Farmer) */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Farmer (Source)</label>
+                    <select
+                      value={addProductForm.farmerId}
+                      onChange={(e) => setAddProductForm(prev => ({ ...prev, farmerId: Number(e.target.value) }))}
+                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-700 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                    >
+                      <option value={1}>Raju John</option>
+                      <option value={2}>John</option>
+                      <option value={3}>Bibin</option>
+                    </select>
+                  </div>
+
+                  {/* Image Path */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Image Path</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. /images/homepage/others.jpg"
+                      value={addProductForm.image}
+                      onChange={(e) => setAddProductForm(prev => ({ ...prev, image: e.target.value }))}
+                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-800 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Product Description</label>
+                  <textarea
+                    required
+                    rows={3}
+                    placeholder="Enter aromatic details, drying methods, and source notes..."
+                    value={addProductForm.description}
+                    onChange={(e) => setAddProductForm(prev => ({ ...prev, description: e.target.value }))}
+                    className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-800 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 resize-none"
+                  />
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    type="submit"
+                    disabled={creatingProduct}
+                    className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-450 text-white font-bold px-6 py-2.5 rounded-xl transition-all shadow-md active:scale-95 text-xs uppercase tracking-wider cursor-pointer"
+                  >
+                    {creatingProduct ? 'Creating...' : 'Create Product'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingProduct(false)}
+                    className="border border-gray-200 bg-white hover:bg-gray-50 text-gray-500 font-bold px-6 py-2.5 rounded-xl transition-all active:scale-95 text-xs uppercase tracking-wider cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
 
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">

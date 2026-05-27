@@ -153,6 +153,49 @@ app.put('/api/products/:id', verifyToken, async (req, res) => {
   }
 });
 
+// Create a new product (Admin only!)
+app.post('/api/products', verifyToken, async (req, res) => {
+  try {
+    const { name, price, stock, description, category, farmerId, images } = req.body;
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id }
+    });
+
+    const adminEmails = ['heyitsmealbinjohn@gmail.com', 'bibinjohn2018@gmail.com'];
+    if (!user || !adminEmails.includes(user.email)) {
+      return res.status(403).json({ error: 'Access denied: Admins only' });
+    }
+
+    if (!name || !price || !description || !category || !farmerId) {
+      return res.status(400).json({ error: 'Missing required product details' });
+    }
+
+    // Default image if none provided
+    const productImages = images && images.length > 0 ? images : ['/images/placeholder.jpg'];
+
+    const newProduct = await prisma.product.create({
+      data: {
+        name,
+        price: parseFloat(price),
+        stock: parseFloat(stock || 10.0),
+        description,
+        category,
+        farmerId: parseInt(farmerId, 10),
+        images: productImages
+      },
+      include: {
+        farmer: true
+      }
+    });
+
+    res.status(201).json({ success: true, product: newProduct });
+  } catch (error) {
+    console.error('Create product error:', error);
+    res.status(500).json({ error: 'Failed to create product: ' + error.message });
+  }
+});
+
 // Get all farmers
 app.get('/api/farmers', async (req, res) => {
   try {
