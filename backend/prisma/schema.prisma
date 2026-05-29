@@ -61,7 +61,9 @@ model Order {
   totalAmount     Float
   address         String         // Snapshot of address as JSON string
   status          String         @default("PAID")
-  stripeSessionId String         @unique
+  stripeSessionId   String?        @unique
+  razorpayOrderId   String?        @unique
+  razorpayPaymentId String?        @unique
   items           OrderItem[]
   messages        OrderMessage[]
   createdAt       DateTime       @default(now())

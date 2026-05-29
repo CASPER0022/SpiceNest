@@ -1,10 +1,11 @@
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { CheckCircle, Package, MapPin, Calendar, Loader2, AlertCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 export default function Success() {
   const { clearCart } = useCart();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get('session_id');
   
@@ -15,6 +16,12 @@ export default function Success() {
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
   useEffect(() => {
+    if (location.state?.order) {
+      setOrder(location.state.order);
+      setLoading(false);
+      return;
+    }
+
     async function confirmOrder() {
       if (!sessionId) {
         setLoading(false);
@@ -39,7 +46,7 @@ export default function Success() {
     }
 
     confirmOrder();
-  }, [sessionId]);
+  }, [sessionId, location.state]);
 
   if (loading) {
     return (

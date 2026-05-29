@@ -7,7 +7,7 @@ SpiceNest is a premium, deployment-ready full-stack e-commerce application built
 - **Dynamic Product Catalog**: Fetch and display products directly from a cloud PostgreSQL database.
 - **Global Shopping Cart**: Add, remove, and manage cart item quantities with instant state updates.
 - **Custom Authentication**: Secure user registration and login using encrypted passwords (`bcryptjs`) and JSON Web Tokens (`jsonwebtoken`).
-- **Secure Checkout**: Fully integrated with Stripe for safe and secure payment processing.
+- **Secure Checkout**: Fully integrated with Razorpay for safe, secure, and instant payment overlay modals.
 - **Modern UI**: Clean, responsive, and beautiful user interface built with Tailwind CSS v4.
 
 ## 🛠️ Tech Stack
@@ -23,7 +23,7 @@ SpiceNest is a premium, deployment-ready full-stack e-commerce application built
 - Node.js & Express.js
 - Prisma ORM
 - PostgreSQL (Neon Serverless Cloud)
-- Stripe API (Payments)
+- Razorpay Node SDK (Payments)
 - JSON Web Tokens (JWT)
 
 ---
@@ -52,8 +52,9 @@ Create a `.env` file inside the `/backend` folder with the following variables:
 # Your direct PostgreSQL connection string from Neon
 DATABASE_URL="postgresql://user:password@host.aws.neon.tech/neondb?sslmode=require&connect_timeout=20"
 
-# Your Test Secret Key from the Stripe Dashboard
-STRIPE_SECRET_KEY="sk_test_your_stripe_key_here"
+# Your Test Credentials from the Razorpay Dashboard
+RAZORPAY_KEY_ID="rzp_test_your_key_id"
+RAZORPAY_KEY_SECRET="your_key_secret"
 
 # (Optional) A secret string for signing JWT tokens
 JWT_SECRET="your_secret_key"
@@ -77,7 +78,7 @@ cd frontend
 npm install
 ```
 
-*(Optional)* If you are using your own Stripe account, replace the dummy Stripe Publishable Key in `frontend/src/pages/Cart.jsx` with your real `pk_test_` key.
+*(Optional)* Set your key credentials in the backend `.env` file, and the frontend will automatically use them to present the overlay modal.
 
 Start the frontend server:
 ```bash

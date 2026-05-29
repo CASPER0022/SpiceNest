@@ -2,12 +2,22 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Trash2, Plus, Minus, ArrowRight, MapPin, Check, Edit2 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { loadStripe } from '@stripe/stripe-js';
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 
-// Use a dummy key for testing, replace with real Publishable Key later!
-const stripePromise = loadStripe('pk_test_TYooMQauvdEDq54NiTphI7jx');
+const loadRazorpayScript = () => {
+  return new Promise((resolve) => {
+    if (window.Razorpay) {
+      resolve(true);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
 
 const AVAILABLE_COUPONS = [
   { code: 'STARTER', discount: 70, description: '₹70 off on your first premium spice purchase!' },
@@ -15,7 +25,7 @@ const AVAILABLE_COUPONS = [
 ];
 
 export default function Cart() {
-  const { cartItems, updateQuantity, removeFromCart, cartTotal } = useCart();
+  const { cartItems, updateQuantity, removeFromCart, cartTotal, clearCart } = useCart();
   const { user, updateAddress } = useAuth();
   const navigate = useNavigate();
   
@@ -142,10 +152,15 @@ export default function Cart() {
        return;
     }
 
-    // 4. Initiate Stripe Checkout
+    // 4. Initiate Razorpay Checkout
     setIsProcessing(true);
     try {
-      const res = await fetch(`${API_URL}/api/payment/create-checkout-session`, {
+      const isLoaded = await loadRazorpayScript();
+      if (!isLoaded) {
+        throw new Error('Could not load Razorpay payment helper script.');
+      }
+
+      const res = await fetch(`${API_URL}/api/payment/create-razorpay-order`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -156,11 +171,66 @@ export default function Cart() {
         }),
       });
       
-      const session = await res.json();
-      if (session.error) throw new Error(session.error);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
       
-      // Redirect to Stripe checkout
-      window.location.href = session.url;
+      // Open Razorpay Checkout modal
+      const options = {
+        key: data.keyId,
+        amount: data.amount,
+        currency: data.currency,
+        name: 'SpiceNest',
+        description: 'Premium Farm-to-Table Spices',
+        image: '/images/logo.png',
+        order_id: data.orderId,
+        handler: async function (response) {
+          setIsProcessing(true);
+          try {
+            const confirmRes = await fetch(`${API_URL}/api/payment/confirm-razorpay-order`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                items: cartItems,
+                userId: user ? user.id : null,
+                address: JSON.stringify(address),
+                discount: appliedCoupon ? appliedCoupon.discount : 0
+              })
+            });
+
+            const confirmData = await confirmRes.json();
+            if (!confirmRes.ok || confirmData.error) {
+              throw new Error(confirmData.error || 'Payment verification failed.');
+            }
+
+            clearCart();
+            navigate('/success', { state: { order: confirmData.order } });
+          } catch (err) {
+            toast.error('Payment Verification Failed: ' + err.message, {
+              duration: 6000,
+              style: { borderRadius: '10px', background: '#333', color: '#fff' }
+            });
+          } finally {
+            setIsProcessing(false);
+          }
+        },
+        prefill: {
+          name: address.fullName,
+          email: address.email,
+          contact: address.mobileNumber
+        },
+        notes: {
+          address: data.addressWithIp
+        },
+        theme: {
+          color: '#059669' // Emerald Green brand color
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
       
     } catch (error) {
       console.error(error);
