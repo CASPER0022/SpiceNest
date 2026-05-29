@@ -111,11 +111,16 @@ export default function Footer() {
             <span className="hidden sm:inline text-gray-700">|</span>
             <span>Certified Spice Estate</span>
           </div>
-          <div className="flex flex-col items-center justify-center space-y-1.5 pt-2">
-            <span className="text-[14px] text-gray-400 tracking-wide">Designed & Developed by</span>
-            <span className="text-emerald-500 font-extrabold tracking-wide hover:underline cursor-pointer text-xl">
+          <div className="flex items-center justify-center space-x-1.5 pt-2 text-[14px]">
+            <span className="text-gray-400">Designed & Developed by</span>
+            <a 
+              href="https://albinjohn.dev" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="text-emerald-500 font-extrabold hover:underline transition-colors"
+            >
               Albin John
-            </span>
+            </a>
           </div>
         </div>
         
