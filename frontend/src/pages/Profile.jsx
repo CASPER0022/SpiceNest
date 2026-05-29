@@ -146,7 +146,7 @@ export default function Profile() {
                 <div className="bg-emerald-50/50 p-6 rounded-2xl border border-emerald-100/50">
                    <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-2">Member Since</p>
                    <p className="text-2xl font-black text-emerald-900">May 2024</p>
-                   <p className="text-xs text-emerald-600 mt-1 font-medium italic opacity-70">SpiceNest Premium Member</p>
+                   <p className="text-xs text-emerald-600 mt-1 font-medium italic opacity-70">Idukki Origins Premium Member</p>
                 </div>
               </div>
             </div>
@@ -181,7 +181,7 @@ export default function Profile() {
       </div>
 
       <div className="mt-12 text-center text-[10px] text-gray-400 uppercase font-black tracking-[0.3em] opacity-40">
-        SpiceNest Authentication System &bull; Secure User Profile &bull; v1.0.4
+        Idukki Origins Authentication System &bull; Secure User Profile &bull; v1.0.4
       </div>
     </div>
   );

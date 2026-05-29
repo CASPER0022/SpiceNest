@@ -42,7 +42,7 @@ export default function ProductDetails() {
     if (!product) return;
     const shareData = {
       title: product.name,
-      text: `Check out ${product.name} on SpiceNest - direct from Western Ghats farms!`,
+      text: `Check out ${product.name} on Idukki Origins - direct from Western Ghats farms!`,
       url: window.location.href
     };
 

@@ -230,7 +230,7 @@ export default function Shop() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 border-b border-gray-150 pb-6">
         <div>
           <p className="text-xs font-black text-emerald-600 uppercase tracking-widest mb-1">Direct from Western Ghats</p>
-          <h1 className="text-3xl font-black text-gray-900 uppercase tracking-tight">SpiceNest Store</h1>
+          <h1 className="text-3xl font-black text-gray-900 uppercase tracking-tight">Idukki Origins Store</h1>
         </div>
         
         {/* Search Bar & Sort combo */}

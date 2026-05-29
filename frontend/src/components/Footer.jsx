@@ -15,10 +15,10 @@ export default function Footer() {
           <div className="space-y-6">
             <div className="flex items-center space-x-3">
               <div className="w-12 h-12 rounded-full border-2 border-emerald-500 flex items-center justify-center p-1">
-                <div className="w-full h-full rounded-full bg-emerald-500/20 flex items-center justify-center font-black text-xs text-emerald-500">SN</div>
+                <div className="w-full h-full rounded-full bg-emerald-500/20 flex items-center justify-center font-black text-xs text-emerald-500">IO</div>
               </div>
               <div>
-                <h2 className="text-xl font-black tracking-widest uppercase leading-tight">SpiceNest</h2>
+                <h2 className="text-xl font-black tracking-widest uppercase leading-tight">Idukki Origins</h2>
                 <p className="text-[10px] text-gray-500 font-black tracking-widest uppercase">Premium Spices</p>
               </div>
             </div>
@@ -107,7 +107,7 @@ export default function Footer() {
         {/* Centered and Enlarged Bottom Bar */}
         <div className="mt-20 pt-8 border-t border-white/5 flex flex-col items-center justify-center space-y-4 text-center text-gray-500">
           <div className="flex flex-col sm:flex-row items-center justify-center space-y-2 sm:space-y-0 sm:space-x-4 text-[13px]">
-            <span>© {new Date().getFullYear()} SpiceNest. All rights reserved.</span>
+            <span>© {new Date().getFullYear()} Idukki Origins. All rights reserved.</span>
             <span className="hidden sm:inline text-gray-700">|</span>
             <span>Certified Spice Estate</span>
           </div>

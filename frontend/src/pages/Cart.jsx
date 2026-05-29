@@ -179,7 +179,7 @@ export default function Cart() {
         key: data.keyId,
         amount: data.amount,
         currency: data.currency,
-        name: 'SpiceNest',
+        name: 'Idukki Origins',
         description: 'Premium Farm-to-Table Spices',
         image: '/images/logo.png',
         order_id: data.orderId,

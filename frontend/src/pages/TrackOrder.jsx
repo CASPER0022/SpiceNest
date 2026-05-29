@@ -148,7 +148,7 @@ export default function TrackOrder() {
       {/* Page Title */}
       <div className="text-center mb-12">
         <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100 mb-3">
-          <Truck size={12} /> SpiceNest Logistics
+          <Truck size={12} /> Idukki Origins Logistics
         </span>
         <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight">Track Your Spices</h1>
         <p className="text-gray-500 text-sm mt-2 max-w-md mx-auto">

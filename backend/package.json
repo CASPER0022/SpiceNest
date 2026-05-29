@@ -1,7 +1,7 @@
 {
-  "name": "spicenest-backend",
+  "name": "idukki-origins-backend",
   "version": "1.0.0",
-  "description": "Backend for SpiceNest",
+  "description": "Backend for Idukki Origins",
   "main": "server.js",
   "type": "module",
   "scripts": {

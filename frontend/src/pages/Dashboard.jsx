@@ -1802,7 +1802,7 @@ export default function Dashboard() {
       <div className="mb-10 flex flex-col md:flex-row md:items-end md:justify-between gap-6 border-b border-gray-100 pb-6">
         <div>
           <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight uppercase flex items-center gap-2.5">
-            <Activity className="text-emerald-600" size={32} /> SpiceNest Admin Portal
+            <Activity className="text-emerald-600" size={32} /> Idukki Origins Admin Portal
           </h1>
 
         </div>

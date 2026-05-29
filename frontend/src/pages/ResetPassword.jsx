@@ -66,7 +66,7 @@ export default function ResetPassword() {
               Reset Password
             </h2>
             <p className="text-gray-500 text-sm mb-8 text-center">
-              Please enter your new password below to secure your SpiceNest account.
+              Please enter your new password below to secure your Idukki Origins account.
             </p>
 
             {error && (

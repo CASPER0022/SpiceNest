@@ -72,7 +72,7 @@ export default function Farmers() {
             Meet Our <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-amber-300">Spice Farmers</span>
           </h1>
           <p className="text-lg md:text-xl text-emerald-100/90 max-w-3xl mx-auto font-medium leading-relaxed">
-            We bypass middlemen to connect you directly with local family growers in Kerala. By choosing SpiceNest, you ensure farmers receive fair wages and support sustainable agriculture.
+            We bypass middlemen to connect you directly with local family growers in Kerala. By choosing Idukki Origins, you ensure farmers receive fair wages and support sustainable agriculture.
           </p>
         </div>
       </div>

@@ -190,7 +190,7 @@ export default function Home() {
       <div className="bg-gray-50 py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-2xl md:text-3xl font-extrabold text-center text-gray-900 mb-10 tracking-tight">
-            The SpiceNest Collection
+            The Idukki Origins Collection
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

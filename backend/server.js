@@ -296,7 +296,7 @@ app.get('/api/farmers/:id', async (req, res) => {
 
 // A simple test route to verify the server works
 app.get('/api/test', (req, res) => {
-  res.json({ message: 'Hello from the SpiceNest Backend! 🌶️' });
+  res.json({ message: 'Hello from the Idukki Origins Backend! 🌶️' });
 });
 
 // ==========================================

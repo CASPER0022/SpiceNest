@@ -35,7 +35,7 @@ export default function Login() {
   return (
     <div className="flex justify-center items-center py-20 px-4">
       <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-sm">
-        <h2 className="text-2xl font-bold mb-6 text-center">Login to SpiceNest</h2>
+        <h2 className="text-2xl font-bold mb-6 text-center">Login to Idukki Origins</h2>
         {error && <p className="text-red-500 mb-4 text-center">{error}</p>}
         <form onSubmit={handleSubmit}>
           <div className="mb-4">

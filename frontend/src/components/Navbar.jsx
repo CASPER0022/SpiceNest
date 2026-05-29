@@ -37,7 +37,7 @@ export default function Navbar() {
         <div className="flex justify-between items-center h-12 md:h-13">
           <div className="flex-shrink-0 flex items-center">
             {/* Logo styling matching Ather's tracking */}
-            <Link to="/" className={`text-xl md:text-2xl font-black tracking-widest uppercase transition-colors ${logoClass}`}>SpiceNest</Link>
+            <Link to="/" className={`text-xl md:text-2xl font-black tracking-widest uppercase transition-colors ${logoClass}`}>Idukki Origins</Link>
           </div>
           
           {/* Desktop Menu */}

@@ -79,7 +79,7 @@ export default function Success() {
             <CheckCircle size={48} className="text-white" />
           </div>
           <h1 className="text-4xl font-black mb-2">Order Confirmed!</h1>
-          <p className="text-emerald-50 opacity-90">Thank you for your purchase from SpiceNest.</p>
+          <p className="text-emerald-50 opacity-90">Thank you for your purchase from Idukki Origins.</p>
         </div>
 
         <div className="p-8 md:p-12">

@@ -1,6 +1,6 @@
-# 🌶️ SpiceNest
+# 🌶️ Idukki Origins
 
-SpiceNest is a premium, deployment-ready full-stack e-commerce application built to deliver a seamless shopping experience for high-quality spices.
+Idukki Origins is a premium, deployment-ready full-stack e-commerce application built to deliver a seamless shopping experience for high-quality spices.
 
 ## 🚀 Features
 
@@ -36,8 +36,8 @@ You will also need a free [Neon Database](https://neon.tech/) and a free [Stripe
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/your-username/SpiceNest.git
-cd SpiceNest
+git clone https://github.com/your-username/Idukki-Origins.git
+cd Idukki-Origins
 ```
 
 ### 2. Setup the Backend
