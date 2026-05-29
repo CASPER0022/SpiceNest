@@ -79,13 +79,13 @@ router.post('/login', async (req, res) => {
     // 1. Find user in the database
     const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
     if (!user) {
-      return res.status(400).json({ error: 'Invalid credentials' });
+      return res.status(400).json({ error: 'No registered user found with this email' });
     }
 
     // 2. Compare the given password with the hashed password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(400).json({ error: 'Invalid credentials' });
+      return res.status(400).json({ error: 'Incorrect password. Please try again.' });
     }
 
     // 3. Generate a JWT Token (a digital ID card)
