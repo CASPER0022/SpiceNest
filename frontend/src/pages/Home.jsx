@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { ArrowRight, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
 
 const IMAGES = [
@@ -25,6 +25,81 @@ export default function Home() {
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mobileExpanded, setMobileExpanded] = useState(false);
+
+  const collections = [
+    {
+      title: "Premium Whole Spices",
+      subtitle: "Handpicked & Sun-dried",
+      price: "₹ 250 / 100g",
+      img: "/images/homepage/premium_whole_spices.jpg",
+      shopUrl: "/shop",
+      exploreUrl: "/shop",
+      shopText: "Shop Spices",
+    },
+    {
+      title: "Organic Powders",
+      subtitle: "Freshly Ground",
+      price: "₹ 150 / 100g",
+      img: "/images/chilli powder/chilli powder.jpg",
+      shopUrl: "/shop",
+      exploreUrl: "/shop",
+      shopText: "Shop Powders",
+    },
+    {
+      title: "Others",
+      subtitle: "Beverages & More",
+      price: "₹ 250 / 100g",
+      img: "/images/homepage/others.jpg",
+      shopUrl: "/shop",
+      exploreUrl: "/shop",
+      shopText: "Shop Others",
+    }
+  ];
+
+  // Infinite seamless carousel state for mobile/tablet collections
+  const [carouselItems, setCarouselItems] = useState([0, 1, 2]);
+  const [isTransitioning, setIsTransitioning] = useState(true);
+  const [translateX, setTranslateX] = useState(0);
+
+  const handleNextCollection = () => {
+    if (translateX !== 0) return; // Prevent overlapping transitions
+    setIsTransitioning(true);
+    setTranslateX(-33.333); // Translate left by width of 1 card (33.333% of the 150% width track)
+    setTimeout(() => {
+      setIsTransitioning(false);
+      setCarouselItems((prev) => {
+        const next = [...prev];
+        const first = next.shift();
+        next.push(first);
+        return next;
+      });
+      setTranslateX(0);
+    }, 500);
+  };
+
+  const handlePrevCollection = () => {
+    if (translateX !== 0) return; // Prevent overlapping transitions
+    setIsTransitioning(false);
+    setCarouselItems((prev) => {
+      const next = [...prev];
+      const last = next.pop();
+      next.unshift(last);
+      return next;
+    });
+    setTranslateX(-33.333);
+    setTimeout(() => {
+      setIsTransitioning(true);
+      setTranslateX(0);
+    }, 50);
+  };
+
+  // Auto-slide loop for infinite left-to-right swapping
+  useEffect(() => {
+    const interval = setInterval(() => {
+      handleNextCollection();
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [translateX]);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -87,7 +162,7 @@ export default function Home() {
 
       {/* The Hero Container that uses high-performance clip-path to shrink horizontally on scroll */}
       <div
-        className="relative min-h-screen bg-gray-900 overflow-hidden font-sans"
+        className="relative h-[340px] md:min-h-screen bg-gray-900 overflow-hidden font-sans"
         style={{
           clipPath: `inset(0% ${insetX}% 0% ${insetX}% round ${borderRadius}px)`
         }}
@@ -111,15 +186,15 @@ export default function Home() {
         ))}
 
         {/* Top Vignette: Elegant shadow from top down to make floating navbar pop (softer and shallower on web) */}
-        <div className="absolute top-0 inset-x-0 h-36 md:h-44 bg-gradient-to-b from-black/65 to-transparent pointer-events-none z-10" />
+        <div className="absolute top-0 inset-x-0 h-28 md:h-44 bg-gradient-to-b from-black/65 to-transparent pointer-events-none z-10" />
 
         {/* Main Content Area */}
-        <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 text-center pb-20">
+        <div className="relative z-10 flex flex-col items-center justify-center h-full md:min-h-screen px-4 text-center pb-10 md:pb-20">
 
           {/* Soft, organic dark radial glow behind the text for superior contrast without shifting the text alignment */}
-          <div className="absolute top-[35%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-4xl h-80 bg-[radial-gradient(circle_at_center,rgba(0,0,0,0.45)_0%,transparent_75%)] pointer-events-none -z-10 blur-3xl scale-125" />
+          <div className="absolute top-[35%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-4xl h-80 bg-[radial-gradient(circle_at_center,rgba(0,0,0,0.45)_0%,transparent_75%)] pointer-events-none -z-10 blur-3xl scale-125 hidden md:block" />
 
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white tracking-tight mb-6 max-w-7xl mx-auto leading-tight drop-shadow-[0_4px_12px_rgba(0,0,0,0.65)]">
+          <h1 className="text-2xl md:text-6xl lg:text-7xl font-bold text-white tracking-tight mb-4 max-w-7xl mx-auto leading-tight drop-shadow-[0_4px_12px_rgba(0,0,0,0.65)]">
             Experience True <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-green-300 relative inline-block">
               Natural Flavors
               {/* The signature Ather-style rounded highlight around the text */}
@@ -128,21 +203,21 @@ export default function Home() {
           </h1>
 
           {/* Subtext (Reduced Size) */}
-          <p className="text-base md:text-xl text-gray-200 mb-10 max-w-2xl font-medium tracking-wide drop-shadow-[0_2px_8px_rgba(0,0,0,0.7)]">
+          <p className="text-xs md:text-xl text-gray-200 mb-6 max-w-2xl font-medium tracking-wide drop-shadow-[0_2px_8px_rgba(0,0,0,0.7)] leading-relaxed">
             Sustainably grown and carefully harvested from our lush estates in Idukki. Elevate your cooking with rich, unadulterated ingredients.
           </p>
 
           {/* Dual Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 items-center justify-center">
+          <div className="flex flex-row gap-3 items-center justify-center">
             <Link
               to="/shop"
-              className="bg-white text-gray-900 hover:bg-gray-100 font-bold py-3 px-8 rounded-full transition-all duration-300 transform hover:scale-105 flex items-center shadow-xl text-sm md:text-base"
+              className="bg-white text-gray-900 hover:bg-gray-100 font-bold py-2 px-5 md:py-3 md:px-8 rounded-full transition-all duration-300 transform hover:scale-105 flex items-center shadow-xl text-xs md:text-base"
             >
-              Shop Now <ArrowRight size={18} className="ml-2 text-emerald-600" />
+              Shop Now <ArrowRight size={14} className="ml-1.5 text-emerald-600 md:size-[18px] md:ml-2" />
             </Link>
             <Link
               to="/shop"
-              className="bg-black/30 backdrop-blur-md border border-white/30 text-white hover:bg-white/20 font-bold py-3 px-8 rounded-full transition-all duration-300 flex items-center shadow-lg text-sm md:text-base"
+              className="bg-black/30 backdrop-blur-md border border-white/30 text-white hover:bg-white/20 font-bold py-2 px-5 md:py-3 md:px-8 rounded-full transition-all duration-300 flex items-center shadow-lg text-xs md:text-base"
             >
               Explore Collection
             </Link>
@@ -150,7 +225,7 @@ export default function Home() {
         </div>
 
         {/* Carousel Indicators (Zomato/Tesla/Ather style progress-bar indicators) */}
-        <div className="absolute bottom-10 md:bottom-24 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 md:gap-3">
+        <div className="absolute bottom-4 md:bottom-24 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 md:gap-3">
           {IMAGES.map((_, index) => (
             <button
               key={index}
@@ -187,111 +262,123 @@ export default function Home() {
       </div>
 
       {/* Shopping Cards Section (Ather Style - Compact) */}
-      <div className="bg-gray-50 py-16 px-4 sm:px-6 lg:px-8">
+      <div className="bg-gray-50 py-12 md:py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-2xl md:text-3xl font-extrabold text-center text-gray-900 mb-10 tracking-tight">
+          <h2 className="text-2xl md:text-3xl font-extrabold text-center text-gray-900 mb-8 md:mb-10 tracking-tight">
             The Idukki Origins Collection
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Card 1: Whole Spices */}
-            <div className="relative group rounded-3xl overflow-hidden h-[380px] md:h-[450px] shadow-lg border border-gray-100">
-              <img
-                src="/images/homepage/premium_whole_spices.jpg"
-                alt="Whole Spices"
-                className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/10 to-black/80" />
+          {/* Mobile/Tablet view: Shows 2 cards at a time, auto-swapping from left to right with navigation arrows */}
+          <div className="relative flex items-center justify-between md:hidden gap-1">
+            <button
+              onClick={handlePrevCollection}
+              className="p-1.5 rounded-full bg-white shadow-md border border-gray-100 hover:bg-gray-50 text-gray-700 active:scale-95 transition-all z-10"
+              aria-label="Previous Collection"
+            >
+              <ChevronLeft size={16} />
+            </button>
 
-              <div className="absolute inset-0 flex flex-col justify-between p-6 text-center">
-                <div className="mt-2">
-                  <h3 className="text-2xl md:text-3xl font-extrabold text-white mb-2 tracking-tight">Premium Whole Spices</h3>
-                  <span className="inline-block bg-white/20 backdrop-blur-md text-white text-[11px] md:text-xs font-bold px-4 py-1 rounded-full border border-white/20 shadow-sm">
-                    Handpicked & Sun-dried
-                  </span>
-                </div>
+            <div className="w-full overflow-hidden py-1 relative">
+              <div
+                className={`flex gap-2.5 w-[150%] ${isTransitioning ? 'transition-transform duration-500 ease-in-out' : ''}`}
+                style={{
+                  transform: `translateX(${translateX}%)`
+                }}
+              >
+                {carouselItems.map((index) => {
+                  const item = collections[index];
+                  return (
+                    <div
+                      key={item.title}
+                      className="w-[calc(33.333%-6.67px)] flex-shrink-0 relative group rounded-2xl overflow-hidden h-[220px] sm:h-[280px] shadow-md border border-gray-100/50 flex flex-col justify-between p-3 text-center transition-all transform hover:scale-[1.02]"
+                    >
+                      <img
+                        src={item.img}
+                        alt={item.title}
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-black/15 to-black/85" />
 
-                <div className="mb-2">
-                  <p className="text-gray-300 text-xs font-bold mb-0.5">Prices starting at</p>
-                  <p className="text-white text-lg md:text-xl font-bold mb-4">₹ 250 / 100g</p>
+                      <div className="relative z-10 mt-1">
+                        <h3 className="text-xs sm:text-sm font-black text-white leading-tight tracking-tight line-clamp-1">
+                          {item.title}
+                        </h3>
+                        <span className="inline-block bg-white/20 backdrop-blur-md text-white text-[8px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full border border-white/20 shadow-sm mt-1">
+                          {item.subtitle.split(" & ")[0]}
+                        </span>
+                      </div>
 
-                  <div className="flex flex-col sm:flex-row justify-center gap-2">
-                    <Link to="/shop" className="bg-gray-100 hover:bg-white text-gray-900 font-bold py-2.5 px-6 rounded-full transition-all text-xs w-full sm:w-auto shadow-md transform hover:scale-105">
-                      Shop Spices
-                    </Link>
-                    <Link to="/shop" className="bg-gray-950/80 hover:bg-black text-white font-bold py-2.5 px-6 rounded-full transition-all text-xs w-full sm:w-auto border border-gray-800 shadow-md transform hover:scale-105">
-                      Explore Range
-                    </Link>
-                  </div>
-                </div>
+                      <div className="relative z-10 mb-1">
+                        <p className="text-[8px] sm:text-[10px] text-gray-300 font-bold mb-0.5">Starting at</p>
+                        <p className="text-white text-xs sm:text-sm font-black mb-2">{item.price}</p>
+                        <Link
+                          to={item.shopUrl}
+                          className="bg-white hover:bg-gray-100 text-gray-900 font-extrabold py-1 px-3 sm:py-1.5 sm:px-4 rounded-full transition-all text-[9px] sm:text-[10px] shadow-md inline-block"
+                        >
+                          Shop Now
+                        </Link>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Card 2: Powders */}
-            <div className="relative group rounded-3xl overflow-hidden h-[380px] md:h-[450px] shadow-lg border border-gray-100">
-              <img
-                src="/images/chilli powder/chilli powder.jpg"
-                alt="Organic Powders"
-                className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/10 to-black/80" />
+            <button
+              onClick={handleNextCollection}
+              className="p-1.5 rounded-full bg-white shadow-md border border-gray-100 hover:bg-gray-50 text-gray-700 active:scale-95 transition-all z-10"
+              aria-label="Next Collection"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
 
-              <div className="absolute inset-0 flex flex-col justify-between p-6 text-center">
-                <div className="mt-2">
-                  <h3 className="text-2xl md:text-3xl font-extrabold text-white mb-2 tracking-tight">Organic Powders</h3>
-                  <span className="inline-block bg-white/20 backdrop-blur-md text-white text-[11px] md:text-xs font-bold px-4 py-1 rounded-full border border-white/20 shadow-sm">
-                    Freshly Ground
-                  </span>
-                </div>
+          {/* Desktop/Large View: Shows all 3 cards in full glory */}
+          <div className="hidden md:grid md:grid-cols-3 gap-6">
+            {collections.map((item) => (
+              <div
+                key={item.title}
+                className="relative group rounded-3xl overflow-hidden h-[380px] md:h-[450px] shadow-lg border border-gray-100"
+              >
+                <img
+                  src={item.img}
+                  alt={item.title}
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/10 to-black/80" />
 
-                <div className="mb-2">
-                  <p className="text-gray-300 text-xs font-bold mb-0.5">Prices starting at</p>
-                  <p className="text-white text-lg md:text-xl font-bold mb-4">₹ 150 / 100g</p>
+                <div className="absolute inset-0 flex flex-col justify-between p-6 text-center">
+                  <div className="mt-2">
+                    <h3 className="text-2xl md:text-3xl font-extrabold text-white mb-2 tracking-tight">
+                      {item.title}
+                    </h3>
+                    <span className="inline-block bg-white/20 backdrop-blur-md text-white text-[11px] md:text-xs font-bold px-4 py-1 rounded-full border border-white/20 shadow-sm">
+                      {item.subtitle}
+                    </span>
+                  </div>
 
-                  <div className="flex flex-col sm:flex-row justify-center gap-2">
-                    <Link to="/shop" className="bg-gray-100 hover:bg-white text-gray-900 font-bold py-2.5 px-6 rounded-full transition-all text-xs w-full sm:w-auto shadow-md transform hover:scale-105">
-                      Shop Powders
-                    </Link>
-                    <Link to="/shop" className="bg-gray-950/80 hover:bg-black text-white font-bold py-2.5 px-6 rounded-full transition-all text-xs w-full sm:w-auto border border-gray-800 shadow-md transform hover:scale-105">
-                      Explore Range
-                    </Link>
+                  <div className="mb-2">
+                    <p className="text-gray-300 text-xs font-bold mb-0.5">Prices starting at</p>
+                    <p className="text-white text-lg md:text-xl font-bold mb-4">{item.price}</p>
+
+                    <div className="flex flex-col sm:flex-row justify-center gap-2">
+                      <Link
+                        to={item.shopUrl}
+                        className="bg-gray-100 hover:bg-white text-gray-900 font-bold py-2.5 px-6 rounded-full transition-all text-xs w-full sm:w-auto shadow-md transform hover:scale-105"
+                      >
+                        {item.shopText}
+                      </Link>
+                      <Link
+                        to={item.exploreUrl}
+                        className="bg-gray-950/80 hover:bg-black text-white font-bold py-2.5 px-6 rounded-full transition-all text-xs w-full sm:w-auto border border-gray-800 shadow-md transform hover:scale-105"
+                      >
+                        Explore Range
+                      </Link>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-
-            {/* Card 3: Others */}
-            <div className="relative group rounded-3xl overflow-hidden h-[380px] md:h-[450px] shadow-lg border border-gray-100">
-              <img
-                src="/images/homepage/others.jpg"
-                alt="Others"
-                className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/10 to-black/80" />
-
-              <div className="absolute inset-0 flex flex-col justify-between p-6 text-center">
-                <div className="mt-2">
-                  <h3 className="text-2xl md:text-3xl font-extrabold text-white mb-2 tracking-tight">Others</h3>
-                  <span className="inline-block bg-white/20 backdrop-blur-md text-white text-[11px] md:text-xs font-bold px-4 py-1 rounded-full border border-white/20 shadow-sm">
-                    Beverages & More
-                  </span>
-                </div>
-
-                <div className="mb-2">
-                  <p className="text-gray-300 text-xs font-bold mb-0.5">Prices starting at</p>
-                  <p className="text-white text-lg md:text-xl font-bold mb-4">₹ 250 / 100g</p>
-
-                  <div className="flex flex-col sm:flex-row justify-center gap-2">
-                    <Link to="/shop" className="bg-gray-100 hover:bg-white text-gray-900 font-bold py-2.5 px-6 rounded-full transition-all text-xs w-full sm:w-auto shadow-md transform hover:scale-105">
-                      Shop Others
-                    </Link>
-                    <Link to="/shop" className="bg-gray-950/80 hover:bg-black text-white font-bold py-2.5 px-6 rounded-full transition-all text-xs w-full sm:w-auto border border-gray-800 shadow-md transform hover:scale-105">
-                      Explore Range
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </div>
