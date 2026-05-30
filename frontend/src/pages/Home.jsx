@@ -262,9 +262,9 @@ export default function Home() {
       </div>
 
       {/* Shopping Cards Section (Ather Style - Compact) */}
-      <div className="bg-gray-50 py-12 md:py-16 px-4 sm:px-6 lg:px-8">
+      <div className="bg-gray-50 pt-5 pb-2 md:py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-2xl md:text-3xl font-extrabold text-center text-gray-900 mb-8 md:mb-10 tracking-tight">
+          <h2 className="text-2xl md:text-3xl font-extrabold text-center text-gray-900 mb-4 md:mb-10 tracking-tight">
             The Idukki Origins Collection
           </h2>
 
@@ -384,7 +384,7 @@ export default function Home() {
       </div>
 
       {/* Handpicked for You Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-12 md:py-16">
         <div className="flex justify-between items-end mb-10">
           <div>
             <p className="text-xs font-black text-emerald-600 uppercase tracking-widest mb-1.5">Handpicked for You</p>
