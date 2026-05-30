@@ -202,8 +202,8 @@ export default function Home() {
             </span> <br className="hidden md:inline" /> from the farms of Idukki
           </h1>
 
-          {/* Subtext (Reduced Size) */}
-          <p className="text-xs md:text-xl text-gray-200 mb-6 max-w-2xl font-medium tracking-wide drop-shadow-[0_2px_8px_rgba(0,0,0,0.7)] leading-relaxed">
+          {/* Subtext (Reduced Size - Hidden on Mobile/Tablet for Pristine Layout) */}
+          <p className="hidden md:block text-xs md:text-xl text-gray-200 mb-6 max-w-2xl font-medium tracking-wide drop-shadow-[0_2px_8px_rgba(0,0,0,0.7)] leading-relaxed">
             Sustainably grown and carefully harvested from our lush estates in Idukki. Elevate your cooking with rich, unadulterated ingredients.
           </p>
 
