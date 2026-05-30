@@ -225,7 +225,7 @@ export default function Home() {
         </div>
 
         {/* Carousel Indicators (Zomato/Tesla/Ather style progress-bar indicators) */}
-        <div className="absolute bottom-4 md:bottom-24 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 md:gap-3">
+        <div className="absolute bottom-4 md:bottom-24 left-1/2 -translate-x-1/2 z-30 hidden md:flex items-center gap-2 md:gap-3">
           {IMAGES.map((_, index) => (
             <button
               key={index}
@@ -269,10 +269,10 @@ export default function Home() {
           </h2>
 
           {/* Mobile/Tablet view: Shows 2 cards at a time, auto-swapping from left to right with navigation arrows */}
-          <div className="relative flex items-center justify-between md:hidden gap-1">
+          <div className="relative md:hidden w-full px-5">
             <button
               onClick={handlePrevCollection}
-              className="p-1.5 rounded-full bg-white shadow-md border border-gray-100 hover:bg-gray-50 text-gray-700 active:scale-95 transition-all z-10"
+              className="absolute -left-1 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-white shadow-md border border-gray-100 hover:bg-gray-50 text-gray-700 active:scale-95 transition-all z-20"
               aria-label="Previous Collection"
             >
               <ChevronLeft size={16} />
@@ -290,7 +290,7 @@ export default function Home() {
                   return (
                     <div
                       key={item.title}
-                      className="w-[calc(33.333%-6.67px)] flex-shrink-0 relative group rounded-2xl overflow-hidden h-[220px] sm:h-[280px] shadow-md border border-gray-100/50 flex flex-col justify-between p-3 text-center transition-all transform hover:scale-[1.02]"
+                      className="w-[calc(33.333%-6.67px)] flex-shrink-0 relative group rounded-2xl overflow-hidden h-[220px] sm:h-[280px] shadow-md border border-gray-100/50 flex flex-col justify-between p-3.5 text-center transition-all transform hover:scale-[1.02]"
                     >
                       <img
                         src={item.img}
@@ -300,20 +300,20 @@ export default function Home() {
                       <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-black/15 to-black/85" />
 
                       <div className="relative z-10 mt-1">
-                        <h3 className="text-xs sm:text-sm font-black text-white leading-tight tracking-tight line-clamp-1">
+                        <h3 className="text-sm sm:text-base font-black text-white leading-tight tracking-tight line-clamp-1">
                           {item.title}
                         </h3>
-                        <span className="inline-block bg-white/20 backdrop-blur-md text-white text-[8px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full border border-white/20 shadow-sm mt-1">
+                        <span className="inline-block bg-white/20 backdrop-blur-md text-white text-[10px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full border border-white/20 shadow-sm mt-1.5">
                           {item.subtitle.split(" & ")[0]}
                         </span>
                       </div>
 
                       <div className="relative z-10 mb-1">
-                        <p className="text-[8px] sm:text-[10px] text-gray-300 font-bold mb-0.5">Starting at</p>
-                        <p className="text-white text-xs sm:text-sm font-black mb-2">{item.price}</p>
+                        <p className="text-[10px] sm:text-xs text-gray-300 font-bold mb-0.5">Starting at</p>
+                        <p className="text-white text-sm sm:text-base font-black mb-2.5">{item.price}</p>
                         <Link
                           to={item.shopUrl}
-                          className="bg-white hover:bg-gray-100 text-gray-900 font-extrabold py-1 px-3 sm:py-1.5 sm:px-4 rounded-full transition-all text-[9px] sm:text-[10px] shadow-md inline-block"
+                          className="bg-white hover:bg-gray-100 text-gray-900 font-extrabold py-1.5 px-4 sm:py-2 sm:px-6 rounded-full transition-all text-[10px] sm:text-xs shadow-md inline-block"
                         >
                           Shop Now
                         </Link>
@@ -326,7 +326,7 @@ export default function Home() {
 
             <button
               onClick={handleNextCollection}
-              className="p-1.5 rounded-full bg-white shadow-md border border-gray-100 hover:bg-gray-50 text-gray-700 active:scale-95 transition-all z-10"
+              className="absolute -right-1 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-white shadow-md border border-gray-100 hover:bg-gray-50 text-gray-700 active:scale-95 transition-all z-20"
               aria-label="Next Collection"
             >
               <ChevronRight size={16} />
