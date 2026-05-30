@@ -162,7 +162,7 @@ export default function Home() {
 
       {/* The Hero Container that uses high-performance clip-path to shrink horizontally on scroll */}
       <div
-        className="relative h-[340px] md:min-h-screen bg-gray-900 overflow-hidden font-sans"
+        className="relative h-[290px] md:min-h-screen bg-gray-900 overflow-hidden font-sans"
         style={{
           clipPath: `inset(0% ${insetX}% 0% ${insetX}% round ${borderRadius}px)`
         }}
@@ -186,10 +186,10 @@ export default function Home() {
         ))}
 
         {/* Top Vignette: Elegant shadow from top down to make floating navbar pop (softer and shallower on web) */}
-        <div className="absolute top-0 inset-x-0 h-28 md:h-44 bg-gradient-to-b from-black/65 to-transparent pointer-events-none z-10" />
+        <div className="absolute top-0 inset-x-0 h-20 md:h-44 bg-gradient-to-b from-black/65 to-transparent pointer-events-none z-10" />
 
         {/* Main Content Area */}
-        <div className="relative z-10 flex flex-col items-center justify-center h-full md:min-h-screen px-4 text-center pb-10 md:pb-20">
+        <div className="relative z-10 flex flex-col items-center justify-end md:justify-center h-full px-4 text-center pb-5 pt-14 md:pb-20 md:pt-0">
 
           {/* Soft, organic dark radial glow behind the text for superior contrast without shifting the text alignment */}
           <div className="absolute top-[35%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-4xl h-80 bg-[radial-gradient(circle_at_center,rgba(0,0,0,0.45)_0%,transparent_75%)] pointer-events-none -z-10 blur-3xl scale-125 hidden md:block" />
