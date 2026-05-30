@@ -269,10 +269,10 @@ export default function Home() {
           </h2>
 
           {/* Mobile/Tablet view: Shows 2 cards at a time, auto-swapping from left to right with navigation arrows */}
-          <div className="relative md:hidden w-full px-5">
+          <div className="relative md:hidden w-full px-0">
             <button
               onClick={handlePrevCollection}
-              className="absolute -left-1 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-white shadow-md border border-gray-100 hover:bg-gray-50 text-gray-700 active:scale-95 transition-all z-20"
+              className="absolute -left-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-white shadow-md border border-gray-100 hover:bg-gray-50 text-gray-700 active:scale-95 transition-all z-20"
               aria-label="Previous Collection"
             >
               <ChevronLeft size={16} />
@@ -326,7 +326,7 @@ export default function Home() {
 
             <button
               onClick={handleNextCollection}
-              className="absolute -right-1 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-white shadow-md border border-gray-100 hover:bg-gray-50 text-gray-700 active:scale-95 transition-all z-20"
+              className="absolute -right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-white shadow-md border border-gray-100 hover:bg-gray-50 text-gray-700 active:scale-95 transition-all z-20"
               aria-label="Next Collection"
             >
               <ChevronRight size={16} />
