@@ -69,6 +69,26 @@ async function main() {
 
   console.log(`Synced Farmer: ${bibin.name}`);
 
+  // Create or Update Farmer Reji
+  const reji = await prisma.farmer.upsert({
+    where: { id: 4 }, 
+    update: {
+      name: 'Reji',
+      rating: 4.9,
+      about: 'Reji is a passionate and experienced beekeeper from the high altitudes of Idukki, Kerala. He specializes in harvesting pure, raw, and organic forest honey using traditional, sustainable apiculture methods that preserve all the natural enzymes, antioxidants, and medicinal benefits.',
+      image: '/images/farmers/reji/reji.jpeg',
+    },
+    create: {
+      id: 4,
+      name: 'Reji',
+      rating: 4.9,
+      about: 'Reji is a passionate and experienced beekeeper from the high altitudes of Idukki, Kerala. He specializes in harvesting pure, raw, and organic forest honey using traditional, sustainable apiculture methods that preserve all the natural enzymes, antioxidants, and medicinal benefits.',
+      image: '/images/farmers/reji/reji.jpeg',
+    }
+  });
+
+  console.log(`Synced Farmer: ${reji.name}`);
+
   // 2. Clear existing reviews, orders, and unneeded products to prevent foreign key errors
   await prisma.review.deleteMany({});
   await prisma.orderItem.deleteMany({});
@@ -79,7 +99,7 @@ async function main() {
   await prisma.product.deleteMany({
     where: {
       name: {
-        notIn: ['Black Pepper', 'Cardamom', 'Coffee', 'Nutmeg', 'Nutmeg Flower', 'Cloves', 'Chilli Powder', 'Coriander Powder']
+        notIn: ['Black Pepper', 'Cardamom', 'Coffee', 'Nutmeg', 'Nutmeg Flower', 'Cloves', 'Chilli Powder', 'Coriander Powder', 'Honey']
       }
     }
   });
@@ -156,6 +176,15 @@ async function main() {
       description: 'Handcrafted from slow-dried, premium coriander seeds grown on Bibin’s organic spice estate, this Coriander Powder has a refreshing, warm, citrusy, and mildly sweet aroma. Ground at low temperatures to ensure the delicate volatile oils are locked in, our coriander powder offers unmatched freshness and depth of flavor. A staple spice to bring structural balance, rich aroma, and wholesome texture to any curry, lentil soup, or vegetable side dish.', 
       farmerId: bibin.id,
       stock: 10.0
+    },
+    { 
+      name: 'Honey', 
+      price: 280.00, 
+      category: 'Sweeteners', 
+      images: ['/images/honey/honey.jpg'], 
+      description: 'Sourced directly from the wild bee hives in the dense forests of Idukki by Reji, our premium raw forest honey is 100% natural, unprocessed, and unpasteurized. It retains all the natural pollen, propolis, and beneficial enzymes, offering a rich, multi-floral sweet taste with deep woody undertones. A perfect natural sweetener and immunity booster.', 
+      farmerId: reji.id,
+      stock: 15.0
     }
   ];
 

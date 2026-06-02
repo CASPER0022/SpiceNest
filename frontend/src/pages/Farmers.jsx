@@ -90,7 +90,7 @@ export default function Farmers() {
                 {/* Farmer Image Banner */}
                 <div className="h-44 relative overflow-hidden bg-gray-100">
                   <img 
-                    src={farmer.id === 1 ? "/images/farmers/raju/farm1.jpg" : farmer.id === 2 ? "/images/farmers/John/farm1.jpg" : "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&q=80"} 
+                    src={farmer.id === 1 ? "/images/farmers/raju/farm1.jpg" : farmer.id === 2 ? "/images/farmers/John/farm1.jpg" : farmer.id === 3 ? "/images/farmers/bibin/farm1.jpg" : farmer.id === 4 ? "/images/farmers/reji/farm1.jpg" : "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&q=80"} 
                     alt="Farm Lands" 
                     className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" 
                   />
