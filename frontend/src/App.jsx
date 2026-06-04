@@ -26,6 +26,17 @@ import ResetPassword from './pages/ResetPassword';
 import Orders from './pages/Orders';
 import Dashboard from './pages/Dashboard';
 import TrackOrder from './pages/TrackOrder';
+import About from './pages/About';
+import Gallery from './pages/Gallery';
+import Blog from './pages/Blog';
+import Contact from './pages/Contact';
+import Reviews from './pages/Reviews';
+import Certifications from './pages/Certifications';
+import ShippingPolicy from './pages/ShippingPolicy';
+import CancellationReturn from './pages/CancellationReturn';
+import RefundPolicy from './pages/RefundPolicy';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsConditions from './pages/TermsConditions';
 
 // Main App Layout component to handle routing logic like dynamic padding
 function AppLayout() {
@@ -78,6 +89,17 @@ function AppLayout() {
           <Route path="/orders" element={<Orders />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/track-order" element={<TrackOrder />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/gallery" element={<Gallery />} />
+          <Route path="/blog" element={<Blog />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/reviews" element={<Reviews />} />
+          <Route path="/certifications" element={<Certifications />} />
+          <Route path="/shipping-policy" element={<ShippingPolicy />} />
+          <Route path="/cancellation-return" element={<CancellationReturn />} />
+          <Route path="/refund-policy" element={<RefundPolicy />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/terms-conditions" element={<TermsConditions />} />
         </Routes>
       </main>
       <Footer />

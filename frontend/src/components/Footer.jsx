@@ -48,9 +48,9 @@ export default function Footer() {
             <ul className="space-y-3.5 text-sm text-gray-400">
               <li><Link to="/" className="hover:text-emerald-500 transition-colors">Home</Link></li>
               <li><Link to="/shop" className="hover:text-emerald-500 transition-colors">All Products</Link></li>
-              <li><Link to="/shop?category=Whole" className="hover:text-emerald-500 transition-colors">Whole Spices</Link></li>
-              <li><Link to="/shop?category=Ground" className="hover:text-emerald-500 transition-colors">Ground Spices</Link></li>
-              <li><Link to="#" className="hover:text-emerald-500 transition-colors">Certifications</Link></li>
+              <li><Link to="/shop?category=Whole%20Spices" className="hover:text-emerald-500 transition-colors">Whole Spices</Link></li>
+              <li><Link to="/shop?category=Powders" className="hover:text-emerald-500 transition-colors">Ground Spices</Link></li>
+              <li><Link to="/certifications" className="hover:text-emerald-500 transition-colors">Certifications</Link></li>
             </ul>
           </div>
 
@@ -58,11 +58,11 @@ export default function Footer() {
           <div className="space-y-6">
             <h3 className="text-sm font-bold text-white uppercase tracking-widest opacity-85">Our Company</h3>
             <ul className="space-y-3.5 text-sm text-gray-400">
-              <li><Link to="#" className="hover:text-emerald-500 transition-colors">About Us</Link></li>
-              <li><Link to="#" className="hover:text-emerald-500 transition-colors">Customer Reviews</Link></li>
-              <li><Link to="#" className="hover:text-emerald-500 transition-colors">Blog</Link></li>
-              <li><Link to="#" className="hover:text-emerald-500 transition-colors">Gallery</Link></li>
-              <li><Link to="#" className="hover:text-emerald-500 transition-colors">Contact Us</Link></li>
+              <li><Link to="/about" className="hover:text-emerald-500 transition-colors">About Us</Link></li>
+              <li><Link to="/reviews" className="hover:text-emerald-500 transition-colors">Customer Reviews</Link></li>
+              <li><Link to="/blog" className="hover:text-emerald-500 transition-colors">Blog</Link></li>
+              <li><Link to="/gallery" className="hover:text-emerald-500 transition-colors">Gallery</Link></li>
+              <li><Link to="/contact" className="hover:text-emerald-500 transition-colors">Contact Us</Link></li>
             </ul>
           </div>
 
@@ -70,12 +70,12 @@ export default function Footer() {
           <div className="space-y-6">
             <h3 className="text-sm font-bold text-white uppercase tracking-widest opacity-85">Customer Support</h3>
             <ul className="space-y-3.5 text-sm text-gray-400">
-              <li><Link to="#" className="hover:text-emerald-500 transition-colors">Shipping Policy</Link></li>
-              <li><Link to="#" className="hover:text-emerald-500 transition-colors">Cancellation & Return</Link></li>
-              <li><Link to="#" className="hover:text-emerald-500 transition-colors">Refund Policy</Link></li>
-              <li><Link to="#" className="hover:text-emerald-500 transition-colors">Privacy Policy</Link></li>
-              <li><Link to="#" className="hover:text-emerald-500 transition-colors">Terms & Conditions</Link></li>
-              <li><Link to="#" className="hover:text-emerald-500 transition-colors">Track Order</Link></li>
+              <li><Link to="/shipping-policy" className="hover:text-emerald-500 transition-colors">Shipping Policy</Link></li>
+              <li><Link to="/cancellation-return" className="hover:text-emerald-500 transition-colors">Cancellation & Return</Link></li>
+              <li><Link to="/refund-policy" className="hover:text-emerald-500 transition-colors">Refund Policy</Link></li>
+              <li><Link to="/privacy-policy" className="hover:text-emerald-500 transition-colors">Privacy Policy</Link></li>
+              <li><Link to="/terms-conditions" className="hover:text-emerald-500 transition-colors">Terms & Conditions</Link></li>
+              <li><Link to="/track-order" className="hover:text-emerald-500 transition-colors">Track Order</Link></li>
             </ul>
           </div>
 
