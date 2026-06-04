@@ -300,21 +300,6 @@ app.get('/api/test', (req, res) => {
 });
 
 // ==========================================
-// Database Keep-Alive Heartbeat 💓 (Keeps Neon Database Awake in Development)
-// ==========================================
-if (process.env.NODE_ENV !== 'production') {
-  setInterval(async () => {
-    try {
-      // A lightweight query to keep Neon warm
-      await prisma.$queryRaw`SELECT 1`;
-      console.log('💓 Database heartbeat ping successful (Neon kept warm)');
-    } catch (err) {
-      console.error('⚠️ Heartbeat ping failed:', err.message);
-    }
-  }, 4 * 60 * 1000); // Ping every 4 minutes (before the 5-minute timeout)
-}
-
-// ==========================================
 // Start the Server
 // ==========================================
 app.listen(PORT, () => {
