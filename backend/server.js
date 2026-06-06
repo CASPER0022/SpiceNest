@@ -34,10 +34,26 @@ import { verifyToken } from './routes/auth.js';
 // ==========================================
 // Middleware (Software that runs before your routes)
 // ==========================================
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://idukkiorigins.com',
+  'https://www.idukkiorigins.com'
+];
+if (process.env.FRONTEND_URL) {
+  allowedOrigins.push(process.env.FRONTEND_URL);
+}
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin) || origin.endsWith('idukkiorigins.com')) {
+      return callback(null, true);
+    } else {
+      return callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
-})); // Allows our React frontend (port 5173) to securely talk to this backend (port 5000)
+}));
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
