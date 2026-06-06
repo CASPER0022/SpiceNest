@@ -488,8 +488,7 @@ router.get('/admin/dashboard', verifyToken, async (req, res) => {
       where: { id: req.user.id }
     });
 
-    const adminEmails = ['heyitsmealbinjohn@gmail.com', 'bibinjohn2018@gmail.com'];
-    if (!user || !adminEmails.includes(user.email)) {
+    if (!user || user.role !== 'ADMIN') {
       return res.status(403).json({ error: 'Access denied: Admins only' });
     }
 
@@ -532,8 +531,7 @@ router.post('/admin/orders/:id/send-message', verifyToken, async (req, res) => {
       where: { id: req.user.id }
     });
 
-    const adminEmails = ['heyitsmealbinjohn@gmail.com', 'bibinjohn2018@gmail.com'];
-    if (!adminUser || !adminEmails.includes(adminUser.email)) {
+    if (!adminUser || adminUser.role !== 'ADMIN') {
       return res.status(403).json({ error: 'Access denied: Admins only' });
     }
 
@@ -615,8 +613,7 @@ router.put('/admin/orders/:id/status', verifyToken, async (req, res) => {
       where: { id: req.user.id }
     });
 
-    const adminEmails = ['heyitsmealbinjohn@gmail.com', 'bibinjohn2018@gmail.com'];
-    if (!adminUser || !adminEmails.includes(adminUser.email)) {
+    if (!adminUser || adminUser.role !== 'ADMIN') {
       return res.status(403).json({ error: 'Access denied: Admins only' });
     }
 
@@ -649,8 +646,7 @@ router.put('/admin/orders/:id/address', verifyToken, async (req, res) => {
       where: { id: req.user.id }
     });
 
-    const adminEmails = ['heyitsmealbinjohn@gmail.com', 'bibinjohn2018@gmail.com'];
-    if (!adminUser || !adminEmails.includes(adminUser.email)) {
+    if (!adminUser || adminUser.role !== 'ADMIN') {
       return res.status(403).json({ error: 'Access denied: Admins only' });
     }
 

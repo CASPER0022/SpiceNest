@@ -10,7 +10,16 @@ const prisma = new PrismaClient();
 const router = express.Router();
 
 // In a real app, never put the secret directly in code. Always use process.env!
+if (!process.env.JWT_SECRET) {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('FATAL ERROR: JWT_SECRET environment variable is missing in production!');
+  } else {
+    console.warn('⚠️ WARNING: JWT_SECRET environment variable is not defined. Using fallback key for development.');
+  }
+}
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key-for-learning';
+
+const adminEmails = ['heyitsmealbinjohn@gmail.com', 'bibinjohn2018@gmail.com'];
 
 // ==========================================
 // REGISTER ROUTE (/api/auth/register)
@@ -32,8 +41,9 @@ router.post('/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, salt);
 
     // 3. Save to database
+    const userRole = adminEmails.includes(normalizedEmail) ? 'ADMIN' : 'USER';
     const newUser = await prisma.user.create({
-      data: { name, email: normalizedEmail, password: hashedPassword }
+      data: { name, email: normalizedEmail, password: hashedPassword, role: userRole }
     });
 
     // 4. Automatically claim guest orders
@@ -91,8 +101,18 @@ router.post('/login', async (req, res) => {
     // 3. Generate a JWT Token (a digital ID card)
     const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '7d' });
 
+    // Auto-upgrade if in admin list and role is not ADMIN
+    let finalRole = user.role;
+    if (adminEmails.includes(normalizedEmail) && user.role !== 'ADMIN') {
+      const updatedUser = await prisma.user.update({
+        where: { id: user.id },
+        data: { role: 'ADMIN' }
+      });
+      finalRole = 'ADMIN';
+    }
+
     // 4. Send token back to frontend
-    res.json({ token, user: { id: user.id, name: user.name, email: user.email, address: user.address } });
+    res.json({ token, user: { id: user.id, name: user.name, email: user.email, address: user.address, role: finalRole } });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Login failed' });
@@ -128,7 +148,7 @@ router.get('/me', verifyToken, async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-    res.json({ id: user.id, name: user.name, email: user.email, address: user.address });
+    res.json({ id: user.id, name: user.name, email: user.email, address: user.address, role: user.role });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to verify session' });

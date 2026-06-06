@@ -161,8 +161,7 @@ router.delete('/:id', verifyToken, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const admins = ['heyitsmealbinjohn@gmail.com', 'bibinjohn2018@gmail.com'];
-    const isAdmin = admins.includes(requestingUser.email);
+    const isAdmin = requestingUser.role === 'ADMIN';
 
     const reviewId = parseInt(id, 10);
     const review = await prisma.review.findUnique({

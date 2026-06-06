@@ -3,11 +3,21 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import pkg from '@prisma/client';
 
+import rateLimit from 'express-rate-limit';
+
 const { PrismaClient } = pkg;
 const prisma = new PrismaClient();
 
 // Load environment variables
 dotenv.config();
+
+if (!process.env.JWT_SECRET) {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('FATAL ERROR: JWT_SECRET environment variable is missing in production!');
+  } else {
+    console.warn('⚠️ WARNING: JWT_SECRET environment variable is not defined in .env. Using fallback key for development.');
+  }
+}
 
 // Initialize the Express application
 const app = express();
@@ -24,7 +34,23 @@ import { verifyToken } from './routes/auth.js';
 // ==========================================
 // Middleware (Software that runs before your routes)
 // ==========================================
-app.use(cors()); // Allows our React frontend (port 5173) to securely talk to this backend (port 5000)
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  credentials: true
+})); // Allows our React frontend (port 5173) to securely talk to this backend (port 5000)
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per window
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests from this IP, please try again after 15 minutes.' }
+});
+
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/forgot-password', authLimiter);
+
 app.use(express.json()); // Allows the server to understand JSON data sent in requests
 
 // ==========================================
@@ -128,8 +154,7 @@ app.put('/api/products/:id', verifyToken, async (req, res) => {
       where: { id: req.user.id }
     });
 
-    const adminEmails = ['heyitsmealbinjohn@gmail.com', 'bibinjohn2018@gmail.com'];
-    if (!user || !adminEmails.includes(user.email)) {
+    if (!user || user.role !== 'ADMIN') {
       return res.status(403).json({ error: 'Access denied: Admins only' });
     }
 
@@ -162,8 +187,7 @@ app.post('/api/products', verifyToken, async (req, res) => {
       where: { id: req.user.id }
     });
 
-    const adminEmails = ['heyitsmealbinjohn@gmail.com', 'bibinjohn2018@gmail.com'];
-    if (!user || !adminEmails.includes(user.email)) {
+    if (!user || user.role !== 'ADMIN') {
       return res.status(403).json({ error: 'Access denied: Admins only' });
     }
 
@@ -205,8 +229,7 @@ app.delete('/api/products/:id', verifyToken, async (req, res) => {
       where: { id: req.user.id }
     });
 
-    const adminEmails = ['heyitsmealbinjohn@gmail.com', 'bibinjohn2018@gmail.com'];
-    if (!user || !adminEmails.includes(user.email)) {
+    if (!user || user.role !== 'ADMIN') {
       return res.status(403).json({ error: 'Access denied: Admins only' });
     }
 
