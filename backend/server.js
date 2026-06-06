@@ -8,6 +8,43 @@ import rateLimit from 'express-rate-limit';
 const { PrismaClient } = pkg;
 const prisma = new PrismaClient();
 
+// In-Memory Cache Helper
+class MemoryCache {
+  constructor(ttl = 5 * 60 * 1000) { // Default TTL: 5 minutes
+    this.cache = new Map();
+    this.ttl = ttl;
+  }
+
+  get(key) {
+    const item = this.cache.get(key);
+    if (!item) return null;
+    if (Date.now() > item.expiry) {
+      this.cache.delete(key);
+      return null;
+    }
+    return item.value;
+  }
+
+  set(key, value) {
+    this.cache.set(key, {
+      value,
+      expiry: Date.now() + this.ttl
+    });
+  }
+
+  delete(key) {
+    this.cache.delete(key);
+  }
+
+  clear() {
+    this.cache.clear();
+  }
+}
+
+const productCache = new MemoryCache(5 * 60 * 1000);
+const farmerCache = new MemoryCache(5 * 60 * 1000);
+
+
 // Load environment variables
 dotenv.config();
 
@@ -91,6 +128,11 @@ app.use('/api/wishlist', wishlistRoutes);
 // Get all spices from the Neon Database!
 app.get('/api/products', async (req, res) => {
   try {
+    const cachedProducts = productCache.get('all_products');
+    if (cachedProducts) {
+      return res.json(cachedProducts);
+    }
+
     const products = await prisma.product.findMany({
       where: { isArchived: false },
       orderBy: { id: 'desc' },
@@ -114,6 +156,7 @@ app.get('/api/products', async (req, res) => {
       };
     });
 
+    productCache.set('all_products', productsWithRatings);
     res.json(productsWithRatings);
   } catch (error) {
     console.error(error);
@@ -125,6 +168,12 @@ app.get('/api/products', async (req, res) => {
 app.get('/api/products/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    const cacheKey = `product_${id}`;
+    const cachedProduct = productCache.get(cacheKey);
+    if (cachedProduct) {
+      return res.json(cachedProduct);
+    }
+
     const product = await prisma.product.findUnique({
       where: { id: parseInt(id) },
       include: { 
@@ -149,11 +198,14 @@ app.get('/api/products/:id', async (req, res) => {
       ? parseFloat((product.reviews.reduce((acc, curr) => acc + curr.rating, 0) / reviewsCount).toFixed(1))
       : 0; // Default to 0 when there are no reviews
 
-    res.json({
+    const result = {
       ...product,
       rating,
       reviewsCount
-    });
+    };
+
+    productCache.set(cacheKey, result);
+    res.json(result);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch product' });
@@ -186,6 +238,10 @@ app.put('/api/products/:id', verifyToken, async (req, res) => {
       where: { id: parseInt(id, 10) },
       data: updatedData
     });
+
+    // Invalidate product caches
+    productCache.delete('all_products');
+    productCache.delete(`product_${id}`);
 
     res.json({ success: true, product: updatedProduct });
   } catch (error) {
@@ -229,6 +285,9 @@ app.post('/api/products', verifyToken, async (req, res) => {
       }
     });
 
+    // Invalidate products cache
+    productCache.delete('all_products');
+
     res.status(201).json({ success: true, product: newProduct });
   } catch (error) {
     console.error('Create product error:', error);
@@ -253,6 +312,10 @@ app.delete('/api/products/:id', verifyToken, async (req, res) => {
       where: { id: parseInt(id, 10) }
     });
 
+    // Invalidate product caches
+    productCache.delete('all_products');
+    productCache.delete(`product_${id}`);
+
     res.json({ success: true, message: 'Product deleted successfully' });
   } catch (error) {
     console.error('Delete product error:', error);
@@ -263,6 +326,11 @@ app.delete('/api/products/:id', verifyToken, async (req, res) => {
 // Get all farmers
 app.get('/api/farmers', async (req, res) => {
   try {
+    const cachedFarmers = farmerCache.get('all_farmers');
+    if (cachedFarmers) {
+      return res.json(cachedFarmers);
+    }
+
     const farmers = await prisma.farmer.findMany({
       include: { 
         products: true,
@@ -287,6 +355,7 @@ app.get('/api/farmers', async (req, res) => {
     // Sort by rating desc
     farmersWithRatings.sort((a, b) => b.rating - a.rating);
 
+    farmerCache.set('all_farmers', farmersWithRatings);
     res.json(farmersWithRatings);
   } catch (error) {
     console.error(error);
@@ -298,6 +367,12 @@ app.get('/api/farmers', async (req, res) => {
 app.get('/api/farmers/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    const cacheKey = `farmer_${id}`;
+    const cachedFarmer = farmerCache.get(cacheKey);
+    if (cachedFarmer) {
+      return res.json(cachedFarmer);
+    }
+
     const farmer = await prisma.farmer.findUnique({
       where: { id: parseInt(id) },
       include: { 
@@ -322,11 +397,14 @@ app.get('/api/farmers/:id', async (req, res) => {
       ? parseFloat((farmer.reviews.reduce((acc, curr) => acc + curr.rating, 0) / reviewsCount).toFixed(1))
       : farmer.rating;
 
-    res.json({
+    const result = {
       ...farmer,
       rating,
       reviewsCount
-    });
+    };
+
+    farmerCache.set(cacheKey, result);
+    res.json(result);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch farmer' });
