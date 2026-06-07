@@ -283,7 +283,7 @@ export default function Dashboard() {
   // Scroll to top automatically when navigating to any detail page or returning back
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, [selectedOrderId, selectedCustomerEmail, selectedProductAnalyticsId]);
+  }, [selectedOrderId, selectedCustomerEmail, selectedProductAnalyticsId, editingProductId]);
 
   const filteredRegistryOrders = orders.filter(order => {
     if (!searchQuery.trim()) return true;
@@ -2371,14 +2371,18 @@ export default function Dashboard() {
           <div className="bg-white rounded-3xl border border-gray-150 p-6 md:p-8 shadow-sm">
             <div className="flex items-center justify-between mb-8 border-b border-gray-50 pb-4">
               <div>
-                <h3 className="text-lg font-black text-gray-900 tracking-tight">Product Catalog Inventory</h3>
-                <p className="text-xs text-gray-400 font-bold mt-1">Manage spice prices, live stock levels, and catalog info.</p>
+                <h3 className="text-lg font-black text-gray-900 tracking-tight">
+                  {editingProductId ? 'Edit Spice Product' : 'Product Catalog Inventory'}
+                </h3>
+                <p className="text-xs text-gray-400 font-bold mt-1">
+                  {editingProductId ? 'Modify product details below neatly.' : 'Manage spice prices, live stock levels, and catalog info.'}
+                </p>
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-xs font-black bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full border border-emerald-100">
                   {products.length} Spices Listed
                 </span>
-                {!isAddingProduct && (
+                {!isAddingProduct && !editingProductId && (
                   <button
                     onClick={() => setIsAddingProduct(true)}
                     className="text-xs font-black uppercase tracking-wider bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-full transition-all shadow-md active:scale-95 cursor-pointer"
@@ -2389,11 +2393,17 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {isAddingProduct && (
-              <form onSubmit={handleProductCreate} className="mb-8 p-6 bg-emerald-50/50 border border-emerald-150 rounded-3xl space-y-4 animate-fadeIn">
+            {editingProductId ? (
+              <form 
+                onSubmit={(e) => { 
+                  e.preventDefault(); 
+                  handleProductSave(editingProductId); 
+                }} 
+                className="p-6 bg-emerald-50/50 border border-emerald-150 rounded-3xl space-y-4 animate-fadeIn"
+              >
                 <h4 className="text-sm font-black text-emerald-800 uppercase tracking-widest mb-2 flex items-center">
-                  <span className="bg-emerald-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs mr-2 font-bold">+</span>
-                  Add New Spice Product
+                  <span className="bg-emerald-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs mr-2 font-bold">✎</span>
+                  Edit details for: {editProductForm.name}
                 </h4>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
@@ -2404,8 +2414,8 @@ export default function Dashboard() {
                       type="text"
                       required
                       placeholder="e.g. Ginger Powder"
-                      value={addProductForm.name}
-                      onChange={(e) => setAddProductForm(prev => ({ ...prev, name: e.target.value }))}
+                      value={editProductForm.name}
+                      onChange={(e) => setEditProductForm(prev => ({ ...prev, name: e.target.value }))}
                       className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-800 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                     />
                   </div>
@@ -2419,23 +2429,23 @@ export default function Dashboard() {
                       min="1"
                       step="any"
                       placeholder="e.g. 180"
-                      value={addProductForm.price}
-                      onChange={(e) => setAddProductForm(prev => ({ ...prev, price: e.target.value }))}
+                      value={editProductForm.price}
+                      onChange={(e) => setEditProductForm(prev => ({ ...prev, price: e.target.value }))}
                       className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-800 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                     />
                   </div>
 
                   {/* Stock */}
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Initial Stock (kg)</label>
+                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Current Stock (kg)</label>
                     <input
                       type="number"
                       required
                       min="0"
                       step="any"
                       placeholder="e.g. 10"
-                      value={addProductForm.stock}
-                      onChange={(e) => setAddProductForm(prev => ({ ...prev, stock: e.target.value }))}
+                      value={editProductForm.stock}
+                      onChange={(e) => setEditProductForm(prev => ({ ...prev, stock: e.target.value }))}
                       className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-800 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                     />
                   </div>
@@ -2444,41 +2454,14 @@ export default function Dashboard() {
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Category</label>
                     <select
-                      value={addProductForm.category}
-                      onChange={(e) => setAddProductForm(prev => ({ ...prev, category: e.target.value }))}
+                      value={editProductForm.category}
+                      onChange={(e) => setEditProductForm(prev => ({ ...prev, category: e.target.value }))}
                       className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-700 focus:outline-none focus:border-emerald-500 cursor-pointer"
                     >
                       <option value="Whole Spices">Whole Spices</option>
                       <option value="Powders">Powders</option>
                       <option value="Beverages">Beverages</option>
                     </select>
-                  </div>
-
-                  {/* Sourced From (Farmer) */}
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Farmer (Source)</label>
-                    <select
-                      value={addProductForm.farmerId}
-                      onChange={(e) => setAddProductForm(prev => ({ ...prev, farmerId: Number(e.target.value) }))}
-                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-700 focus:outline-none focus:border-emerald-500 cursor-pointer"
-                    >
-                      <option value={1}>Raju John</option>
-                      <option value={2}>John</option>
-                      <option value={3}>Bibin</option>
-                    </select>
-                  </div>
-
-                  {/* Image Path */}
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Image Path</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. /images/homepage/others.jpg"
-                      value={addProductForm.image}
-                      onChange={(e) => setAddProductForm(prev => ({ ...prev, image: e.target.value }))}
-                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-800 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-                    />
                   </div>
                 </div>
 
@@ -2487,11 +2470,11 @@ export default function Dashboard() {
                   <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Product Description</label>
                   <textarea
                     required
-                    rows={3}
+                    rows={6}
                     placeholder="Enter aromatic details, drying methods, and source notes..."
-                    value={addProductForm.description}
-                    onChange={(e) => setAddProductForm(prev => ({ ...prev, description: e.target.value }))}
-                    className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-800 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 resize-none"
+                    value={editProductForm.description}
+                    onChange={(e) => setEditProductForm(prev => ({ ...prev, description: e.target.value }))}
+                    className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-800 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 resize-none font-sans"
                   />
                 </div>
 
@@ -2499,165 +2482,220 @@ export default function Dashboard() {
                 <div className="flex items-center gap-3 pt-2">
                   <button
                     type="submit"
-                    disabled={creatingProduct}
+                    disabled={savingProduct}
                     className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-450 text-white font-bold px-6 py-2.5 rounded-xl transition-all shadow-md active:scale-95 text-xs uppercase tracking-wider cursor-pointer"
                   >
-                    {creatingProduct ? 'Creating...' : 'Create Product'}
+                    {savingProduct ? 'Saving...' : 'Save Changes'}
                   </button>
                   <button
                     type="button"
-                    onClick={() => setIsAddingProduct(false)}
+                    onClick={() => setEditingProductId(null)}
                     className="border border-gray-200 bg-white hover:bg-gray-50 text-gray-500 font-bold px-6 py-2.5 rounded-xl transition-all active:scale-95 text-xs uppercase tracking-wider cursor-pointer"
                   >
                     Cancel
                   </button>
                 </div>
               </form>
-            )}
+            ) : (
+              <>
+                {isAddingProduct && (
+                  <form onSubmit={handleProductCreate} className="mb-8 p-6 bg-emerald-50/50 border border-emerald-150 rounded-3xl space-y-4 animate-fadeIn">
+                    <h4 className="text-sm font-black text-emerald-800 uppercase tracking-widest mb-2 flex items-center">
+                      <span className="bg-emerald-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs mr-2 font-bold">+</span>
+                      Add New Spice Product
+                    </h4>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                      {/* Name */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Spice Name</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g. Ginger Powder"
+                          value={addProductForm.name}
+                          onChange={(e) => setAddProductForm(prev => ({ ...prev, name: e.target.value }))}
+                          className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-800 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                        />
+                      </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-gray-100">
-                    <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Spice Image & Name</th>
-                    <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Category</th>
-                    <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Price (Base)</th>
-                    <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Current Stock</th>
-                    <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {products.map((prod) => {
-                    const isEditing = editingProductId === prod.id;
-                    const prodImage = prod.images && prod.images.length > 0 ? prod.images[0] : '/images/placeholder.jpg';
+                      {/* Price */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Price (Base per 100g)</label>
+                        <input
+                          type="number"
+                          required
+                          min="1"
+                          step="any"
+                          placeholder="e.g. 180"
+                          value={addProductForm.price}
+                          onChange={(e) => setAddProductForm(prev => ({ ...prev, price: e.target.value }))}
+                          className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-800 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                        />
+                      </div>
 
-                    return (
-                      <tr key={prod.id} className="hover:bg-gray-50/50 transition-colors">
-                        {/* Name and Image */}
-                        <td className="py-5 pr-4 flex items-start gap-4">
-                          <img src={prodImage} alt={prod.name} className="w-14 h-14 rounded-2xl object-cover border border-gray-100 shadow-sm shrink-0 bg-gray-50" />
-                          <div className="space-y-1 flex-grow">
-                            {isEditing ? (
-                              <div className="space-y-2">
-                                <input
-                                  type="text"
-                                  value={editProductForm.name}
-                                  onChange={(e) => setEditProductForm(prev => ({ ...prev, name: e.target.value }))}
-                                  className="text-xs font-extrabold text-gray-800 bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-emerald-500 focus:bg-white w-full max-w-[200px]"
-                                />
-                                <textarea
-                                  value={editProductForm.description}
-                                  onChange={(e) => setEditProductForm(prev => ({ ...prev, description: e.target.value }))}
-                                  className="text-[10px] font-semibold text-gray-500 bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-emerald-500 focus:bg-white w-full max-w-[300px] h-16 resize-none block"
-                                />
-                              </div>
-                            ) : (
-                              <>
+                      {/* Stock */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Initial Stock (kg)</label>
+                        <input
+                          type="number"
+                          required
+                          min="0"
+                          step="any"
+                          placeholder="e.g. 10"
+                          value={addProductForm.stock}
+                          onChange={(e) => setAddProductForm(prev => ({ ...prev, stock: e.target.value }))}
+                          className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-800 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                        />
+                      </div>
+
+                      {/* Category */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Category</label>
+                        <select
+                          value={addProductForm.category}
+                          onChange={(e) => setAddProductForm(prev => ({ ...prev, category: e.target.value }))}
+                          className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-700 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                        >
+                          <option value="Whole Spices">Whole Spices</option>
+                          <option value="Powders">Powders</option>
+                          <option value="Beverages">Beverages</option>
+                        </select>
+                      </div>
+
+                      {/* Sourced From (Farmer) */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Farmer (Source)</label>
+                        <select
+                          value={addProductForm.farmerId}
+                          onChange={(e) => setAddProductForm(prev => ({ ...prev, farmerId: Number(e.target.value) }))}
+                          className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-700 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                        >
+                          <option value={1}>Raju John</option>
+                          <option value={2}>John</option>
+                          <option value={3}>Bibin</option>
+                        </select>
+                      </div>
+
+                      {/* Image Path */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Image Path</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g. /images/homepage/others.jpg"
+                          value={addProductForm.image}
+                          onChange={(e) => setAddProductForm(prev => ({ ...prev, image: e.target.value }))}
+                          className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-800 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Description */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Product Description</label>
+                      <textarea
+                        required
+                        rows={3}
+                        placeholder="Enter aromatic details, drying methods, and source notes..."
+                        value={addProductForm.description}
+                        onChange={(e) => setAddProductForm(prev => ({ ...prev, description: e.target.value }))}
+                        className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-800 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 resize-none"
+                      />
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center gap-3 pt-2">
+                      <button
+                        type="submit"
+                        disabled={creatingProduct}
+                        className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-450 text-white font-bold px-6 py-2.5 rounded-xl transition-all shadow-md active:scale-95 text-xs uppercase tracking-wider cursor-pointer"
+                      >
+                        {creatingProduct ? 'Creating...' : 'Create Product'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsAddingProduct(false)}
+                        className="border border-gray-200 bg-white hover:bg-gray-50 text-gray-500 font-bold px-6 py-2.5 rounded-xl transition-all active:scale-95 text-xs uppercase tracking-wider cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-gray-100">
+                        <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Spice Image & Name</th>
+                        <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Category</th>
+                        <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Price (Base)</th>
+                        <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Current Stock</th>
+                        <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {products.map((prod) => {
+                        const prodImage = prod.images && prod.images.length > 0 ? prod.images[0] : '/images/placeholder.jpg';
+
+                        return (
+                          <tr key={prod.id} className="hover:bg-gray-50/50 transition-colors">
+                            {/* Name and Image */}
+                            <td className="py-5 pr-4 flex items-start gap-4">
+                              <img src={prodImage} alt={prod.name} className="w-14 h-14 rounded-2xl object-cover border border-gray-100 shadow-sm shrink-0 bg-gray-50" />
+                              <div className="space-y-1 flex-grow">
                                 <span className="text-sm font-extrabold text-gray-800 block leading-none">{prod.name}</span>
                                 <p className="text-[10px] text-gray-400 font-semibold line-clamp-2 max-w-[300px] leading-relaxed">{prod.description}</p>
-                              </>
-                            )}
-                          </div>
-                        </td>
+                              </div>
+                            </td>
 
-                        {/* Category */}
-                        <td className="py-5 pr-4">
-                          {isEditing ? (
-                            <input
-                              type="text"
-                              value={editProductForm.category}
-                              onChange={(e) => setEditProductForm(prev => ({ ...prev, category: e.target.value }))}
-                              className="text-xs font-bold text-gray-600 bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-emerald-500 w-28"
-                            />
-                          ) : (
-                            <span className="text-xs font-bold text-emerald-700 bg-emerald-50/70 border border-emerald-100/50 px-2.5 py-1 rounded-full">{prod.category}</span>
-                          )}
-                        </td>
+                            {/* Category */}
+                            <td className="py-5 pr-4">
+                              <span className="text-xs font-bold text-emerald-700 bg-emerald-50/70 border border-emerald-100/50 px-2.5 py-1 rounded-full">{prod.category}</span>
+                            </td>
 
-                        {/* Price */}
-                        <td className="py-5 pr-4 text-right">
-                          {isEditing ? (
-                            <div className="inline-flex items-center gap-1">
-                              <span className="text-xs font-black text-gray-400">₹</span>
-                              <input
-                                type="number"
-                                step="any"
-                                value={editProductForm.price}
-                                onChange={(e) => setEditProductForm(prev => ({ ...prev, price: e.target.value }))}
-                                className="text-xs font-black text-gray-800 bg-white border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-emerald-500 w-16 text-right"
-                              />
-                            </div>
-                          ) : (
-                            <span className="text-sm font-black text-gray-800">₹{prod.price.toFixed(2)}</span>
-                          )}
-                        </td>
+                            {/* Price */}
+                            <td className="py-5 pr-4 text-right">
+                              <span className="text-sm font-black text-gray-800">₹{prod.price.toFixed(2)}</span>
+                            </td>
 
-                        {/* Stock */}
-                        <td className="py-5 pr-4 text-right">
-                          {isEditing ? (
-                            <div className="inline-flex items-center gap-1">
-                              <input
-                                type="number"
-                                step="any"
-                                value={editProductForm.stock}
-                                onChange={(e) => setEditProductForm(prev => ({ ...prev, stock: e.target.value }))}
-                                className="text-xs font-black text-gray-800 bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-emerald-500 w-20 text-right"
-                              />
-                              <span className="text-[10px] font-black text-gray-400 uppercase">kg</span>
-                            </div>
-                          ) : (
-                            <span className={`text-xs font-black px-2.5 py-1 rounded-full border ${
-                              prod.stock >= 0.1 
-                                ? 'bg-emerald-50/50 text-emerald-800 border-emerald-100' 
-                                : 'bg-rose-50/50 text-rose-800 border-rose-100 animate-pulse'
-                            }`}>
-                              {prod.stock !== undefined ? `${prod.stock.toFixed(2)} kg` : '10.00 kg'}
-                            </span>
-                          )}
-                        </td>
+                            {/* Stock */}
+                            <td className="py-5 pr-4 text-right">
+                              <span className={`text-xs font-black px-2.5 py-1 rounded-full border ${
+                                prod.stock >= 0.1 
+                                  ? 'bg-emerald-50/50 text-emerald-800 border-emerald-100' 
+                                  : 'bg-rose-50/50 text-rose-800 border-rose-100 animate-pulse'
+                              }`}>
+                                {prod.stock !== undefined ? `${prod.stock.toFixed(2)} kg` : '10.00 kg'}
+                              </span>
+                            </td>
 
-                        {/* Action buttons */}
-                        <td className="py-5 text-center">
-                          {isEditing ? (
-                            <div className="flex flex-col sm:flex-row items-center justify-center gap-1.5">
-                              <button
-                                onClick={() => handleProductSave(prod.id)}
-                                disabled={savingProduct}
-                                className="text-[9px] font-black uppercase tracking-wider px-3 py-2 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white transition-all shadow-sm cursor-pointer w-full"
-                              >
-                                {savingProduct ? 'Saving' : 'Save'}
-                              </button>
-                              <button
-                                onClick={() => setEditingProductId(null)}
-                                disabled={savingProduct}
-                                className="text-[9px] font-black uppercase tracking-wider px-3 py-2 rounded-full border border-gray-200 bg-white hover:bg-gray-50 text-gray-500 transition-all cursor-pointer w-full"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="flex flex-col sm:flex-row items-center justify-center gap-1.5">
-                              <button
-                                onClick={() => startEditingProduct(prod)}
-                                className="text-[9px] font-black uppercase tracking-wider px-3.5 py-2.5 rounded-full border border-emerald-250 hover:bg-emerald-600 hover:text-white text-emerald-700 transition-all cursor-pointer shadow-sm hover:shadow w-full sm:w-auto"
-                              >
-                                Edit details
-                              </button>
-                              <button
-                                onClick={() => handleProductDelete(prod.id, prod.name)}
-                                className="text-[9px] font-black uppercase tracking-wider px-3.5 py-2.5 rounded-full border border-rose-250 hover:bg-rose-600 hover:text-white text-rose-700 transition-all cursor-pointer shadow-sm hover:shadow w-full sm:w-auto"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                            {/* Action buttons */}
+                            <td className="py-5 text-center">
+                              <div className="flex flex-col sm:flex-row items-center justify-center gap-1.5">
+                                <button
+                                  onClick={() => startEditingProduct(prod)}
+                                  className="text-[9px] font-black uppercase tracking-wider px-3.5 py-2.5 rounded-full border border-emerald-250 hover:bg-emerald-600 hover:text-white text-emerald-700 transition-all cursor-pointer shadow-sm hover:shadow w-full sm:w-auto"
+                                >
+                                  Edit details
+                                </button>
+                                <button
+                                  onClick={() => handleProductDelete(prod.id, prod.name)}
+                                  className="text-[9px] font-black uppercase tracking-wider px-3.5 py-2.5 rounded-full border border-rose-250 hover:bg-rose-600 hover:text-white text-rose-700 transition-all cursor-pointer shadow-sm hover:shadow w-full sm:w-auto"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
