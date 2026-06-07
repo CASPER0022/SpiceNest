@@ -2370,13 +2370,24 @@ export default function Dashboard() {
         <div className="space-y-8 animate-fadeIn">
           <div className="bg-white rounded-3xl border border-gray-150 p-6 md:p-8 shadow-sm">
             <div className="flex items-center justify-between mb-8 border-b border-gray-50 pb-4">
-              <div>
-                <h3 className="text-lg font-black text-gray-900 tracking-tight">
-                  {editingProductId ? 'Edit Spice Product' : 'Product Catalog Inventory'}
-                </h3>
-                <p className="text-xs text-gray-400 font-bold mt-1">
-                  {editingProductId ? 'Modify product details below neatly.' : 'Manage spice prices, live stock levels, and catalog info.'}
-                </p>
+              <div className="flex items-center gap-3">
+                {editingProductId && (
+                  <button 
+                    onClick={() => setEditingProductId(null)}
+                    className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500 hover:text-gray-800 flex items-center justify-center border border-gray-200 shadow-sm bg-white"
+                    title="Back to Catalog"
+                  >
+                    <ArrowLeft size={18} />
+                  </button>
+                )}
+                <div>
+                  <h3 className="text-lg font-black text-gray-900 tracking-tight">
+                    {editingProductId ? 'Edit Spice Product' : 'Product Catalog Inventory'}
+                  </h3>
+                  <p className="text-xs text-gray-400 font-bold mt-1">
+                    {editingProductId ? 'Modify product details below neatly.' : 'Manage spice prices, live stock levels, and catalog info.'}
+                  </p>
+                </div>
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-xs font-black bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full border border-emerald-100">
