@@ -44,11 +44,11 @@ export default function Navbar() {
           </div>
           
           {/* Desktop Menu */}
-          <div className="hidden md:ml-6 md:flex md:space-x-8 items-center">
-            <Link to="/" className={`inline-flex items-center px-1 pt-1 text-sm font-bold transition-colors ${textClass}`}>Home</Link>
-            <Link to="/shop" className={`inline-flex items-center px-1 pt-1 text-sm font-bold transition-colors ${mutedTextClass}`}>Shop</Link>
-            <Link to="/farmers" className={`inline-flex items-center px-1 pt-1 text-sm font-bold transition-colors ${mutedTextClass}`}>Our Farmers</Link>
-            <Link to="/wishlist" className={`inline-flex items-center px-1 pt-1 text-sm font-bold relative mr-4 transition-colors ${mutedTextClass}`}>
+          <div className="hidden md:ml-4 md:flex md:space-x-3 lg:space-x-4 xl:space-x-6 items-center">
+            <Link to="/" className={`inline-flex items-center px-1 pt-1 text-xs lg:text-sm font-bold transition-colors whitespace-nowrap ${textClass}`}>Home</Link>
+            <Link to="/shop" className={`inline-flex items-center px-1 pt-1 text-xs lg:text-sm font-bold transition-colors whitespace-nowrap ${mutedTextClass}`}>Shop</Link>
+            <Link to="/farmers" className={`inline-flex items-center px-1 pt-1 text-xs lg:text-sm font-bold transition-colors whitespace-nowrap ${mutedTextClass}`}>Our Farmers</Link>
+            <Link to="/wishlist" className={`inline-flex items-center px-1 pt-1 text-xs lg:text-sm font-bold relative mr-2 lg:mr-4 transition-colors whitespace-nowrap ${mutedTextClass}`}>
               Wishlist
               {wishlistCount > 0 && (
                 <span className="absolute -top-2 -right-3 bg-rose-500 text-white rounded-full text-[10px] font-bold w-4 h-4 flex items-center justify-center animate-fadeIn">
@@ -56,15 +56,15 @@ export default function Navbar() {
                 </span>
               )}
             </Link>
-            <Link to="/track-order" className={`inline-flex items-center px-1 pt-1 text-sm font-bold transition-colors ${mutedTextClass}`}>Track Order</Link>
+            <Link to="/track-order" className={`inline-flex items-center px-1 pt-1 text-xs lg:text-sm font-bold transition-colors whitespace-nowrap ${mutedTextClass}`}>Track Order</Link>
             {user && (
-              <Link to="/orders" className={`inline-flex items-center px-1 pt-1 text-sm font-bold transition-colors ${mutedTextClass}`}>My Orders</Link>
+              <Link to="/orders" className={`inline-flex items-center px-1 pt-1 text-xs lg:text-sm font-bold transition-colors whitespace-nowrap ${mutedTextClass}`}>My Orders</Link>
             )}
             {isAdmin && (
-              <Link to="/dashboard" className={`inline-flex items-center px-1 pt-1 text-sm font-bold transition-colors ${mutedTextClass}`}>Dashboard</Link>
+              <Link to="/dashboard" className={`inline-flex items-center px-1 pt-1 text-xs lg:text-sm font-bold transition-colors whitespace-nowrap ${mutedTextClass}`}>Dashboard</Link>
             )}
-            <button onClick={() => setIsCartOpen(true)} className={`inline-flex items-center px-1 pt-1 text-sm font-bold relative mr-4 transition-colors ${mutedTextClass}`}>
-              <ShoppingCart size={20} className="mr-1" />
+            <button onClick={() => setIsCartOpen(true)} className={`inline-flex items-center px-1 pt-1 text-xs lg:text-sm font-bold relative mr-2 lg:mr-4 transition-colors whitespace-nowrap ${mutedTextClass}`}>
+              <ShoppingCart size={18} className="mr-1 shrink-0" />
               Cart
               {cartCount > 0 && (
                 <span className="absolute -top-2 -right-3 bg-emerald-600 text-white rounded-full text-[10px] font-bold w-4 h-4 flex items-center justify-center">
@@ -74,14 +74,14 @@ export default function Navbar() {
             </button>
 
             {user ? (
-              <div className={`flex items-center space-x-4 border-l pl-4 ${borderClass}`}>
-                <Link to="/profile" className={`text-sm font-bold flex items-center ${textClass}`}><User size={16} className="mr-1" /> {user.name}</Link>
-                <button onClick={handleLogout} className="text-sm font-bold text-red-500 hover:text-red-600 transition-colors">Logout</button>
+              <div className={`flex items-center space-x-2 lg:space-x-4 border-l pl-2 lg:pl-4 ${borderClass} shrink-0`}>
+                <Link to="/profile" className={`text-xs lg:text-sm font-bold flex items-center whitespace-nowrap ${textClass}`}><User size={16} className="mr-1 shrink-0" /> {user.name}</Link>
+                <button onClick={handleLogout} className="text-xs lg:text-sm font-bold text-red-500 hover:text-red-600 transition-colors whitespace-nowrap">Logout</button>
               </div>
             ) : (
-              <div className={`flex items-center space-x-4 border-l pl-4 ${borderClass}`}>
-                <Link to="/login" className={`text-sm font-bold transition-colors ${textClass}`}>Login</Link>
-                <Link to="/signup" className="text-sm font-bold bg-emerald-600 text-white px-5 py-2 rounded-full hover:bg-emerald-700 shadow-md transition-all transform hover:scale-105">Sign Up</Link>
+              <div className={`flex items-center space-x-2 lg:space-x-4 border-l pl-2 lg:pl-4 ${borderClass} shrink-0`}>
+                <Link to="/login" className={`text-xs lg:text-sm font-bold transition-colors whitespace-nowrap ${textClass}`}>Login</Link>
+                <Link to="/signup" className="text-xs lg:text-sm font-bold bg-emerald-600 text-white px-4 py-2 rounded-full hover:bg-emerald-700 shadow-md transition-all transform hover:scale-105 whitespace-nowrap">Sign Up</Link>
               </div>
             )}
           </div>
