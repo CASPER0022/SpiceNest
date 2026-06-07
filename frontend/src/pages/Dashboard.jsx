@@ -55,6 +55,7 @@ export default function Dashboard() {
 
   // Product Management States
   const [products, setProducts] = useState([]);
+  const [farmers, setFarmers] = useState([]);
   const [editingProductId, setEditingProductId] = useState(null);
   const [editProductForm, setEditProductForm] = useState({
     price: 0,
@@ -215,6 +216,16 @@ export default function Dashboard() {
         if (prodRes.ok) {
           const prodData = await prodRes.json();
           setProducts(prodData);
+        }
+
+        // Fetch farmers list for dropdown
+        const farmRes = await fetch(`${API_URL}/api/farmers`);
+        if (farmRes.ok) {
+          const farmData = await farmRes.json();
+          setFarmers(farmData);
+          if (farmData.length > 0) {
+            setAddProductForm(prev => ({ ...prev, farmerId: farmData[0].id }));
+          }
         }
       } catch (err) {
         console.error(err);
@@ -2472,6 +2483,7 @@ export default function Dashboard() {
                       <option value="Whole Spices">Whole Spices</option>
                       <option value="Powders">Powders</option>
                       <option value="Beverages">Beverages</option>
+                      <option value="Sweeteners">Sweeteners</option>
                     </select>
                   </div>
                 </div>
@@ -2571,6 +2583,7 @@ export default function Dashboard() {
                           <option value="Whole Spices">Whole Spices</option>
                           <option value="Powders">Powders</option>
                           <option value="Beverages">Beverages</option>
+                          <option value="Sweeteners">Sweeteners</option>
                         </select>
                       </div>
 
@@ -2582,9 +2595,19 @@ export default function Dashboard() {
                           onChange={(e) => setAddProductForm(prev => ({ ...prev, farmerId: Number(e.target.value) }))}
                           className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-700 focus:outline-none focus:border-emerald-500 cursor-pointer"
                         >
-                          <option value={1}>Raju John</option>
-                          <option value={2}>John</option>
-                          <option value={3}>Bibin</option>
+                          {farmers.length > 0 ? (
+                            farmers.map((farm) => (
+                              <option key={farm.id} value={farm.id}>
+                                {farm.name}
+                              </option>
+                            ))
+                          ) : (
+                            <>
+                              <option value={1}>Raju John</option>
+                              <option value={2}>John</option>
+                              <option value={3}>Bibin</option>
+                            </>
+                          )}
                         </select>
                       </div>
 
