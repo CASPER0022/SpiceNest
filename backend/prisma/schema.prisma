@@ -24,6 +24,8 @@ model Product {
   images      String[]
   isArchived  Boolean  @default(false)
   stock       Float    @default(10.0)
+  story       String?
+  
   
   // Relation to Farmer
   farmerId    Int?

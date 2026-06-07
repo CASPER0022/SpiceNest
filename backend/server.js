@@ -216,7 +216,7 @@ app.get('/api/products/:id', async (req, res) => {
 app.put('/api/products/:id', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { price, stock, isArchived, name, description, category } = req.body;
+    const { price, stock, isArchived, name, description, category, story } = req.body;
 
     const user = await prisma.user.findUnique({
       where: { id: req.user.id }
@@ -233,6 +233,7 @@ app.put('/api/products/:id', verifyToken, async (req, res) => {
     if (name !== undefined) updatedData.name = name;
     if (description !== undefined) updatedData.description = description;
     if (category !== undefined) updatedData.category = category;
+    if (story !== undefined) updatedData.story = story;
 
     const updatedProduct = await prisma.product.update({
       where: { id: parseInt(id, 10) },
@@ -253,7 +254,7 @@ app.put('/api/products/:id', verifyToken, async (req, res) => {
 // Create a new product (Admin only!)
 app.post('/api/products', verifyToken, async (req, res) => {
   try {
-    const { name, price, stock, description, category, farmerId, images } = req.body;
+    const { name, price, stock, description, category, farmerId, images, story } = req.body;
 
     const user = await prisma.user.findUnique({
       where: { id: req.user.id }
@@ -278,7 +279,8 @@ app.post('/api/products', verifyToken, async (req, res) => {
         description,
         category,
         farmerId: parseInt(farmerId, 10),
-        images: productImages
+        images: productImages,
+        story: story || 'Write bibin John'
       },
       include: {
         farmer: true

@@ -653,6 +653,16 @@ export default function ProductDetails() {
           </div>
         </div>
       </div>
+
+      {/* Product Story Section */}
+      <div className="mt-12 border-t border-gray-200 pt-8">
+        <h2 className="text-2xl font-black text-gray-900 mb-6 tracking-tight">Story of {product.name}</h2>
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-sm">
+          <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">
+            {product.story || "Write bibin John"}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

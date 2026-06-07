@@ -62,7 +62,8 @@ export default function Dashboard() {
     stock: 0,
     name: '',
     description: '',
-    category: ''
+    category: '',
+    story: ''
   });
   const [savingProduct, setSavingProduct] = useState(false);
 
@@ -76,7 +77,8 @@ export default function Dashboard() {
     category: 'Whole Spices',
     farmerId: 1,
     description: '',
-    image: ''
+    image: '',
+    story: 'Write bibin John'
   });
 
   const handleProductCreate = async (e) => {
@@ -107,7 +109,8 @@ export default function Dashboard() {
           category: addProductForm.category,
           farmerId: addProductForm.farmerId,
           description: addProductForm.description,
-          images: [addProductForm.image]
+          images: [addProductForm.image],
+          story: addProductForm.story
         })
       });
 
@@ -129,7 +132,8 @@ export default function Dashboard() {
         category: 'Whole Spices',
         farmerId: 1,
         description: '',
-        image: ''
+        image: '',
+        story: 'Write bibin John'
       });
       setIsAddingProduct(false);
     } catch (err) {
@@ -431,7 +435,8 @@ export default function Dashboard() {
       stock: product.stock !== undefined ? product.stock : 10.0,
       name: product.name,
       description: product.description,
-      category: product.category
+      category: product.category,
+      story: product.story || 'Write bibin John'
     });
   };
 
@@ -460,7 +465,8 @@ export default function Dashboard() {
           stock: parseFloat(editProductForm.stock),
           name: editProductForm.name,
           description: editProductForm.description,
-          category: editProductForm.category
+          category: editProductForm.category,
+          story: editProductForm.story
         })
       });
 
@@ -2501,6 +2507,19 @@ export default function Dashboard() {
                   />
                 </div>
 
+                {/* Product Story */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Product Story</label>
+                  <textarea
+                    required
+                    rows={4}
+                    placeholder="Write the background story of this product..."
+                    value={editProductForm.story}
+                    onChange={(e) => setEditProductForm(prev => ({ ...prev, story: e.target.value }))}
+                    className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-800 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 resize-none font-sans"
+                  />
+                </div>
+
                 {/* Action Buttons */}
                 <div className="flex items-center gap-3 pt-2">
                   <button
@@ -2635,6 +2654,19 @@ export default function Dashboard() {
                         value={addProductForm.description}
                         onChange={(e) => setAddProductForm(prev => ({ ...prev, description: e.target.value }))}
                         className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-800 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 resize-none"
+                      />
+                    </div>
+
+                    {/* Product Story */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Product Story</label>
+                      <textarea
+                        required
+                        rows={3}
+                        placeholder="Write the background story of this product..."
+                        value={addProductForm.story}
+                        onChange={(e) => setAddProductForm(prev => ({ ...prev, story: e.target.value }))}
+                        className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-800 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 resize-none font-sans"
                       />
                     </div>
 
