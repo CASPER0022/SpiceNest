@@ -181,7 +181,7 @@ export default function Cart() {
         currency: data.currency,
         name: 'Idukki Origins',
         description: 'Premium Farm-to-Table Spices',
-        image: '/images/logo.png',
+        image: '/images/logo.jpg',
         order_id: data.orderId,
         handler: async function (response) {
           setIsProcessing(true);
