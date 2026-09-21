@@ -56,8 +56,19 @@ DATABASE_URL="postgresql://user:password@host.aws.neon.tech/neondb?sslmode=requi
 RAZORPAY_KEY_ID="rzp_test_your_key_id"
 RAZORPAY_KEY_SECRET="your_key_secret"
 
-# (Optional) A secret string for signing JWT tokens
-JWT_SECRET="your_secret_key"
+# REQUIRED: the server refuses to start without these. Generate JWT_SECRET with:
+#   node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+JWT_SECRET="a_long_random_string_of_at_least_32_characters"
+STRIPE_SECRET_KEY="sk_test_your_stripe_key"
+
+# Comma-separated emails that become ADMIN once they verify their email address
+ADMIN_EMAILS="you@example.com,partner@example.com"
+
+# Public URL of the frontend (used in verification / password-reset links). Required in production.
+FRONTEND_URL="http://localhost:5173"
+
+# Brevo API key used to send verification, reset and order emails
+BREVO_API_KEY="your_brevo_api_key"
 ```
 
 Push the database schema and seed the initial products:

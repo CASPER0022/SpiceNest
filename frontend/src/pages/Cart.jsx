@@ -153,6 +153,12 @@ export default function Cart() {
     }
 
     // 4. Initiate Razorpay Checkout
+    // The server recalculates prices, discounts and shipping; we never send them.
+    const checkoutItems = cartItems.map(item => ({
+      id: item.id,
+      weight: item.weight,
+      quantity: item.quantity
+    }));
     setIsProcessing(true);
     try {
       const isLoaded = await loadRazorpayScript();
@@ -164,10 +170,10 @@ export default function Cart() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          items: cartItems,
+          items: checkoutItems, // Only id/weight/quantity: the server prices everything
           userId: user ? user.id : null,
           address: JSON.stringify(address), // Use the fresh local state!
-          discount: appliedCoupon ? appliedCoupon.discount : 0 // Pass the discount amount
+          couponCode: appliedCoupon ? appliedCoupon.code : ''
         }),
       });
       
@@ -193,10 +199,10 @@ export default function Cart() {
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
-                items: cartItems,
+                items: checkoutItems,
                 userId: user ? user.id : null,
                 address: JSON.stringify(address),
-                discount: appliedCoupon ? appliedCoupon.discount : 0
+                couponCode: appliedCoupon ? appliedCoupon.code : ''
               })
             });
 
