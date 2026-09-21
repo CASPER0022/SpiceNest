@@ -1,3 +1,5 @@
+// Must be first: loads .env and validates required secrets (crashes on startup if any are missing)
+import './config.js';
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -48,14 +50,6 @@ const farmerCache = new MemoryCache(5 * 60 * 1000);
 // Load environment variables
 dotenv.config();
 
-if (!process.env.JWT_SECRET) {
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('FATAL ERROR: JWT_SECRET environment variable is missing in production!');
-  } else {
-    console.warn('⚠️ WARNING: JWT_SECRET environment variable is not defined in .env. Using fallback key for development.');
-  }
-}
-
 // Initialize the Express application
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -103,6 +97,8 @@ const authLimiter = rateLimit({
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 app.use('/api/auth/forgot-password', authLimiter);
+app.use('/api/auth/resend-verification', authLimiter);
+app.use('/api/auth/verify-email', authLimiter);
 
 app.use(express.json()); // Allows the server to understand JSON data sent in requests
 
