@@ -2,12 +2,12 @@ import express from 'express';
 import Stripe from 'stripe';
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
-import dotenv from 'dotenv';
 import pkg from '@prisma/client';
 import { sendOrderConfirmation, sendCustomAdminMessage } from '../utils/emailService.js';
+import jwt from 'jsonwebtoken';
 import { verifyToken } from './auth.js';
-
-dotenv.config();
+import { JWT_SECRET, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, STRIPE_SECRET_KEY, FRONTEND_URL } from '../config.js';
+import { priceCart, CheckoutError, WEIGHT_OPTIONS } from '../utils/pricing.js';
 
 const { PrismaClient } = pkg;
 const prisma = new PrismaClient();
@@ -36,7 +36,7 @@ function parseWeightToKg(weightStr) {
 // ==========================================
 router.post('/create-razorpay-order', async (req, res) => {
   try {
-    const { items, userId, address, discount } = req.body;
+    const { items, userId, address, couponCode } = req.body;
 
     // Capture the client IP address securely
     const clientIpRaw = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
@@ -51,41 +51,20 @@ router.post('/create-razorpay-order', async (req, res) => {
       console.error('Failed to inject IP to address:', e);
     }
 
-    // Verify stock levels before proceeding to payment
-    for (const item of items) {
-      const dbProduct = await prisma.product.findUnique({
-        where: { id: parseInt(item.id, 10) }
-      });
-
-      if (!dbProduct) {
-        return res.status(400).json({ error: `Product '${item.name}' not found.` });
-      }
-
-      const itemWeightKg = parseWeightToKg(item.weight);
-      const totalRequestedKg = itemWeightKg * item.quantity;
-
-      if (dbProduct.stock < totalRequestedKg) {
-        return res.status(400).json({ 
-          error: `Insufficient stock for ${dbProduct.name}. Only ${dbProduct.stock.toFixed(2)} kg available, but you requested ${(totalRequestedKg).toFixed(2)} kg.`
-        });
-      }
-    }
-
-    // Compute pricing details exactly like frontend/Stripe
-    const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const discountedSubtotal = Math.max(0, subtotal - (discount || 0));
-    const shippingCharges = subtotal < 500 ? 100 : 0;
-    const finalTotal = Math.round(discountedSubtotal + shippingCharges);
+    // Price the cart entirely on the server (prices, stock, coupon, shipping come from our DB/config)
+    const priced = await priceCart(prisma, items, couponCode);
 
     const razorpay = new Razorpay({
-      key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_TYooMQauvdEDq5',
-      key_secret: process.env.RAZORPAY_KEY_SECRET || 'dummysecret'
+      key_id: RAZORPAY_KEY_ID,
+      key_secret: RAZORPAY_KEY_SECRET
     });
 
     const options = {
-      amount: Math.round(finalTotal * 100), // amount in paisa
+      amount: Math.round(priced.total * 100), // amount in paisa
       currency: 'INR',
-      receipt: `receipt_order_${Date.now()}`
+      receipt: `receipt_order_${Date.now()}`,
+      // Bind this payment order to the exact cart so it can't be confirmed with a different one
+      notes: { cartHash: priced.cartHash, couponCode: priced.couponCode }
     };
 
     const order = await razorpay.orders.create(options);
@@ -94,10 +73,13 @@ router.post('/create-razorpay-order', async (req, res) => {
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,
-      keyId: process.env.RAZORPAY_KEY_ID || 'rzp_test_TYooMQauvdEDq5',
+      keyId: RAZORPAY_KEY_ID,
       addressWithIp
     });
   } catch (error) {
+    if (error instanceof CheckoutError) {
+      return res.status(error.status).json({ error: error.message });
+    }
     console.error('Razorpay order creation error:', error);
     res.status(500).json({ error: 'Failed to create Razorpay order.' });
   }
@@ -108,8 +90,8 @@ router.post('/create-razorpay-order', async (req, res) => {
 // ==========================================
 router.post('/create-checkout-session', async (req, res) => {
   try {
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-    const { items, userId, address, discount } = req.body;
+    const stripe = new Stripe(STRIPE_SECRET_KEY);
+    const { items, userId, address, couponCode } = req.body;
 
     // Capture the client IP address securely
     const clientIpRaw = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
@@ -125,61 +107,33 @@ router.post('/create-checkout-session', async (req, res) => {
       console.error('Failed to inject IP to address:', e);
     }
 
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const frontendUrl = FRONTEND_URL;
 
-    // Verify stock levels before proceeding to payment
-    for (const item of items) {
-      const dbProduct = await prisma.product.findUnique({
-        where: { id: parseInt(item.id, 10) }
-      });
+    // Price the cart entirely on the server (prices, stock, coupon, shipping come from our DB/config)
+    const priced = await priceCart(prisma, items, couponCode);
 
-      if (!dbProduct) {
-        return res.status(400).json({ error: `Product '${item.name}' not found.` });
-      }
-
-      const itemWeightKg = parseWeightToKg(item.weight);
-      const totalRequestedKg = itemWeightKg * item.quantity;
-
-      if (dbProduct.stock < totalRequestedKg) {
-        return res.status(400).json({ 
-          error: `Insufficient stock for ${dbProduct.name}. Only ${dbProduct.stock.toFixed(2)} kg available, but you requested ${(totalRequestedKg).toFixed(2)} kg.`
-        });
-      }
-    }
-
-    // 1. Transform our cart items into the format Stripe expects
-    const lineItems = items.map((item) => {
-      let imageUrl = item.image;
+    // 1. Transform our server-priced cart lines into the format Stripe expects
+    const lineItems = priced.lines.map((line) => {
+      let imageUrl = line.product.images && line.product.images.length > 0 ? line.product.images[0] : null;
       if (imageUrl && imageUrl.startsWith('/')) {
         imageUrl = `${frontendUrl}${imageUrl}`;
       }
-
-      const displayName = item.weight ? `${item.name} (${item.weight})` : item.name;
 
       return {
         price_data: {
           currency: 'inr',
           product_data: {
-            name: displayName,
+            name: `${line.product.name} (${line.weight})`,
             images: imageUrl ? [imageUrl] : [],
           },
-          unit_amount: Math.round(item.price * 100), 
+          unit_amount: Math.round(line.unitPrice * 100),
         },
-        quantity: item.quantity,
+        quantity: line.quantity,
       };
     });
 
-    // Apply coupon discount dynamically by reducing the unit_amount of the first line item
-    let discountPaisa = discount ? Math.round(discount * 100) : 0;
-    if (discountPaisa > 0 && lineItems.length > 0) {
-      const firstItem = lineItems[0];
-      const deduction = Math.floor(discountPaisa / firstItem.quantity);
-      firstItem.price_data.unit_amount = Math.max(100, firstItem.price_data.unit_amount - deduction);
-    }
-
-    // 2. Add shipping fee if subtotal is below ₹500
-    const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    if (subtotal < 500) {
+    // 2. Add shipping fee if subtotal is below the free-shipping threshold
+    if (priced.shipping > 0) {
       lineItems.push({
         price_data: {
           currency: 'inr',
@@ -187,10 +141,22 @@ router.post('/create-checkout-session', async (req, res) => {
             name: 'Shipping Charges',
             description: 'Shipping cost for orders below ₹500',
           },
-          unit_amount: 100 * 100, 
+          unit_amount: Math.round(priced.shipping * 100),
         },
         quantity: 1,
       });
+    }
+
+    // Apply the (server-validated) coupon as a one-time Stripe coupon
+    const discounts = [];
+    if (priced.discount > 0) {
+      const stripeCoupon = await stripe.coupons.create({
+        amount_off: Math.round(priced.discount * 100),
+        currency: 'inr',
+        duration: 'once',
+        max_redemptions: 1,
+      });
+      discounts.push({ coupon: stripeCoupon.id });
     }
 
     // 3. GST Tax (5%) is now inclusive in product prices, so we do not add it as a separate billing item.
@@ -199,6 +165,7 @@ router.post('/create-checkout-session', async (req, res) => {
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: lineItems,
+      ...(discounts.length > 0 && { discounts }),
       mode: 'payment',
       // Include session_id in the success URL so we can verify it
       success_url: `${frontendUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
@@ -211,6 +178,9 @@ router.post('/create-checkout-session', async (req, res) => {
 
     res.json({ url: session.url });
   } catch (error) {
+    if (error instanceof CheckoutError) {
+      return res.status(error.status).json({ error: error.message });
+    }
     console.error('Stripe error:', error.message);
     res.status(500).json({ error: 'Failed to create Stripe checkout session.' });
   }
@@ -220,7 +190,7 @@ router.post('/create-checkout-session', async (req, res) => {
 // CONFIRM RAZORPAY ORDER ROUTE
 // ==========================================
 router.post('/confirm-razorpay-order', async (req, res) => {
-  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, items, userId, address, discount } = req.body;
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, items, userId, address, couponCode } = req.body;
 
   if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
     return res.status(400).json({ error: 'Missing payment details.' });
@@ -229,11 +199,13 @@ router.post('/confirm-razorpay-order', async (req, res) => {
   try {
     // 1. Verify Razorpay Payment Signature
     const generated_signature = crypto
-      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || 'dummysecret')
+      .createHmac('sha256', RAZORPAY_KEY_SECRET)
       .update(razorpay_order_id + "|" + razorpay_payment_id)
       .digest('hex');
 
-    if (generated_signature !== razorpay_signature) {
+    const sigBuffer = Buffer.from(String(razorpay_signature));
+    const expectedBuffer = Buffer.from(generated_signature);
+    if (sigBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(sigBuffer, expectedBuffer)) {
       return res.status(400).json({ error: 'Signature verification failed. The transaction may have been tampered.' });
     }
 
@@ -247,35 +219,40 @@ router.post('/confirm-razorpay-order', async (req, res) => {
       return res.json({ success: true, order: existingOrder, message: 'Order already recorded' });
     }
 
-    // 3. Process products and calculate prices & stock changes
-    const products = await prisma.product.findMany();
-    
-    // Compute pricing details exactly like backend/Stripe
-    const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const discountedSubtotal = Math.max(0, subtotal - (discount || 0));
-    const shippingCharges = subtotal < 500 ? 100 : 0;
-    const finalTotal = Math.round(discountedSubtotal + shippingCharges);
+    // 3. Fetch the payment order from Razorpay: it holds the amount actually charged and the
+    //    hash of the cart that was priced when the order was created.
+    const razorpay = new Razorpay({
+      key_id: RAZORPAY_KEY_ID,
+      key_secret: RAZORPAY_KEY_SECRET
+    });
+    const rzpOrder = await razorpay.orders.fetch(razorpay_order_id);
 
-    const orderItemsData = items.map(item => {
-      const product = products.find(p => p.id === parseInt(item.id, 10));
-      if (!product) {
-        throw new Error(`Product not found in database: ${item.name}`);
-      }
+    // 4. Re-price the submitted cart on the server and make sure it is the SAME cart that was paid for.
+    //    Availability is not enforced here: the customer has already paid.
+    const priced = await priceCart(prisma, items, couponCode, { enforceAvailability: false });
+    if (!rzpOrder.notes || rzpOrder.notes.cartHash !== priced.cartHash) {
+      return res.status(400).json({ error: 'Cart does not match the paid order. Please contact support with your payment ID: ' + razorpay_payment_id });
+    }
+    if (Math.round(priced.total * 100) !== rzpOrder.amount) {
+      // Prices changed between checkout and confirmation; the customer was charged rzpOrder.amount
+      console.warn(`Amount mismatch for Razorpay order ${razorpay_order_id}: charged ${rzpOrder.amount}, repriced ${Math.round(priced.total * 100)}`);
+    }
+    const finalTotal = rzpOrder.amount / 100; // what the customer actually paid
 
-      const itemWeightKg = parseWeightToKg(item.weight);
-      const totalDeductionKg = itemWeightKg * item.quantity;
-      const initialStock = product.stock;
-      const finalStock = initialStock - totalDeductionKg;
-
-      product.stock = finalStock;
+    // Track stock per product so multiple weight lines of one product deduct sequentially
+    const runningStock = new Map();
+    const orderItemsData = priced.lines.map(line => {
+      const initialStock = runningStock.has(line.productId) ? runningStock.get(line.productId) : line.product.stock;
+      const finalStock = initialStock - line.kg;
+      runningStock.set(line.productId, finalStock);
 
       return {
-        productId: product.id,
-        productName: product.name,
-        productImage: product.images && product.images.length > 0 ? product.images[0] : '',
-        quantity: item.quantity,
-        price: item.price,
-        weight: item.weight || '100g',
+        productId: line.productId,
+        productName: line.product.name,
+        productImage: line.product.images && line.product.images.length > 0 ? line.product.images[0] : '',
+        quantity: line.quantity,
+        price: line.unitPrice,
+        weight: line.weight,
         initialStock: initialStock,
         finalStock: finalStock
       };
@@ -298,8 +275,7 @@ router.post('/confirm-razorpay-order', async (req, res) => {
 
     // Decrement stock for each item in the order
     for (const item of orderItemsData) {
-      const itemWeightKg = parseWeightToKg(item.weight);
-      const totalDeductionKg = itemWeightKg * item.quantity;
+      const totalDeductionKg = WEIGHT_OPTIONS[item.weight].kg * item.quantity;
       
       await prisma.product.update({
         where: { id: item.productId },
@@ -327,6 +303,9 @@ router.post('/confirm-razorpay-order', async (req, res) => {
       console.error('Background email task failed:', e);
     }
   } catch (error) {
+    if (error instanceof CheckoutError) {
+      return res.status(error.status).json({ error: error.message });
+    }
     console.error('Razorpay confirmation error:', error);
     res.status(500).json({ error: 'Failed to confirm order: ' + error.message });
   }
@@ -343,7 +322,7 @@ router.get('/confirm-order', async (req, res) => {
   }
 
   try {
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    const stripe = new Stripe(STRIPE_SECRET_KEY);
     
     // 1. Retrieve the session from Stripe
     const session = await stripe.checkout.sessions.retrieve(session_id);
@@ -737,9 +716,7 @@ router.get('/track-order', async (req, res) => {
       const token = authHeader.split(' ')[1];
       if (token && token !== 'null' && token !== 'undefined') {
         try {
-          const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key-for-learning';
-          const jwt = (await import('jsonwebtoken')).default;
-          const verified = jwt.verify(token, JWT_SECRET);
+          const verified = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
           loggedInUser = await prisma.user.findUnique({
             where: { id: parseInt(verified.id, 10) }
           });
