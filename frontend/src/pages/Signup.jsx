@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 export default function Signup() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
-  const navigate = useNavigate();
+  const [successMessage, setSuccessMessage] = useState(null);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -22,8 +22,9 @@ export default function Signup() {
       
       if (!res.ok) throw new Error(data.error || 'Registration failed');
       
-      // Auto redirect to login after successful signup
-      navigate('/login');
+      // The account is inactive until the emailed link is clicked, so don't send them to login yet
+      setError(null);
+      setSuccessMessage(data.message);
     } catch (err) {
       setError(err.message);
     }
@@ -34,6 +35,12 @@ export default function Signup() {
       <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-sm">
         <h2 className="text-2xl font-bold mb-6 text-center">Create an Account</h2>
         {error && <p className="text-red-500 mb-4 text-center">{error}</p>}
+        {successMessage ? (
+          <div className="text-center">
+            <p className="text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg p-4 mb-4">{successMessage}</p>
+            <Link to="/login" className="text-emerald-600 hover:underline">Go to Login</Link>
+          </div>
+        ) : (
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2">Name</label>
@@ -63,6 +70,7 @@ export default function Signup() {
             Sign Up
           </button>
         </form>
+        )}
         <p className="mt-4 text-center text-sm text-gray-600">
           Already have an account? <Link to="/login" className="text-emerald-600 hover:underline">Login</Link>
         </p>

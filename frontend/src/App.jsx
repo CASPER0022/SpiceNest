@@ -23,6 +23,7 @@ import FarmerProfile from './pages/FarmerProfile';
 import Farmers from './pages/Farmers';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import VerifyEmail from './pages/VerifyEmail';
 import Orders from './pages/Orders';
 import Dashboard from './pages/Dashboard';
 import TrackOrder from './pages/TrackOrder';
@@ -86,6 +87,7 @@ function AppLayout() {
           <Route path="/farmers" element={<Farmers />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/orders" element={<Orders />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/track-order" element={<TrackOrder />} />

@@ -8,13 +8,33 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [resendMessage, setResendMessage] = useState(null);
   const { login } = useAuth();
   const navigate = useNavigate();
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
+  const handleResend = async () => {
+    setResendMessage(null);
+    try {
+      const res = await fetch(`${API_URL}/api/auth/resend-verification`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      setResendMessage(data.message || data.error);
+    } catch {
+      setResendMessage('Could not send the email. Please try again.');
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError(null);
+    setNeedsVerification(false);
+    setResendMessage(null);
     try {
       const res = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
@@ -23,7 +43,10 @@ export default function Login() {
       });
       const data = await res.json();
       
-      if (!res.ok) throw new Error(data.error || 'Login failed');
+      if (!res.ok) {
+        if (data.code === 'EMAIL_NOT_VERIFIED') setNeedsVerification(true);
+        throw new Error(data.error || 'Login failed');
+      }
       
       login(data.user, data.token);
       navigate('/');
@@ -37,6 +60,14 @@ export default function Login() {
       <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-sm">
         <h2 className="text-2xl font-bold mb-6 text-center">Login to Idukki Origins</h2>
         {error && <p className="text-red-500 mb-4 text-center">{error}</p>}
+        {needsVerification && (
+          <div className="mb-4 text-center">
+            <button type="button" onClick={handleResend} className="text-sm text-emerald-600 hover:underline font-semibold">
+              Resend verification email
+            </button>
+            {resendMessage && <p className="text-sm text-gray-600 mt-2">{resendMessage}</p>}
+          </div>
+        )}
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2">Email</label>
