@@ -96,6 +96,71 @@ export async function sendOrderConfirmation(to, order) {
   }
 }
 
+const escapeHtml = (value) =>
+  String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/**
+ * Sends an email-verification link to a newly registered customer using Brevo API.
+ * @param {string} to - Customer's email address
+ * @param {string} name - Customer's name
+ * @param {string} verifyUrl - The verification URL
+ */
+export async function sendVerificationEmail(to, name, verifyUrl) {
+  try {
+    if (!process.env.BREVO_API_KEY) {
+      console.error('❌ BREVO_API_KEY is missing');
+      return false;
+    }
+
+    const client = new BrevoClient({ apiKey: process.env.BREVO_API_KEY });
+    const safeName = escapeHtml(name || 'Valued Customer');
+    const safeUrl = escapeHtml(verifyUrl);
+
+    const htmlContent = `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
+          <h1 style="color: #059669; text-align: center;">Verify Your Email 🌿</h1>
+          <p>Hi ${safeName},</p>
+          <p>Welcome to Idukki Origins! Please confirm your email address to activate your account.</p>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${safeUrl}" style="background: #059669; color: #fff; text-decoration: none; padding: 12px 25px; border-radius: 8px; font-weight: bold; display: inline-block;">
+              Verify Email
+            </a>
+          </div>
+
+          <p style="font-size: 14px; color: #555;">
+            This link is valid for <strong>24 hours</strong>. If you didn't create an account, you can safely ignore this email.
+          </p>
+
+          <p style="font-size: 12px; color: #999;">
+            If the button above does not work, copy and paste this URL into your browser:<br>
+            <a href="${safeUrl}" style="color: #059669;">${safeUrl}</a>
+          </p>
+
+          <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="font-size: 12px; color: #999; text-align: center;">
+            Idukki Origins - From our farms to your kitchen.<br>
+            Kerala, India
+          </p>
+        </div>
+    `;
+
+    const response = await client.transactionalEmails.sendTransacEmail({
+      subject: "Verify your Idukki Origins account 🌿",
+      htmlContent: htmlContent,
+      sender: { name: "Idukki Origins", email: "heyitsmealbinjohn@gmail.com" },
+      to: [{ email: to, name: name || "Valued Customer" }],
+      replyTo: { email: "heyitsmealbinjohn@gmail.com", name: "Idukki Origins Support" }
+    });
+
+    console.log('✅ Verification email sent via Brevo:', response.data?.messageId || response.messageId || 'Success');
+    return true;
+  } catch (error) {
+    console.error('❌ Failed to send verification email via Brevo:', error.response?.body || error);
+    return false;
+  }
+}
+
 /**
  * Sends a password reset link to the customer using Brevo API.
  * @param {string} to - Customer's email address
