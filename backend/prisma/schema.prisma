@@ -49,6 +49,12 @@ model User {
   role             String    @default("USER")
   resetToken       String?   @unique
   resetTokenExpiry DateTime?
+
+  // Email verification. Default is true ONLY so that accounts that already exist when this
+  // column is added are grandfathered in. The register route always sets it to false explicitly.
+  emailVerified     Boolean   @default(true)
+  emailVerifyToken  String?   @unique   // SHA-256 hash of the emailed token
+  emailVerifyExpiry DateTime?
   
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
