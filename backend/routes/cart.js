@@ -1,22 +1,11 @@
 import express from 'express';
 import pkg from '@prisma/client';
 import { verifyToken } from './auth.js';
+import { getUnitPrice as getWeightAdjustedPrice } from '../utils/pricing.js';
 
 const { PrismaClient } = pkg;
 const prisma = new PrismaClient();
 const router = express.Router();
-
-function getWeightAdjustedPrice(basePrice, weight) {
-  const w = (weight || '100g').trim().toLowerCase();
-  if (w === '250g') {
-    return basePrice * 2.5 * 0.95;
-  } else if (w === '500g') {
-    return basePrice * 5.0 * 0.90;
-  } else if (w === '1kg') {
-    return basePrice * 10.0 * 0.85;
-  }
-  return basePrice;
-}
 
 // ==========================================
 // FETCH USER'S CART (GET /api/cart)
