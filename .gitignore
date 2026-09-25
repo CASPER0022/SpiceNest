@@ -42,3 +42,7 @@ Thumbs.db
 # Prisma
 backend/prisma/*.db
 backend/prisma/*.db-journal
+
+# Internal / Temporary
+brag-output/
+
