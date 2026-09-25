@@ -1,20 +1,22 @@
 // Must be first: loads .env and validates required secrets (crashes on startup if any are missing)
-import './config.js';
+import { TRUST_PROXY_HOPS } from './config.js';
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import pkg from '@prisma/client';
 
 import rateLimit from 'express-rate-limit';
+import helmet from 'helmet';
 
 const { PrismaClient } = pkg;
 const prisma = new PrismaClient();
 
-// In-Memory Cache Helper
+// In-Memory Cache Helper (bounded: the oldest entry is evicted once maxEntries is reached)
 class MemoryCache {
-  constructor(ttl = 5 * 60 * 1000) { // Default TTL: 5 minutes
+  constructor(ttl = 5 * 60 * 1000, maxEntries = 500) { // Default TTL: 5 minutes
     this.cache = new Map();
     this.ttl = ttl;
+    this.maxEntries = maxEntries;
   }
 
   get(key) {
@@ -28,6 +30,10 @@ class MemoryCache {
   }
 
   set(key, value) {
+    this.cache.delete(key); // re-insert so Map order reflects recency
+    if (this.cache.size >= this.maxEntries) {
+      this.cache.delete(this.cache.keys().next().value);
+    }
     this.cache.set(key, {
       value,
       expiry: Date.now() + this.ttl
@@ -46,6 +52,14 @@ class MemoryCache {
 const productCache = new MemoryCache(5 * 60 * 1000);
 const farmerCache = new MemoryCache(5 * 60 * 1000);
 
+// Route IDs must be plain positive integers; the parsed number is also the cache key,
+// so "/1", "/01" and "/1x" can never create separate cache entries.
+function parseRouteId(raw) {
+  if (typeof raw !== 'string' || !/^\d{1,9}$/.test(raw)) return null;
+  const id = Number(raw);
+  return id > 0 ? id : null;
+}
+
 
 // Load environment variables
 dotenv.config();
@@ -54,9 +68,20 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Behind Render/Vercel the TCP peer is the proxy. Trusting exactly TRUST_PROXY_HOPS proxies makes
+// req.ip the real client IP (for rate limiting) while ignoring X-Forwarded-For entries a client forges.
+app.set('trust proxy', TRUST_PROXY_HOPS);
+
+// Security headers. This is a JSON-only API, so its responses may not run scripts or be framed.
+// crossOriginResourcePolicy is relaxed so the frontend (another origin) can read responses.
+app.use(helmet({
+  contentSecurityPolicy: { useDefaults: false, directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] } },
+  crossOriginResourcePolicy: { policy: 'cross-origin' }
+}));
+
 // Import Routers
 import authRoutes from './routes/auth.js';
-import paymentRoutes from './routes/payment.js';
+import paymentRoutes, { startReservationSweeper } from './routes/payment.js';
 import cartRoutes from './routes/cart.js';
 import reviewsRoutes from './routes/reviews.js';
 import wishlistRoutes from './routes/wishlist.js';
@@ -74,33 +99,68 @@ if (process.env.FRONTEND_URL) {
   allowedOrigins.push(process.env.FRONTEND_URL);
 }
 
+// Exact origins from allowedOrigins, plus HTTPS subdomains of idukkiorigins.com (hostname parsed,
+// so look-alikes such as "evilidukkiorigins.com" or "idukkiorigins.com.evil.net" are rejected).
+function isAllowedOrigin(origin) {
+  if (allowedOrigins.includes(origin)) return true;
+  try {
+    const { protocol, hostname } = new URL(origin);
+    return protocol === 'https:' && hostname.endsWith('.idukkiorigins.com');
+  } catch (err) {
+    return false;
+  }
+}
+
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin) || origin.endsWith('idukkiorigins.com')) {
-      return callback(null, true);
-    } else {
-      return callback(new Error('Not allowed by CORS'));
-    }
+    // Disallowed origins get no CORS headers, so the browser blocks the response
+    return callback(null, isAllowedOrigin(origin));
   },
   credentials: true
 }));
 
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per window
+app.use(express.json()); // Allows the server to understand JSON data sent in requests
+
+// ==========================================
+// Rate limiting (per client IP; req.ip is proxy-aware thanks to "trust proxy" above)
+// ==========================================
+const FIFTEEN_MINUTES = 15 * 60 * 1000;
+const makeLimiter = (max, message, extra = {}) => rateLimit({
+  windowMs: FIFTEEN_MINUTES,
+  limit: max,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Too many requests from this IP, please try again after 15 minutes.' }
+  message: { error: message },
+  ...extra
 });
 
-app.use('/api/auth/login', authLimiter);
+const authLimiter = makeLimiter(50, 'Too many requests from this IP, please try again after 15 minutes.');
+const passwordResetLimiter = makeLimiter(10, 'Too many password reset attempts. Please try again after 15 minutes.');
+const paymentLimiter = makeLimiter(30, 'Too many payment requests. Please try again after 15 minutes.');
+const trackOrderLimiter = makeLimiter(20, 'Too many tracking lookups. Please try again after 15 minutes.');
+
+// Per-account login throttle: 10 FAILED attempts per email per 15 minutes, whatever IP they come
+// from. Successful logins are not counted, so this only slows down password guessing.
+const loginAccountLimiter = makeLimiter(10, 'Too many failed login attempts for this account. Please try again after 15 minutes or reset your password.', {
+  skipSuccessfulRequests: true,
+  keyGenerator: (req) => {
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    return `login:${email.slice(0, 254)}`;
+  }
+});
+
+app.use('/api/auth/login', authLimiter, loginAccountLimiter);
 app.use('/api/auth/register', authLimiter);
 app.use('/api/auth/forgot-password', authLimiter);
 app.use('/api/auth/resend-verification', authLimiter);
 app.use('/api/auth/verify-email', authLimiter);
-
-app.use(express.json()); // Allows the server to understand JSON data sent in requests
+app.use('/api/auth/reset-password', passwordResetLimiter);
+app.use('/api/payment/create-razorpay-order', paymentLimiter);
+app.use('/api/payment/create-checkout-session', paymentLimiter);
+app.use('/api/payment/confirm-razorpay-order', paymentLimiter);
+app.use('/api/payment/confirm-order', paymentLimiter);
+app.use('/api/payment/track-order', trackOrderLimiter);
 
 // ==========================================
 // Routes (The URLs your frontend can visit)
@@ -163,7 +223,8 @@ app.get('/api/products', async (req, res) => {
 // Get a single product by ID
 app.get('/api/products/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = parseRouteId(req.params.id);
+    if (id === null) return res.status(400).json({ error: 'Invalid product ID' });
     const cacheKey = `product_${id}`;
     const cachedProduct = productCache.get(cacheKey);
     if (cachedProduct) {
@@ -171,7 +232,7 @@ app.get('/api/products/:id', async (req, res) => {
     }
 
     const product = await prisma.product.findUnique({
-      where: { id: parseInt(id) },
+      where: { id },
       include: { 
         farmer: true,
         reviews: {
@@ -211,7 +272,8 @@ app.get('/api/products/:id', async (req, res) => {
 // Update a single product (Admin only!)
 app.put('/api/products/:id', verifyToken, async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = parseRouteId(req.params.id);
+    if (id === null) return res.status(400).json({ error: 'Invalid product ID' });
     const { price, stock, isArchived, name, description, category, story } = req.body;
 
     const user = await prisma.user.findUnique({
@@ -232,7 +294,7 @@ app.put('/api/products/:id', verifyToken, async (req, res) => {
     if (story !== undefined) updatedData.story = story;
 
     const updatedProduct = await prisma.product.update({
-      where: { id: parseInt(id, 10) },
+      where: { id },
       data: updatedData
     });
 
@@ -296,7 +358,8 @@ app.post('/api/products', verifyToken, async (req, res) => {
 // Delete a product (Admin only!)
 app.delete('/api/products/:id', verifyToken, async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = parseRouteId(req.params.id);
+    if (id === null) return res.status(400).json({ error: 'Invalid product ID' });
 
     const user = await prisma.user.findUnique({
       where: { id: req.user.id }
@@ -307,7 +370,7 @@ app.delete('/api/products/:id', verifyToken, async (req, res) => {
     }
 
     await prisma.product.delete({
-      where: { id: parseInt(id, 10) }
+      where: { id }
     });
 
     // Invalidate product caches
@@ -364,7 +427,8 @@ app.get('/api/farmers', async (req, res) => {
 // Get a single farmer by ID
 app.get('/api/farmers/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = parseRouteId(req.params.id);
+    if (id === null) return res.status(400).json({ error: 'Invalid farmer ID' });
     const cacheKey = `farmer_${id}`;
     const cachedFarmer = farmerCache.get(cacheKey);
     if (cachedFarmer) {
@@ -372,7 +436,7 @@ app.get('/api/farmers/:id', async (req, res) => {
     }
 
     const farmer = await prisma.farmer.findUnique({
-      where: { id: parseInt(id) },
+      where: { id },
       include: { 
         products: true,
         reviews: {
@@ -419,4 +483,6 @@ app.get('/api/test', (req, res) => {
 // ==========================================
 app.listen(PORT, () => {
   console.log(`✅ Backend Server is running on http://localhost:${PORT}`);
+  // Returns stock held by checkouts that were never paid
+  startReservationSweeper();
 });

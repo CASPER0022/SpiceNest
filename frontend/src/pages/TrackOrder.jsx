@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Package, Search, Calendar, MapPin, Loader2, AlertCircle, Phone, Mail, CheckCircle, Truck, ShoppingBag, Clock } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Search, Calendar, MapPin, Loader2, AlertCircle, Phone, Mail, Truck, ShoppingBag, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 
@@ -9,25 +10,56 @@ const statusTimeline = [
   { status: 'Completed', label: 'Shipped & Delivered', desc: 'Western Ghats premium spices dispatched to your doorstep!' }
 ];
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+const authHeaders = () => {
+  const token = localStorage.getItem('token');
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
+};
+
 export default function TrackOrder() {
   const { user } = useAuth();
-  const [orderId, setOrderId] = useState('');
+
+  // Opened from the tracking link in the confirmation email: /track-order?id=123&token=...
+  const [searchParams] = useSearchParams();
+  const linkId = searchParams.get('id');
+  const linkToken = searchParams.get('token');
+  const openedFromLink = Boolean(linkId && linkToken);
+
+  const [orderId, setOrderId] = useState(linkId || '');
   const [email, setEmail] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(openedFromLink);
   const [order, setOrder] = useState(null);
-  const [searched, setSearched] = useState(false);
+  const [searched, setSearched] = useState(openedFromLink);
 
   const [recentOrders, setRecentOrders] = useState([]);
-  const [loadingOrders, setLoadingOrders] = useState(false);
   const [showAllOrders, setShowAllOrders] = useState(false);
 
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  useEffect(() => {
+    if (!linkId || !linkToken) return;
+
+    fetch(`${API_URL}/api/payment/track-order?id=${encodeURIComponent(linkId)}&token=${encodeURIComponent(linkToken)}`, {
+      headers: authHeaders()
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setOrder(data.order);
+        } else {
+          toast.error(data.error || 'This tracking link is invalid.');
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        toast.error('An error occurred while tracking the order.');
+      })
+      .finally(() => setLoading(false));
+  }, [linkId, linkToken]);
 
   useEffect(() => {
     async function fetchRecentOrders() {
       const token = localStorage.getItem('token');
       if (user && token) {
-        setLoadingOrders(true);
         try {
           const res = await fetch(`${API_URL}/api/payment/my-orders`, {
             headers: {
@@ -40,8 +72,6 @@ export default function TrackOrder() {
           }
         } catch (err) {
           console.error('Failed to load recent orders:', err);
-        } finally {
-          setLoadingOrders(false);
         }
       }
     }
@@ -51,21 +81,20 @@ export default function TrackOrder() {
   const trackRecentOrder = (recentOrder) => {
     setLoading(true);
     setSearched(true);
-    let orderEmail = '';
+    let orderEmail;
     try {
       const parsed = JSON.parse(recentOrder.address);
       orderEmail = parsed.email || user?.email;
-    } catch (e) {
+    } catch {
       orderEmail = user?.email;
     }
 
     setOrderId(recentOrder.id.toString());
     setEmail(orderEmail || '');
 
-    fetch(`${API_URL}/api/payment/track-order?id=${recentOrder.id}&email=${orderEmail}`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
+    // Logged in: the server recognises the owner from the session token
+    fetch(`${API_URL}/api/payment/track-order?id=${recentOrder.id}&email=${encodeURIComponent(orderEmail || '')}`, {
+      headers: authHeaders()
     })
       .then(res => res.json())
       .then(data => {
@@ -102,15 +131,9 @@ export default function TrackOrder() {
     setOrder(null);
     setSearched(true);
 
-    const headers = {};
-    const token = localStorage.getItem('token');
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
     try {
-      const res = await fetch(`${API_URL}/api/payment/track-order?id=${orderId.trim()}&email=${email.trim()}`, {
-        headers
+      const res = await fetch(`${API_URL}/api/payment/track-order?id=${encodeURIComponent(orderId.trim())}&email=${encodeURIComponent(email.trim())}`, {
+        headers: authHeaders()
       });
       const data = await res.json();
 
@@ -138,7 +161,7 @@ export default function TrackOrder() {
   const parsedAddress = order ? (() => {
     try {
       return JSON.parse(order.address);
-    } catch (e) {
+    } catch {
       return {};
     }
   })() : {};
@@ -424,9 +447,14 @@ export default function TrackOrder() {
                       <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Shipping Address</span>
                       <p className="text-xs font-bold text-gray-800 leading-relaxed">
                         <strong className="text-sm font-extrabold text-gray-900 block mb-1">{parsedAddress.fullName}</strong>
-                        {parsedAddress.houseNo}, {parsedAddress.area}<br />
+                        {!order.limited && <>{parsedAddress.houseNo}, {parsedAddress.area}<br /></>}
                         {parsedAddress.city}, {parsedAddress.state} - {parsedAddress.pincode}
                       </p>
+                      {order.limited && (
+                        <p className="text-[10px] text-gray-400 font-semibold leading-relaxed">
+                          For privacy, full delivery details are shown only when you log in or open the tracking link from your confirmation email.
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -434,7 +462,7 @@ export default function TrackOrder() {
                     <Phone className="text-gray-400 shrink-0 mt-0.5" size={18} />
                     <div className="space-y-1">
                       <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Contact Phone</span>
-                      <span className="text-xs font-bold text-gray-800">{parsedAddress.mobileNumber}</span>
+                      <span className="text-xs font-bold text-gray-800">{parsedAddress.mobileNumber || 'Hidden'}</span>
                     </div>
                   </div>
 
@@ -442,7 +470,7 @@ export default function TrackOrder() {
                     <Mail className="text-gray-400 shrink-0 mt-0.5" size={18} />
                     <div className="space-y-1">
                       <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Verified Email</span>
-                      <span className="text-xs font-bold text-gray-800 break-all">{parsedAddress.email || order.user?.email || 'N/A'}</span>
+                      <span className="text-xs font-bold text-gray-800 break-all">{parsedAddress.email || 'N/A'}</span>
                     </div>
                   </div>
 

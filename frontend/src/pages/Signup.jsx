@@ -63,8 +63,10 @@ export default function Signup() {
             <input 
               type="password" 
               className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              value={password} onChange={(e) => setPassword(e.target.value)} required 
+              value={password} onChange={(e) => setPassword(e.target.value)} required
+              minLength={8} maxLength={128}
             />
+            <p className="text-xs text-gray-500 mt-1">At least 8 characters, including a letter and a number.</p>
           </div>
           <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg">
             Sign Up
