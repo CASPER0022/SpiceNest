@@ -1,13 +1,11 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import pkg from '@prisma/client';
+import prisma from '../db.js';
 import crypto from 'crypto';
 import { JWT_SECRET, JWT_EXPIRES_IN, ADMIN_EMAILS, FRONTEND_URL } from '../config.js';
 import { sendPasswordResetEmail, sendVerificationEmail } from '../utils/emailService.js';
 
-const { PrismaClient } = pkg;
-const prisma = new PrismaClient();
 const router = express.Router();
 
 const VERIFY_TTL_MS = 24 * 60 * 60 * 1000; // verification links are valid for 24 hours

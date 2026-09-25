@@ -3,13 +3,13 @@ import Stripe from 'stripe';
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import pkg from '@prisma/client';
+import prisma from '../db.js';
 import { sendOrderConfirmation, sendCustomAdminMessage } from '../utils/emailService.js';
 import { verifyToken, optionalAuth, getRequestUser } from './auth.js';
 import { RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, STRIPE_SECRET_KEY, FRONTEND_URL } from '../config.js';
 import { priceCart, CheckoutError } from '../utils/pricing.js';
 
-const { PrismaClient, Prisma } = pkg;
-const prisma = new PrismaClient();
+const { Prisma } = pkg;
 const router = express.Router();
 
 // ==========================================
