@@ -38,6 +38,17 @@ export const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID;
 export const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
 export const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 
+// Session lifetime. Kept short because tokens live in localStorage; revocation uses User.tokenVersion.
+export const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1d';
+
+// Number of reverse proxies in front of the app (Render/Vercel = 1). Determines which
+// X-Forwarded-For entry is the real client IP; clients cannot spoof entries past this many hops.
+const trustProxyRaw = process.env.TRUST_PROXY_HOPS ?? (process.env.NODE_ENV === 'production' ? '1' : '0');
+export const TRUST_PROXY_HOPS = Number.parseInt(trustProxyRaw, 10);
+if (!Number.isInteger(TRUST_PROXY_HOPS) || TRUST_PROXY_HOPS < 0) {
+  throw new Error('FATAL ERROR: TRUST_PROXY_HOPS must be a non-negative integer.');
+}
+
 // ==========================================
 // ADMINS: comma-separated list in ADMIN_EMAILS. Only granted once an email is VERIFIED.
 // ==========================================
