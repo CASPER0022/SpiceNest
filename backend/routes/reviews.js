@@ -4,6 +4,18 @@ import { verifyToken } from './auth.js';
 
 const router = express.Router();
 
+const MAX_COMMENT_LENGTH = 2000;
+// Orders in these states don't count as a purchase for reviewing
+const NON_PURCHASE_STATUSES = ['Cancelled', 'Refunded', 'Failed', 'Pending Payment'];
+
+// Only customers who bought the product (or any product from the farmer) may review it
+function hasPurchased(userId, itemFilter) {
+  return prisma.order.findFirst({
+    where: { userId, status: { notIn: NON_PURCHASE_STATUSES }, items: { some: itemFilter } },
+    select: { id: true }
+  });
+}
+
 // ==========================================
 // CREATE OR UPDATE A REVIEW (POST /api/reviews)
 // ==========================================
@@ -13,11 +25,15 @@ router.post('/', verifyToken, async (req, res) => {
     const userId = req.user.id;
 
     // 1. Validation
-    if (!rating || rating < 1 || rating > 5) {
+    const ratingValue = Number(rating);
+    if (!Number.isInteger(ratingValue) || ratingValue < 1 || ratingValue > 5) {
       return res.status(400).json({ error: 'Rating must be an integer between 1 and 5' });
     }
-    if (!comment || comment.trim() === '') {
+    if (typeof comment !== 'string' || comment.trim() === '') {
       return res.status(400).json({ error: 'Comment text is required' });
+    }
+    if (comment.trim().length > MAX_COMMENT_LENGTH) {
+      return res.status(400).json({ error: `Comment must be at most ${MAX_COMMENT_LENGTH} characters` });
     }
     if (!productId && !farmerId) {
       return res.status(400).json({ error: 'Either productId or farmerId must be provided' });
@@ -26,11 +42,14 @@ router.post('/', verifyToken, async (req, res) => {
     let review;
 
     if (productId) {
-      const prodId = parseInt(productId, 10);
+      const prodId = Number(productId);
       // Check if product exists
-      const product = await prisma.product.findUnique({ where: { id: prodId } });
+      const product = Number.isInteger(prodId) ? await prisma.product.findUnique({ where: { id: prodId } }) : null;
       if (!product) {
         return res.status(404).json({ error: 'Product not found' });
+      }
+      if (!await hasPurchased(userId, { productId: prodId })) {
+        return res.status(403).json({ error: 'You can review this product after you have purchased it.' });
       }
 
       // Upsert product review (since we have a @@unique([userId, productId]) constraint)
@@ -42,13 +61,13 @@ router.post('/', verifyToken, async (req, res) => {
           },
         },
         update: {
-          rating: parseInt(rating, 10),
+          rating: ratingValue,
           comment: comment.trim(),
         },
         create: {
           userId,
           productId: prodId,
-          rating: parseInt(rating, 10),
+          rating: ratingValue,
           comment: comment.trim(),
         },
         include: {
@@ -58,11 +77,14 @@ router.post('/', verifyToken, async (req, res) => {
         }
       });
     } else if (farmerId) {
-      const farmId = parseInt(farmerId, 10);
+      const farmId = Number(farmerId);
       // Check if farmer exists
-      const farmer = await prisma.farmer.findUnique({ where: { id: farmId } });
+      const farmer = Number.isInteger(farmId) ? await prisma.farmer.findUnique({ where: { id: farmId } }) : null;
       if (!farmer) {
         return res.status(404).json({ error: 'Farmer not found' });
+      }
+      if (!await hasPurchased(userId, { product: { farmerId: farmId } })) {
+        return res.status(403).json({ error: "You can review this farmer after you have purchased one of their products." });
       }
 
       // Upsert farmer review (since we have a @@unique([userId, farmerId]) constraint)
@@ -74,13 +96,13 @@ router.post('/', verifyToken, async (req, res) => {
           },
         },
         update: {
-          rating: parseInt(rating, 10),
+          rating: ratingValue,
           comment: comment.trim(),
         },
         create: {
           userId,
           farmerId: farmId,
-          rating: parseInt(rating, 10),
+          rating: ratingValue,
           comment: comment.trim(),
         },
         include: {
