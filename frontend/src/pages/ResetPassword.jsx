@@ -25,9 +25,10 @@ export default function ResetPassword() {
       return;
     }
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters long');
-      toast.error('Password must be at least 6 characters long');
+    if (password.length < 8 || !/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+      const message = 'Password must be at least 8 characters and contain a letter and a number';
+      setError(message);
+      toast.error(message);
       return;
     }
 

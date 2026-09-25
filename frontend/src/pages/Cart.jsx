@@ -2,7 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Trash2, Plus, Minus, ArrowRight, MapPin, Check, Edit2 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import toast from 'react-hot-toast';
 
 const loadRazorpayScript = () => {
@@ -23,6 +23,22 @@ const AVAILABLE_COUPONS = [
   { code: 'STARTER', discount: 70, description: '₹70 off on your first premium spice purchase!' },
   { code: 'SPICE50', discount: 50, description: '₹50 off on our organic Western Ghats spices!' }
 ];
+
+// Derives the checkout form from the user's saved address, and whether it still needs editing
+function savedAddressState(user) {
+  if (!user?.address) return { fields: {}, editing: true };
+  try {
+    const parsed = JSON.parse(user.address);
+    if (parsed && typeof parsed === 'object') {
+      const required = ['fullName', 'mobileNumber', 'email', 'pincode', 'houseNo', 'area', 'city', 'state'];
+      const isComplete = required.every(field => parsed[field]?.trim());
+      return { fields: parsed, editing: !isComplete };
+    }
+  } catch {
+    // Not JSON: an old plain-text address, handled below
+  }
+  return { fields: { houseNo: user.address }, editing: true };
+}
 
 export default function Cart() {
   const { cartItems, updateQuantity, removeFromCart, cartTotal, clearCart } = useCart();
@@ -50,30 +66,15 @@ export default function Cart() {
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-  // Initialize address state when user loads
-  useEffect(() => {
-    if (user?.address) {
-      try {
-        const parsed = JSON.parse(user.address);
-        if (parsed && typeof parsed === 'object') {
-          setAddress(prev => ({ ...prev, ...parsed }));
-          
-          // Check if the saved address is complete
-          const required = ['fullName', 'mobileNumber', 'email', 'pincode', 'houseNo', 'area', 'city', 'state'];
-          const isComplete = required.every(field => parsed[field]?.trim());
-          setIsEditingAddress(!isComplete);
-        } else {
-          setAddress(prev => ({ ...prev, houseNo: user.address }));
-          setIsEditingAddress(true);
-        }
-      } catch (e) {
-        setAddress(prev => ({ ...prev, houseNo: user.address }));
-        setIsEditingAddress(true);
-      }
-    } else {
-      setIsEditingAddress(true);
-    }
-  }, [user]);
+  // Initialize address state whenever the user loads or changes (adjusting state during render,
+  // instead of in an effect, avoids an extra render pass)
+  const [addressSourceUser, setAddressSourceUser] = useState(undefined);
+  if (addressSourceUser !== user) {
+    setAddressSourceUser(user);
+    const saved = savedAddressState(user);
+    setAddress(prev => ({ ...prev, ...saved.fields }));
+    setIsEditingAddress(saved.editing);
+  }
 
   const handleSaveAddress = async () => {
     const required = ['fullName', 'mobileNumber', 'email', 'pincode', 'houseNo', 'area', 'city', 'state'];
@@ -166,12 +167,18 @@ export default function Cart() {
         throw new Error('Could not load Razorpay payment helper script.');
       }
 
+      // The server identifies the buyer from the session token (guests send none)
+      const checkoutHeaders = { 'Content-Type': 'application/json' };
+      const token = localStorage.getItem('token');
+      if (user && token) {
+        checkoutHeaders['Authorization'] = `Bearer ${token}`;
+      }
+
       const res = await fetch(`${API_URL}/api/payment/create-razorpay-order`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        headers: checkoutHeaders,
+        body: JSON.stringify({
           items: checkoutItems, // Only id/weight/quantity: the server prices everything
-          userId: user ? user.id : null,
           address: JSON.stringify(address), // Use the fresh local state!
           couponCode: appliedCoupon ? appliedCoupon.code : ''
         }),
@@ -189,20 +196,19 @@ export default function Cart() {
         description: 'Premium Farm-to-Table Spices',
         image: '/images/logo.jpg',
         order_id: data.orderId,
+        // Stock is reserved for 30 minutes; close the payment window before the reservation ends
+        timeout: 25 * 60,
         handler: async function (response) {
           setIsProcessing(true);
           try {
             const confirmRes = await fetch(`${API_URL}/api/payment/confirm-razorpay-order`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
+              // Only the payment proof: the server already stored the cart, address and buyer
               body: JSON.stringify({
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                items: checkoutItems,
-                userId: user ? user.id : null,
-                address: JSON.stringify(address),
-                couponCode: appliedCoupon ? appliedCoupon.code : ''
+                razorpay_signature: response.razorpay_signature
               })
             });
 
@@ -226,9 +232,6 @@ export default function Cart() {
           name: address.fullName,
           email: address.email,
           contact: address.mobileNumber
-        },
-        notes: {
-          address: data.addressWithIp
         },
         theme: {
           color: '#059669' // Emerald Green brand color
