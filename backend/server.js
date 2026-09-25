@@ -86,7 +86,7 @@ import paymentRoutes, { startReservationSweeper } from './routes/payment.js';
 import cartRoutes from './routes/cart.js';
 import reviewsRoutes from './routes/reviews.js';
 import wishlistRoutes from './routes/wishlist.js';
-import { verifyToken } from './routes/auth.js';
+import { verifyToken, getRequestUser } from './routes/auth.js';
 
 // ==========================================
 // Middleware (Software that runs before your routes)
@@ -121,7 +121,12 @@ app.use(cors({
   credentials: true
 }));
 
-app.use(express.json()); // Allows the server to understand JSON data sent in requests
+// Parses JSON bodies (capped at 50kb; the largest legitimate body is an admin product edit).
+// The raw bytes are kept for payment webhooks, whose signatures are computed over them.
+app.use(express.json({
+  limit: '50kb',
+  verify: (req, res, buf) => { req.rawBody = buf; }
+}));
 
 // ==========================================
 // Rate limiting (per client IP; req.ip is proxy-aware thanks to "trust proxy" above)
@@ -227,9 +232,18 @@ app.get('/api/products/:id', async (req, res) => {
     const id = parseRouteId(req.params.id);
     if (id === null) return res.status(400).json({ error: 'Invalid product ID' });
     const cacheKey = `product_${id}`;
+    // Archived products are hidden from customers (admins can still open them)
+    const sendProduct = async (product) => {
+      if (product.isArchived) {
+        const viewer = await getRequestUser(req);
+        if (viewer?.role !== 'ADMIN') return res.status(404).json({ error: 'Product not found' });
+      }
+      res.json(product);
+    };
+
     const cachedProduct = productCache.get(cacheKey);
     if (cachedProduct) {
-      return res.json(cachedProduct);
+      return sendProduct(cachedProduct);
     }
 
     const product = await prisma.product.findUnique({
@@ -263,7 +277,7 @@ app.get('/api/products/:id', async (req, res) => {
     };
 
     productCache.set(cacheKey, result);
-    res.json(result);
+    await sendProduct(result);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch product' });
@@ -301,12 +315,13 @@ app.put('/api/products/:id', verifyToken, async (req, res) => {
 
     // Invalidate product caches
     productCache.delete('all_products');
+    farmerCache.clear(); // farmer cards list their product names
     productCache.delete(`product_${id}`);
 
     res.json({ success: true, product: updatedProduct });
   } catch (error) {
     console.error('Update product error:', error);
-    res.status(500).json({ error: 'Failed to update product: ' + error.message });
+    res.status(500).json({ error: 'Failed to update product' });
   }
 });
 
@@ -339,7 +354,7 @@ app.post('/api/products', verifyToken, async (req, res) => {
         category,
         farmerId: parseInt(farmerId, 10),
         images: productImages,
-        story: story || 'Write bibin John'
+        story: story || null
       },
       include: {
         farmer: true
@@ -348,11 +363,12 @@ app.post('/api/products', verifyToken, async (req, res) => {
 
     // Invalidate products cache
     productCache.delete('all_products');
+    farmerCache.clear(); // farmer cards list their product names
 
     res.status(201).json({ success: true, product: newProduct });
   } catch (error) {
     console.error('Create product error:', error);
-    res.status(500).json({ error: 'Failed to create product: ' + error.message });
+    res.status(500).json({ error: 'Failed to create product' });
   }
 });
 
@@ -376,12 +392,13 @@ app.delete('/api/products/:id', verifyToken, async (req, res) => {
 
     // Invalidate product caches
     productCache.delete('all_products');
+    farmerCache.clear(); // farmer cards list their product names
     productCache.delete(`product_${id}`);
 
     res.json({ success: true, message: 'Product deleted successfully' });
   } catch (error) {
     console.error('Delete product error:', error);
-    res.status(500).json({ error: 'Failed to delete product: ' + error.message });
+    res.status(500).json({ error: 'Failed to delete product' });
   }
 });
 
@@ -439,8 +456,8 @@ app.get('/api/farmers/:id', async (req, res) => {
 
     const farmer = await prisma.farmer.findUnique({
       where: { id },
-      include: { 
-        products: true,
+      include: {
+        products: { where: { isArchived: false } },
         reviews: {
           include: {
             user: {

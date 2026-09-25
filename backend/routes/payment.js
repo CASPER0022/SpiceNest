@@ -6,7 +6,7 @@ import pkg from '@prisma/client';
 import prisma from '../db.js';
 import { sendOrderConfirmation, sendCustomAdminMessage } from '../utils/emailService.js';
 import { verifyToken, optionalAuth, getRequestUser } from './auth.js';
-import { RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, STRIPE_SECRET_KEY, FRONTEND_URL } from '../config.js';
+import { RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, STRIPE_SECRET_KEY, FRONTEND_URL, RAZORPAY_WEBHOOK_SECRET, STRIPE_WEBHOOK_SECRET } from '../config.js';
 import { priceCart, CheckoutError } from '../utils/pricing.js';
 
 const { Prisma } = pkg;
@@ -299,6 +299,19 @@ function sendConfirmationInBackground(order) {
   })().catch((e) => console.error('Background email task failed:', e));
 }
 
+// First-order coupons (e.g. STARTER) need a logged-in customer who has never ordered before.
+// Guests can't be recognised across orders, so they can't use them.
+async function assertCouponAllowed(priced, user) {
+  if (!priced.couponFirstOrderOnly) return;
+  if (!user) {
+    throw new CheckoutError(`${priced.couponCode} is a first-order coupon. Please log in to use it.`);
+  }
+  const previousOrders = await prisma.order.count({ where: { userId: user.id } });
+  if (previousOrders > 0) {
+    throw new CheckoutError(`${priced.couponCode} can only be used on your first order.`);
+  }
+}
+
 // ==========================================
 // RAZORPAY CHECKOUT ROUTE
 // ==========================================
@@ -311,6 +324,7 @@ router.post('/create-razorpay-order', optionalAuth, async (req, res) => {
 
     // Price the cart entirely on the server (prices, stock, coupon, shipping come from our DB/config)
     const priced = await priceCart(prisma, items, couponCode);
+    await assertCouponAllowed(priced, req.user);
 
     const razorpay = new Razorpay({
       key_id: RAZORPAY_KEY_ID,
@@ -363,6 +377,7 @@ router.post('/create-checkout-session', optionalAuth, async (req, res) => {
 
     // Price the cart entirely on the server (prices, stock, coupon, shipping come from our DB/config)
     const priced = await priceCart(prisma, items, couponCode);
+    await assertCouponAllowed(priced, req.user);
 
     // 1. Transform our server-priced cart lines into the format Stripe expects
     const lineItems = priced.lines.map((line) => {
@@ -446,7 +461,122 @@ router.post('/create-checkout-session', optionalAuth, async (req, res) => {
 });
 
 // ==========================================
-// CONFIRM RAZORPAY ORDER ROUTE
+// PAYMENT FINALIZATION (shared by the browser callbacks and the payment webhooks)
+// ==========================================
+const noCheckoutFound = (paymentId) =>
+  new CheckoutError(`We could not find the checkout for this payment. Please contact support with your payment ID: ${paymentId}`);
+
+/**
+ * Records the order for a verified Razorpay payment, exactly once, whichever arrives first: the
+ * browser callback or the webhook. Returns { order, alreadyRecorded }. Throws CheckoutError for
+ * problems that retrying cannot fix.
+ *
+ * legacyCart ({ items, couponCode, address }) is only used for payments that started before
+ * server-side checkout records existed (sent by the old page); such orders are always guest orders.
+ */
+async function finalizeRazorpayPayment({ razorpayOrderId, razorpayPaymentId, legacyCart = null, clientIp = '' }) {
+  const existingOrder = await prisma.order.findUnique({ where: { razorpayOrderId }, include: ORDER_INCLUDE });
+  if (existingOrder) return { order: existingOrder, alreadyRecorded: true };
+
+  // Load what was recorded server-side when this payment order was created
+  let pending = await prisma.pendingCheckout.findUnique({ where: { id: razorpayOrderId } });
+  if (pending && pending.provider !== 'razorpay') throw noCheckoutFound(razorpayPaymentId);
+  if (!pending) {
+    if (!legacyCart) throw noCheckoutFound(razorpayPaymentId);
+    pending = {
+      id: null,
+      userId: null,
+      items: legacyCart.items,
+      couponCode: legacyCart.couponCode,
+      address: JSON.stringify(sanitizeAddress(legacyCart.address, clientIp))
+    };
+  }
+
+  // The Razorpay order holds the amount actually charged and the hash of the cart priced at checkout
+  const razorpay = new Razorpay({ key_id: RAZORPAY_KEY_ID, key_secret: RAZORPAY_KEY_SECRET });
+  const rzpOrder = await razorpay.orders.fetch(razorpayOrderId);
+
+  // Re-price the stored cart. Availability is not enforced here: the customer has already paid.
+  const priced = await priceCart(prisma, pending.items, pending.couponCode, { enforceAvailability: false });
+  if (!rzpOrder.notes || rzpOrder.notes.cartHash !== priced.cartHash) {
+    throw new CheckoutError(`Cart does not match the paid order. Please contact support with your payment ID: ${razorpayPaymentId}`);
+  }
+  if (Math.round(priced.total * 100) !== rzpOrder.amount) {
+    // Prices changed between checkout and confirmation; the customer was charged rzpOrder.amount
+    console.warn(`Amount mismatch for Razorpay order ${razorpayOrderId}: charged ${rzpOrder.amount}, repriced ${Math.round(priced.total * 100)}`);
+  }
+
+  try {
+    const order = await recordPaidOrder({
+      lines: priced.lines,
+      userId: pending.userId,
+      address: pending.address,
+      totalAmount: rzpOrder.amount / 100, // what the customer actually paid
+      paymentFields: { razorpayOrderId, razorpayPaymentId },
+      pendingCheckoutId: pending.id
+    });
+    return { order, alreadyRecorded: false };
+  } catch (err) {
+    // A concurrent confirmation of the same payment won the race; its transaction recorded the order
+    if (isUniqueViolation(err)) {
+      const raced = await prisma.order.findUnique({ where: { razorpayOrderId }, include: ORDER_INCLUDE });
+      if (raced) return { order: raced, alreadyRecorded: true };
+    }
+    throw err;
+  }
+}
+
+/**
+ * Records the order for a paid Stripe Checkout Session, exactly once. Pass the session object when
+ * the caller already has it (the webhook); otherwise it is retrieved from Stripe.
+ */
+async function finalizeStripeSession(sessionId, session = null) {
+  const existingOrder = await prisma.order.findUnique({ where: { stripeSessionId: sessionId }, include: ORDER_INCLUDE });
+  if (existingOrder) return { order: existingOrder, alreadyRecorded: true };
+
+  const checkoutSession = session || await new Stripe(STRIPE_SECRET_KEY).checkout.sessions.retrieve(sessionId);
+  if (checkoutSession.payment_status !== 'paid') {
+    throw new CheckoutError('Payment not completed');
+  }
+
+  const pending = await prisma.pendingCheckout.findUnique({ where: { id: sessionId } });
+  if (!pending || pending.provider !== 'stripe') {
+    throw new CheckoutError('We could not find the checkout for this payment. Please contact support.');
+  }
+
+  const priced = await priceCart(prisma, pending.items, pending.couponCode, { enforceAvailability: false });
+  if (checkoutSession.metadata?.cartHash !== priced.cartHash) {
+    throw new CheckoutError('Cart does not match the paid order. Please contact support.');
+  }
+
+  try {
+    const order = await recordPaidOrder({
+      lines: priced.lines,
+      userId: pending.userId,
+      address: pending.address,
+      totalAmount: checkoutSession.amount_total / 100, // what the customer actually paid
+      paymentFields: { stripeSessionId: sessionId },
+      pendingCheckoutId: pending.id
+    });
+    return { order, alreadyRecorded: false };
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      const raced = await prisma.order.findUnique({ where: { stripeSessionId: sessionId }, include: ORDER_INCLUDE });
+      if (raced) return { order: raced, alreadyRecorded: true };
+    }
+    throw err;
+  }
+}
+
+// Constant-time comparison of two hex/ASCII signatures
+function signaturesMatch(given, expected) {
+  const a = Buffer.from(String(given));
+  const b = Buffer.from(String(expected));
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+// ==========================================
+// CONFIRM RAZORPAY ORDER ROUTE (browser callback after payment)
 // ==========================================
 router.post('/confirm-razorpay-order', async (req, res) => {
   // Only the payment proof is read from the client. The buyer, address and cart come from the
@@ -463,82 +593,22 @@ router.post('/confirm-razorpay-order', async (req, res) => {
       .createHmac('sha256', RAZORPAY_KEY_SECRET)
       .update(razorpay_order_id + "|" + razorpay_payment_id)
       .digest('hex');
-
-    const sigBuffer = Buffer.from(String(razorpay_signature));
-    const expectedBuffer = Buffer.from(generated_signature);
-    if (sigBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(sigBuffer, expectedBuffer)) {
+    if (!signaturesMatch(razorpay_signature, generated_signature)) {
       return res.status(400).json({ error: 'Signature verification failed. The transaction may have been tampered.' });
     }
 
-    // 2. Check if order already exists (prevent duplicate submissions)
-    const existingOrder = await prisma.order.findUnique({
-      where: { razorpayOrderId: razorpay_order_id },
-      include: ORDER_INCLUDE
+    // 2. Record the order (or return it if the webhook already did)
+    const hasLegacyCart = req.body.items !== undefined && req.body.address !== undefined;
+    const { order, alreadyRecorded } = await finalizeRazorpayPayment({
+      razorpayOrderId: razorpay_order_id,
+      razorpayPaymentId: razorpay_payment_id,
+      legacyCart: hasLegacyCart ? { items: req.body.items, couponCode: req.body.couponCode, address: req.body.address } : null,
+      clientIp: getClientIp(req)
     });
 
-    if (existingOrder) {
-      return res.json({ success: true, order: existingOrder, message: 'Order already recorded' });
-    }
-
-    // 3. Load what was recorded server-side when this payment order was created
-    let pending = await prisma.pendingCheckout.findUnique({ where: { id: razorpay_order_id } });
-    if (pending && pending.provider !== 'razorpay') {
-      return res.status(400).json({ error: 'We could not find the checkout for this payment. Please contact support with your payment ID: ' + razorpay_payment_id });
-    }
-    if (!pending) {
-      // Legacy payment: started before server-side checkout records existed, by a page that still
-      // sends the cart and address. The cart is verified against the hash Razorpay stored below,
-      // and the order is ALWAYS recorded as a guest order, so it can't be attached to any account.
-      pending = {
-        id: null,
-        userId: null,
-        items: req.body.items,
-        couponCode: req.body.couponCode,
-        address: JSON.stringify(sanitizeAddress(req.body.address, getClientIp(req)))
-      };
-    }
-
-    // 4. Fetch the payment order from Razorpay: it holds the amount actually charged and the
-    //    hash of the cart that was priced when the order was created.
-    const razorpay = new Razorpay({
-      key_id: RAZORPAY_KEY_ID,
-      key_secret: RAZORPAY_KEY_SECRET
-    });
-    const rzpOrder = await razorpay.orders.fetch(razorpay_order_id);
-
-    // 5. Re-price the stored cart. Availability is not enforced here: the customer has already paid.
-    const priced = await priceCart(prisma, pending.items, pending.couponCode, { enforceAvailability: false });
-    if (!rzpOrder.notes || rzpOrder.notes.cartHash !== priced.cartHash) {
-      return res.status(400).json({ error: 'Cart does not match the paid order. Please contact support with your payment ID: ' + razorpay_payment_id });
-    }
-    if (Math.round(priced.total * 100) !== rzpOrder.amount) {
-      // Prices changed between checkout and confirmation; the customer was charged rzpOrder.amount
-      console.warn(`Amount mismatch for Razorpay order ${razorpay_order_id}: charged ${rzpOrder.amount}, repriced ${Math.round(priced.total * 100)}`);
-    }
-
-    // 6. Create the order and deduct stock atomically
-    let order;
-    try {
-      order = await recordPaidOrder({
-        lines: priced.lines,
-        userId: pending.userId,
-        address: pending.address,
-        totalAmount: rzpOrder.amount / 100, // what the customer actually paid
-        paymentFields: { razorpayOrderId: razorpay_order_id, razorpayPaymentId: razorpay_payment_id },
-        pendingCheckoutId: pending.id
-      });
-    } catch (err) {
-      // A concurrent confirmation of the same payment won the race; its transaction recorded the order
-      if (isUniqueViolation(err)) {
-        const raced = await prisma.order.findUnique({ where: { razorpayOrderId: razorpay_order_id }, include: ORDER_INCLUDE });
-        if (raced) return res.json({ success: true, order: raced, message: 'Order already recorded' });
-      }
-      throw err;
-    }
-
-    // 7. Send response immediately, then the confirmation email in the background
-    res.json({ success: true, order });
-    sendConfirmationInBackground(order);
+    // 3. Send response immediately, then the confirmation email in the background
+    res.json({ success: true, order, ...(alreadyRecorded && { message: 'Order already recorded' }) });
+    if (!alreadyRecorded) sendConfirmationInBackground(order);
   } catch (error) {
     if (error instanceof CheckoutError) {
       return res.status(error.status).json({ error: error.message });
@@ -549,7 +619,7 @@ router.post('/confirm-razorpay-order', async (req, res) => {
 });
 
 // ==========================================
-// CONFIRM ORDER ROUTE (Stripe)
+// CONFIRM ORDER ROUTE (Stripe success page)
 // ==========================================
 router.get('/confirm-order', async (req, res) => {
   const { session_id } = req.query;
@@ -559,64 +629,100 @@ router.get('/confirm-order', async (req, res) => {
   }
 
   try {
-    const stripe = new Stripe(STRIPE_SECRET_KEY);
-
-    // 1. Retrieve the session from Stripe
-    const session = await stripe.checkout.sessions.retrieve(session_id);
-
-    if (session.payment_status !== 'paid') {
-      return res.status(400).json({ error: 'Payment not completed' });
-    }
-
-    // 2. Check if order already exists (to prevent duplicates on refresh)
-    const existingOrder = await prisma.order.findUnique({
-      where: { stripeSessionId: session_id },
-      include: ORDER_INCLUDE
-    });
-
-    if (existingOrder) {
-      return res.json({ success: true, order: existingOrder, message: 'Order already recorded' });
-    }
-
-    // 3. Load the buyer, address and cart recorded server-side when the session was created
-    const pending = await prisma.pendingCheckout.findUnique({ where: { id: session_id } });
-    if (!pending || pending.provider !== 'stripe') {
-      return res.status(400).json({ error: 'We could not find the checkout for this payment. Please contact support.' });
-    }
-
-    const priced = await priceCart(prisma, pending.items, pending.couponCode, { enforceAvailability: false });
-    if (session.metadata?.cartHash !== priced.cartHash) {
-      return res.status(400).json({ error: 'Cart does not match the paid order. Please contact support.' });
-    }
-
-    // 4. Create the order and deduct stock atomically
-    let order;
-    try {
-      order = await recordPaidOrder({
-        lines: priced.lines,
-        userId: pending.userId,
-        address: pending.address,
-        totalAmount: session.amount_total / 100, // what the customer actually paid
-        paymentFields: { stripeSessionId: session_id },
-        pendingCheckoutId: pending.id
-      });
-    } catch (err) {
-      if (isUniqueViolation(err)) {
-        const raced = await prisma.order.findUnique({ where: { stripeSessionId: session_id }, include: ORDER_INCLUDE });
-        if (raced) return res.json({ success: true, order: raced, message: 'Order already recorded' });
-      }
-      throw err;
-    }
-
-    // 5. Send response to user immediately, then the confirmation email in the background
-    res.json({ success: true, order });
-    sendConfirmationInBackground(order);
+    const { order, alreadyRecorded } = await finalizeStripeSession(session_id);
+    res.json({ success: true, order, ...(alreadyRecorded && { message: 'Order already recorded' }) });
+    if (!alreadyRecorded) sendConfirmationInBackground(order);
   } catch (error) {
     if (error instanceof CheckoutError) {
       return res.status(error.status).json({ error: error.message });
     }
     console.error('Order confirmation error:', error);
     res.status(500).json({ error: 'Failed to confirm order. Please contact support.' });
+  }
+});
+
+// ==========================================
+// PAYMENT WEBHOOKS
+// Called by Razorpay / Stripe themselves, so orders are recorded even if the customer closes the
+// tab before the success page loads. Signatures are verified over the raw request body.
+// Permanent problems answer 200 (so the provider stops retrying) and are logged; unexpected
+// errors answer 500 so the provider retries later.
+// ==========================================
+router.post('/razorpay-webhook', async (req, res) => {
+  if (!RAZORPAY_WEBHOOK_SECRET) {
+    return res.status(503).json({ error: 'Webhook not configured' });
+  }
+  const signature = req.header('X-Razorpay-Signature');
+  if (!req.rawBody || typeof signature !== 'string') {
+    return res.status(400).json({ error: 'Invalid webhook' });
+  }
+  const expected = crypto.createHmac('sha256', RAZORPAY_WEBHOOK_SECRET).update(req.rawBody).digest('hex');
+  if (!signaturesMatch(signature, expected)) {
+    return res.status(400).json({ error: 'Invalid webhook signature' });
+  }
+
+  const { event, payload } = req.body || {};
+  if (event !== 'payment.captured' && event !== 'order.paid') {
+    return res.json({ received: true, ignored: event });
+  }
+  const payment = payload?.payment?.entity;
+  const razorpayOrderId = payment?.order_id || payload?.order?.entity?.id;
+  const razorpayPaymentId = payment?.id;
+  if (typeof razorpayOrderId !== 'string' || typeof razorpayPaymentId !== 'string') {
+    return res.json({ received: true, ignored: 'no order/payment id' });
+  }
+
+  try {
+    const { order, alreadyRecorded } = await finalizeRazorpayPayment({ razorpayOrderId, razorpayPaymentId });
+    if (!alreadyRecorded) {
+      console.log(`Razorpay webhook recorded order ${order.id} (${razorpayOrderId})`);
+      sendConfirmationInBackground(order);
+    }
+    res.json({ received: true });
+  } catch (error) {
+    if (error instanceof CheckoutError) {
+      console.warn(`Razorpay webhook for ${razorpayOrderId} not recorded: ${error.message}`);
+      return res.json({ received: true, ignored: error.message });
+    }
+    console.error('Razorpay webhook error:', error);
+    res.status(500).json({ error: 'Webhook processing failed' });
+  }
+});
+
+router.post('/stripe-webhook', async (req, res) => {
+  if (!STRIPE_WEBHOOK_SECRET) {
+    return res.status(503).json({ error: 'Webhook not configured' });
+  }
+
+  let event;
+  try {
+    event = new Stripe(STRIPE_SECRET_KEY).webhooks.constructEvent(req.rawBody, req.header('Stripe-Signature'), STRIPE_WEBHOOK_SECRET);
+  } catch (err) {
+    return res.status(400).json({ error: 'Invalid webhook signature' });
+  }
+
+  if (event.type !== 'checkout.session.completed' && event.type !== 'checkout.session.async_payment_succeeded') {
+    return res.json({ received: true, ignored: event.type });
+  }
+  const session = event.data.object;
+  if (session.payment_status !== 'paid') {
+    return res.json({ received: true, ignored: 'not paid yet' });
+  }
+
+  try {
+    const { order, alreadyRecorded } = await finalizeStripeSession(session.id, session);
+    if (!alreadyRecorded) {
+      console.log(`Stripe webhook recorded order ${order.id} (${session.id})`);
+      sendConfirmationInBackground(order);
+    }
+    res.json({ received: true });
+  } catch (error) {
+    if (error instanceof CheckoutError) {
+      console.warn(`Stripe webhook for ${session.id} not recorded: ${error.message}`);
+      return res.json({ received: true, ignored: error.message });
+    }
+    console.error('Stripe webhook error:', error);
+    res.status(500).json({ error: 'Webhook processing failed' });
   }
 });
 

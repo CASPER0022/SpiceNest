@@ -46,13 +46,16 @@ router.post('/', verifyToken, async (req, res) => {
       return res.status(400).json({ error: 'Product ID is required.' });
     }
 
-    const parsedProductId = parseInt(productId, 10);
+    const parsedProductId = Number(productId);
+    if (!Number.isInteger(parsedProductId) || parsedProductId <= 0) {
+      return res.status(400).json({ error: 'Invalid product ID.' });
+    }
 
-    // Verify product exists in the DB
+    // Verify product exists and is still for sale
     const product = await prisma.product.findUnique({
       where: { id: parsedProductId }
     });
-    if (!product) {
+    if (!product || product.isArchived) {
       return res.status(404).json({ error: 'Product not found.' });
     }
 
@@ -86,29 +89,20 @@ router.post('/sync', verifyToken, async (req, res) => {
     const userId = req.user.id;
     const { items } = req.body;
 
-    if (Array.isArray(items)) {
-      for (const item of items) {
-        const parsedProductId = parseInt(item.id, 10);
+    if (Array.isArray(items) && items.length > 0) {
+      const requestedIds = [...new Set(items.slice(0, 100).map((item) => Number(item?.id)))]
+        .filter((id) => Number.isInteger(id) && id > 0);
 
-        // Verify product exists
-        const product = await prisma.product.findUnique({
-          where: { id: parsedProductId }
-        });
-        if (!product) continue; // Skip orphan guest items gracefully
-
-        // Upsert guest items (do nothing if exists, create otherwise)
-        await prisma.wishlistItem.upsert({
-          where: {
-            userId_productId: {
-              userId,
-              productId: parsedProductId
-            }
-          },
-          update: {},
-          create: {
-            userId,
-            productId: parsedProductId
-          }
+      // One query to find which products exist (orphan / archived guest items are skipped),
+      // one insert for all of them (items already in the wishlist are left as they are)
+      const products = await prisma.product.findMany({
+        where: { id: { in: requestedIds }, isArchived: false },
+        select: { id: true }
+      });
+      if (products.length > 0) {
+        await prisma.wishlistItem.createMany({
+          data: products.map((p) => ({ userId, productId: p.id })),
+          skipDuplicates: true
         });
       }
     }

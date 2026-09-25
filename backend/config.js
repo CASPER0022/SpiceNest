@@ -38,6 +38,14 @@ export const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID;
 export const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
 export const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 
+// Payment webhook secrets (optional, but needed to record orders when the customer closes the tab
+// before the success page loads). Set them in the Razorpay / Stripe dashboards and here.
+export const RAZORPAY_WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET || '';
+export const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
+if (process.env.NODE_ENV === 'production' && !RAZORPAY_WEBHOOK_SECRET) {
+  console.warn('⚠️ WARNING: RAZORPAY_WEBHOOK_SECRET is not set. Paid orders are only recorded if the customer returns to the site.');
+}
+
 // Session lifetime. Kept short because tokens live in localStorage; revocation uses User.tokenVersion.
 export const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1d';
 

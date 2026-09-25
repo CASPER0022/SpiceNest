@@ -145,7 +145,6 @@ export default function Dashboard() {
   };
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-  const adminEmails = ['heyitsmealbinjohn@gmail.com', 'bibinjohn2018@gmail.com'];
 
   const statusStyles = {
     PAID: 'bg-emerald-50 text-emerald-700 border-emerald-150',
@@ -193,7 +192,8 @@ export default function Dashboard() {
       return;
     }
 
-    if (!adminEmails.includes(user.email)) {
+    // The role comes from /api/auth/me; the API enforces it on every admin route regardless
+    if (user.role !== 'ADMIN') {
       toast.error('Access denied: Administrative privileges required');
       navigate('/');
       return;

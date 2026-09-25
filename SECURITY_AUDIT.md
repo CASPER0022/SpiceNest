@@ -21,7 +21,7 @@ Clean checks: no secrets committed in git history, no `dangerouslySetInnerHTML` 
 | 10 | Medium | Unbounded in-memory cache growth (DoS) | **Fixed** (2026-09-25) |
 | 11 | Medium | Loose CORS origin check | **Fixed** (2026-09-25) |
 | 12 | Medium | Account and session weaknesses | **Fixed** (2026-09-25) |
-| 13 | Low | Assorted low-severity issues | Open |
+| 13 | Low | Assorted low-severity issues | **Fixed** (2026-09-25) |
 
 ---
 
@@ -29,7 +29,7 @@ Clean checks: no secrets committed in git history, no `dangerouslySetInnerHTML` 
 
 ### 1. Payment amounts are set by the client - FIXED
 
-> **Fixed 2026-09-21.** New `backend/utils/pricing.js` prices carts server-side (DB prices, whitelisted weights, integer quantities 1-50, server-side coupon table, stock summed per product). Razorpay orders carry a cart hash in `notes`; `/confirm-razorpay-order` re-prices the cart, verifies the hash, and records the amount Razorpay actually charged. Stripe uses server line items and a server-created coupon. `Cart.jsx` now sends only `{id, weight, quantity}` and `couponCode`. Not covered here: coupons are still unlimited-use (STARTER is not first-purchase-only).
+> **Fixed 2026-09-21.** New `backend/utils/pricing.js` prices carts server-side (DB prices, whitelisted weights, integer quantities 1-50, server-side coupon table, stock summed per product). Razorpay orders carry a cart hash in `notes`; `/confirm-razorpay-order` re-prices the cart, verifies the hash, and records the amount Razorpay actually charged. Stripe uses server line items and a server-created coupon. `Cart.jsx` now sends only `{id, weight, quantity}` and `couponCode`. **Update 2026-09-25:** STARTER is now first-order-only: it requires a logged-in customer with no previous orders (checked server-side; the cart shows a login hint).
 **Files:** `backend/routes/payment.js:75-78, 150-194, 254-257`
 
 Razorpay and Stripe checkouts compute the total from `items[].price`, `items[].quantity` and `discount` in the request body. Prices are never read from the database.
@@ -59,7 +59,7 @@ Razorpay and Stripe checkouts compute the total from `items[].price`, `items[].q
 
 ### 3. Admin role granted by email with no email verification - FIXED
 
-> **Fixed 2026-09-21.** Registration now creates an unverified `USER` and emails a 24h single-use link (token stored hashed); unverified accounts cannot log in. ADMIN is granted only when a mailbox in the `ADMIN_EMAILS` env var is verified (or a reset link proves ownership); the hardcoded list and the login auto-upgrade are gone. An unverified squatter on an email is replaced when the real owner registers. New routes: `POST /api/auth/verify-email`, `POST /api/auth/resend-verification`; frontend `VerifyEmail.jsx`, updated `Signup.jsx` / `Login.jsx`. Schema: `User.emailVerified` (default true, grandfathers existing users), `emailVerifyToken`, `emailVerifyExpiry`. **Deploy note:** run `npx prisma db push` before deploying. Not covered: `Dashboard.jsx` still has a client-side admin email list (cosmetic, the API enforces the real check).
+> **Fixed 2026-09-21.** Registration now creates an unverified `USER` and emails a 24h single-use link (token stored hashed); unverified accounts cannot log in. ADMIN is granted only when a mailbox in the `ADMIN_EMAILS` env var is verified (or a reset link proves ownership); the hardcoded list and the login auto-upgrade are gone. An unverified squatter on an email is replaced when the real owner registers. New routes: `POST /api/auth/verify-email`, `POST /api/auth/resend-verification`; frontend `VerifyEmail.jsx`, updated `Signup.jsx` / `Login.jsx`. Schema: `User.emailVerified` (default true, grandfathers existing users), `emailVerifyToken`, `emailVerifyExpiry`. **Deploy note:** run `npx prisma db push` before deploying. **Update 2026-09-25:** the hardcoded admin email lists in `Dashboard.jsx`, `Navbar.jsx`, `ProductDetails.jsx` and `FarmerProfile.jsx` were replaced with the server-provided `user.role`.
 **Files:** `auth.js:22, 44, 106`
 
 Registration does not verify email ownership. Anyone can register as `heyitsmealbinjohn@gmail.com` or `bibinjohn2018@gmail.com` and receive `ADMIN`, if those accounts do not already exist in the production DB (for example after a reset or migration via `restore-data.js` / `migrate_to_supabase.js`). Login also silently promotes anyone whose email is on the list.
@@ -163,23 +163,27 @@ The cache key is the raw `:id` string, but lookup uses `parseInt`. Requests to `
 
 ---
 
-## Low
+## Low - FIXED
 
-- Archived products still returned by `/api/farmers` and `/api/products/:id`, and can still be added to the cart and bought.
-- Reviews need no purchase; comment length is unbounded (`reviews.js`); non-numeric ratings reach Prisma.
-- Cart and wishlist `sync` run one DB query per item; cart quantity accepts negative numbers and arbitrary `weight` strings.
-- Default 100kb JSON limit; no `helmet` security headers.
-- `nodemailer` is an unused dependency with 8 high-severity advisories - remove it. `npm audit fix` patches the `qs` DoS.
-- Error responses include `error.message` (`payment.js:331, 451`, `server.js:250, 296`), leaking internals.
-- `track-order` calls `parseInt` on a UUID (`payment.js:743`), so a logged-in user is never recognised there.
-- `x-forwarded-for` is stored unvalidated as `clientIp` in the order address.
-- Anyone can create a product with default story text `'Write bibin John'` (`server.js:283`) - cosmetic placeholder to remove.
+> **Fixed 2026-09-25.** Each item and its fix:
+
+- ~~Archived products still returned and buyable~~: `/api/products/:id` returns 404 for archived products (admins can still open them). Farmer endpoints, cart, cart sync and wishlist skip archived products, and checkout rejects them (#1).
+- ~~Reviews need no purchase; unbounded comments; non-numeric ratings~~: reviews require a paid order containing the product (or any product from the farmer). Ratings must be integers 1-5 and comments at most 2000 characters (also enforced by the textareas).
+- ~~Cart/wishlist sync one query per item; bad quantities/weights~~: sync runs a constant number of queries (one lookup, one batched write). Quantities must be whole numbers 1-50, and weights must be one of the four supported options.
+- ~~100kb JSON limit, no helmet~~: bodies are capped at 50kb; `helmet` sets security headers on the API; the frontend has a CSP (#12).
+- ~~`nodemailer` unused and vulnerable; `qs` DoS~~: `nodemailer` and the unused `resend` were removed. `qs` is pinned to 6.16.0 with an npm override. `npm audit` shows 0 vulnerabilities in both backend and frontend (the frontend had several, including `react-router`).
+- ~~Error responses leak `error.message`~~: removed from all product and payment error responses.
+- ~~`track-order` `parseInt` on UUID~~: fixed in #7.
+- ~~Unvalidated `x-forwarded-for` as `clientIp`~~: `req.ip` with `trust proxy` (#5, #6).
+- ~~`'Write bibin John'` placeholder~~: removed; new products default to no story.
 
 Also fixed 2026-09-25: payments started before this deploy are still confirmed through a legacy path. The cart is verified by the Razorpay cart hash, and the order is always recorded as a guest order.
 
-## Related business bug
+## Related business bug - FIXED
 
-No Stripe/Razorpay webhook. If a customer pays and closes the tab before `/success` loads, no order is recorded.
+> **Fixed 2026-09-25.** New webhook endpoints `POST /api/payment/razorpay-webhook` (events `payment.captured`, `order.paid`) and `POST /api/payment/stripe-webhook` (`checkout.session.completed`) verify the provider signature over the raw body. They record the order through the same code as the browser callback, so each payment creates exactly one order whichever arrives first. **Setup required:** create the webhooks in the Razorpay and Stripe dashboards and set `RAZORPAY_WEBHOOK_SECRET` / `STRIPE_WEBHOOK_SECRET` on Render. Without these, the endpoints answer 503 and orders still rely on the customer returning to the site.
+
+~~No Stripe/Razorpay webhook. If a customer pays and closes the tab before `/success` loads, no order is recorded.~~
 
 ## Suggested fix order
 
@@ -188,3 +192,8 @@ No Stripe/Razorpay webhook. If a customer pays and closes the tab before `/succe
 3. Take user from JWT; webhook-based order creation (#5)
 4. Proxy-aware, wider rate limiting (#6, #7)
 5. Email escaping, cache key fix, exact CORS match (#9, #10, #11)
+
+## Verification (2026-09-25)
+
+Tested end to end against a throwaway local PostgreSQL seeded with `seed.js`, using the Razorpay and Stripe **test** keys, with email sending disabled: **75/75 checks passed**. Coverage includes registration and verification, generic login errors, reset-token hashing and session revocation, and checkout reservation, confirmation, idempotency and spoofing resistance. It also covers the STARTER rules, both webhooks and their replay, legacy in-flight payments, reservation expiry and oversell (On Hold), tracking access levels, the review purchase rule, cart and wishlist validation, archived products, caching, compression, CORS, helmet, the body limit and the login throttle. Email templates were tested separately with the Brevo request intercepted: 7/7 passed (escaping, and guest emails carrying no buyer text).
+

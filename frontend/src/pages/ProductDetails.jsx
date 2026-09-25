@@ -216,7 +216,7 @@ export default function ProductDetails() {
   };
 
   const isAdmin = useMemo(() => {
-    return user && ['heyitsmealbinjohn@gmail.com', 'bibinjohn2018@gmail.com'].includes(user.email);
+    return user?.role === 'ADMIN';
   }, [user]);
 
   const handleDeleteReview = async (reviewId) => {
@@ -582,6 +582,7 @@ export default function ProductDetails() {
                   <textarea
                     id="comment"
                     rows={4}
+                    maxLength={2000}
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
                     placeholder="Share your experience with this premium spice..."
