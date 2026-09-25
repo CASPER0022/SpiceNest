@@ -14,15 +14,16 @@ export const WEIGHT_OPTIONS = {
 };
 
 // Keep in sync with AVAILABLE_COUPONS in frontend/src/pages/Cart.jsx (display only there)
+// firstOrderOnly coupons need a logged-in customer with no previous orders (checked in payment.js)
 export const COUPONS = {
-  STARTER: { discount: 70 },
+  STARTER: { discount: 70, firstOrderOnly: true },
   SPICE50: { discount: 50 },
 };
 
 export const FREE_SHIPPING_THRESHOLD = 500;
 export const SHIPPING_CHARGE = 100;
-const MAX_LINES = 50;
-const MAX_QUANTITY_PER_LINE = 50;
+export const MAX_LINES = 50;
+export const MAX_QUANTITY_PER_LINE = 50;
 
 export class CheckoutError extends Error {
   constructor(message) {
@@ -137,7 +138,7 @@ export async function priceCart(prisma, rawItems, couponCode, { enforceAvailabil
     if (!Object.prototype.hasOwnProperty.call(COUPONS, code)) {
       throw new CheckoutError('Invalid coupon code.');
     }
-    appliedCoupon = { code, discount: COUPONS[code].discount };
+    appliedCoupon = { code, discount: COUPONS[code].discount, firstOrderOnly: Boolean(COUPONS[code].firstOrderOnly) };
   }
 
   const subtotal = lines.reduce((sum, l) => sum + l.unitPrice * l.quantity, 0);
@@ -152,6 +153,7 @@ export async function priceCart(prisma, rawItems, couponCode, { enforceAvailabil
     shipping,
     total,
     couponCode: appliedCoupon ? appliedCoupon.code : '',
+    couponFirstOrderOnly: appliedCoupon ? appliedCoupon.firstOrderOnly : false,
     // Binds the paid Razorpay order to this exact cart (see confirm-razorpay-order)
     cartHash: hashCart(lines, appliedCoupon ? appliedCoupon.code : ''),
   };
