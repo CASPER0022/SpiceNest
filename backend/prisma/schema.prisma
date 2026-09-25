@@ -47,8 +47,10 @@ model User {
   password         String
   address          String?
   role             String    @default("USER")
-  resetToken       String?   @unique
+  resetToken       String?   @unique   // SHA-256 hash of the emailed token
   resetTokenExpiry DateTime?
+  // Embedded in every JWT; bumping it (e.g. on password reset) revokes all existing sessions.
+  tokenVersion     Int       @default(0)
 
   // Email verification. Default is true ONLY so that accounts that already exist when this
   // column is added are grandfathered in. The register route always sets it to false explicitly.
@@ -74,6 +76,8 @@ model Order {
   stripeSessionId   String?        @unique
   razorpayOrderId   String?        @unique
   razorpayPaymentId String?        @unique
+  // Random secret emailed to the customer; lets them track the order without guessing IDs.
+  trackingToken   String?        @unique
   items           OrderItem[]
   messages        OrderMessage[]
   createdAt       DateTime       @default(now())
@@ -149,6 +153,26 @@ model Review {
 
   @@unique([userId, productId])
   @@unique([userId, farmerId])
+}
+
+// Server-side record of a checkout, written when the payment order/session is created.
+// Confirmation reads the buyer, address and cart from here, never from the client.
+model PendingCheckout {
+  id         String   @id          // Razorpay order ID or Stripe Checkout Session ID
+  provider   String                // "razorpay" | "stripe"
+  userId     String?               // from the JWT at checkout time; null = guest
+  address    String                // sanitized address JSON (with clientIp)
+  items      Json                  // [{ id, weight, quantity }]
+  couponCode String   @default("")
+  createdAt  DateTime @default(now())
+
+  // Stock held for this checkout until it is paid or reservedUntil passes (then released).
+  reserved      Boolean   @default(false)
+  reservation   Json?                 // per cart line: { productId, weight, kg, initialStock, finalStock }
+  reservedUntil DateTime?
+
+  @@index([createdAt])
+  @@index([reserved, reservedUntil])
 }
 
 model WishlistItem {

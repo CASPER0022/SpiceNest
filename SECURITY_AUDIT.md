@@ -13,14 +13,14 @@ Clean checks: no secrets committed in git history, no `dangerouslySetInnerHTML` 
 | 2 | Critical | Fallback secrets (Razorpay, JWT) defeat verification | **Fixed** (2026-09-21) |
 | 3 | Critical | Admin role granted by email with no email verification | **Fixed** (2026-09-21) |
 | 4 | High | Account pre-hijack and guest order theft on register | **Fixed** (2026-09-21, as part of #3) |
-| 5 | High | Order attribution spoofing (`userId`, `address` from client) | Open |
-| 6 | High | Rate limiter ineffective behind proxy; missing on key routes | Open |
-| 7 | High | Order tracking by sequential ID + email, no rate limit | Open |
-| 8 | Medium | Overselling / non-atomic stock handling | Open |
-| 9 | Medium | HTML injection in outgoing emails | Open |
-| 10 | Medium | Unbounded in-memory cache growth (DoS) | Open |
-| 11 | Medium | Loose CORS origin check | Open |
-| 12 | Medium | Account and session weaknesses | Open |
+| 5 | High | Order attribution spoofing (`userId`, `address` from client) | **Fixed** (2026-09-25) |
+| 6 | High | Rate limiter ineffective behind proxy; missing on key routes | **Fixed** (2026-09-25) |
+| 7 | High | Order tracking by sequential ID + email, no rate limit | **Fixed** (2026-09-25) |
+| 8 | Medium | Overselling / non-atomic stock handling | **Fixed** (2026-09-25) |
+| 9 | Medium | HTML injection in outgoing emails | **Fixed** (2026-09-25) |
+| 10 | Medium | Unbounded in-memory cache growth (DoS) | **Fixed** (2026-09-25) |
+| 11 | Medium | Loose CORS origin check | **Fixed** (2026-09-25) |
+| 12 | Medium | Account and session weaknesses | **Fixed** (2026-09-25) |
 | 13 | Low | Assorted low-severity issues | Open |
 
 ---
@@ -79,14 +79,18 @@ An attacker registers with a victim's email. Register then claims every guest or
 
 **Fix:** claim guest orders only after email verification, and query only orders whose address email matches instead of scanning all guest orders.
 
-### 5. Order attribution can be spoofed
+### 5. Order attribution can be spoofed - FIXED
+
+> **Fixed 2026-09-25.** Checkout routes take the buyer from the JWT (`optionalAuth`; no token = guest) and store the sanitized address, cart and coupon in a new `PendingCheckout` table keyed by the Razorpay order / Stripe session ID. Both confirm routes read only from that record; `userId`, `address` and `items` in the request body are ignored. Stripe metadata now carries only the cart hash. Client IP comes from `req.ip` instead of the raw `X-Forwarded-For` header.
 **Files:** `payment.js:222, 287` (Razorpay), `:206, 370-371` (Stripe metadata)
 
 `/confirm-razorpay-order` is unauthenticated and takes `userId` and `address` from the body. Any paid order can be attached to any user. Stripe `metadata.userId` / `metadata.address` are also client-supplied.
 
 **Fix:** take the user from the JWT (or treat as guest), and store the address server-side when the payment order is created, keyed by the payment order ID.
 
-### 6. Rate limiter ineffective and missing on key routes
+### 6. Rate limiter ineffective and missing on key routes - FIXED
+
+> **Fixed 2026-09-25.** `app.set('trust proxy', TRUST_PROXY_HOPS)` (env, default 1 in production, 0 otherwise). New limiters on `/reset-password`, payment create/confirm routes and `/track-order`; a per-account limiter allows 10 failed logins per email per 15 minutes. The auth IP limit went from 100 to 50.
 **File:** `server.js:95-105`
 
 - `trust proxy` is not set, so behind Render/Vercel all users share the proxy IP. One person can send 100 login requests and lock everyone out of login, register and forgot-password.
@@ -95,7 +99,9 @@ An attacker registers with a victim's email. Register then claims every guest or
 
 **Fix:** `app.set('trust proxy', <hops>)`; add limiters to the missing routes; add per-account throttling on login.
 
-### 7. Order tracking by sequential ID + email
+### 7. Order tracking by sequential ID + email - FIXED
+
+> **Fixed 2026-09-25.** Orders get a random `trackingToken`, emailed as a tracking link. Full details are returned only to the logged-in owner or with the token. ID + email returns a limited view: status and items, masked name and phone, city/state/pincode, no street address or messages. The response is an explicit field whitelist (no `userId`, `clientIp` or payment IDs), all failures return the same 404, and the route has its own rate limit. This also fixes the `parseInt`-on-UUID bug.
 **File:** `payment.js:695-781`
 
 The only secret is the email. Anyone who knows a customer's email can enumerate order IDs and read address, phone and items. The response also includes the raw order, which contains `userId`.
@@ -106,35 +112,45 @@ The only secret is the email. Anyone who knows a customer's email can enumerate 
 
 ## Medium
 
-### 8. Overselling / non-atomic stock handling
+### 8. Overselling / non-atomic stock handling - FIXED
+
+> **Fixed 2026-09-25.** Order creation and stock deduction happen in one `prisma.$transaction`, with product rows locked (`SELECT ... FOR UPDATE`, in ID order) before stock is read. If stock ran out while the customer was paying, the order is still recorded but set to `On Hold` for refund or restock, and stock stops at 0 instead of going negative. Quantities are validated in `pricing.js` (#1). **Update 2026-09-25:** stock is now also *reserved* when checkout starts (30 min for Razorpay, whose modal times out at 25 min; Stripe sessions expire at 31 min). A background sweeper returns unpaid reservations. If a payment arrives after its reservation was released, stock is deducted again under lock, and a shortfall marks the order On Hold.
 **File:** `payment.js:54-72, 299-313, 419-433`
 
 Stock is checked before payment but never reserved. Order creation and stock decrement are separate, non-atomic steps, and stock can go negative. Negative quantities can inflate stock.
 
 **Fix:** wrap order creation and a conditional stock decrement in one `prisma.$transaction`; validate quantities.
 
-### 9. HTML injection in outgoing emails
+### 9. HTML injection in outgoing emails - FIXED
+
+> **Fixed 2026-09-25.** Every interpolated value in all four templates is HTML-escaped, including the admin message body. Order confirmations for logged-in buyers go to the verified account email. Guests (unverified checkout email) get a version with no buyer-typed text: no name and no address, only product names, amounts and the tracking link.
 **File:** `utils/emailService.js:33-71, 114-133, 190-233`
 
 The order email goes to `address.email` (chosen by the buyer) and interpolates `fullName`, `houseNo`, etc. unescaped, allowing phishing HTML from your real sender address. The reset email interpolates the user-controlled `name`; combined with #4, an attacker can register a victim's email with a malicious name and trigger a reset email to them.
 
 **Fix:** HTML-escape every interpolated value; only send order emails to the account or verified email.
 
-### 10. Unbounded in-memory cache growth (DoS)
+### 10. Unbounded in-memory cache growth (DoS) - FIXED
+
+> **Fixed 2026-09-25.** `:id` must be a plain positive integer (otherwise 400), and the parsed number is the cache key. `MemoryCache` is capped at 500 entries and evicts the oldest first.
 **File:** `server.js:169-172, 370-373`
 
 The cache key is the raw `:id` string, but lookup uses `parseInt`. Requests to `/api/products/1x1`, `/1x2`, ... each create a new cache entry for product 1, growing memory until the process dies. Same for farmers.
 
 **Fix:** validate the id as an integer and use the parsed number as the cache key; cap cache size.
 
-### 11. Loose CORS origin check
+### 11. Loose CORS origin check - FIXED
+
+> **Fixed 2026-09-25.** An origin is allowed only if it is in `allowedOrigins` exactly or its parsed hostname is an HTTPS subdomain of `.idukkiorigins.com`. Rejected origins get no CORS headers instead of a 500.
 **File:** `server.js:86`
 
 `origin.endsWith('idukkiorigins.com')` accepts `https://evilidukkiorigins.com`. Impact is limited because tokens are Bearer headers rather than cookies, but it should be an exact match.
 
 **Fix:** allow only entries in `allowedOrigins`, or check against `.idukkiorigins.com` with a proper hostname parse.
 
-### 12. Account and session weaknesses
+### 12. Account and session weaknesses - FIXED
+
+> **Fixed 2026-09-25.** Login returns one generic 401 error, with a dummy bcrypt compare so response timing does not reveal whether an email exists. Register gives the same response for new and existing emails. Passwords must be 8-128 characters with at least one letter and one number (register and reset, mirrored in the UI). Reset tokens are stored as SHA-256 hashes, with a one-minute resend cooldown. A new `User.tokenVersion` is embedded in JWTs and checked on every request; password reset increments it, logging out all sessions. JWT lifetime is now `JWT_EXPIRES_IN` (default 1 day). Invalid tokens return 401. Tokens stay in `localStorage`: the API is on Render (a different site from the frontend), and third-party cookie blocking in Safari and Chrome would break httpOnly cookie sessions. The XSS risk is reduced instead by a strict Content-Security-Policy on the frontend (`vercel.json`: no inline or third-party scripts except Razorpay) plus security headers, and `helmet` headers on the API.
 **File:** `auth.js`
 
 - Login distinguishes "no such user" from "wrong password" (`:92, 98`); register confirms existing emails.
@@ -158,6 +174,8 @@ The cache key is the raw `:id` string, but lookup uses `parseInt`. Requests to `
 - `track-order` calls `parseInt` on a UUID (`payment.js:743`), so a logged-in user is never recognised there.
 - `x-forwarded-for` is stored unvalidated as `clientIp` in the order address.
 - Anyone can create a product with default story text `'Write bibin John'` (`server.js:283`) - cosmetic placeholder to remove.
+
+Also fixed 2026-09-25: payments started before this deploy are still confirmed through a legacy path. The cart is verified by the Razorpay cart hash, and the order is always recorded as a guest order.
 
 ## Related business bug
 
