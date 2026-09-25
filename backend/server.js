@@ -3,13 +3,11 @@ import { TRUST_PROXY_HOPS } from './config.js';
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import pkg from '@prisma/client';
+import compression from 'compression';
+import prisma from './db.js';
 
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
-
-const { PrismaClient } = pkg;
-const prisma = new PrismaClient();
 
 // In-Memory Cache Helper (bounded: the oldest entry is evicted once maxEntries is reached)
 class MemoryCache {
@@ -78,6 +76,9 @@ app.use(helmet({
   contentSecurityPolicy: { useDefaults: false, directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] } },
   crossOriginResourcePolicy: { policy: 'cross-origin' }
 }));
+
+// Gzip JSON responses (the product and farmer lists shrink several times over)
+app.use(compression());
 
 // Import Routers
 import authRoutes from './routes/auth.js';
@@ -181,39 +182,39 @@ app.use('/api/reviews', reviewsRoutes);
 // Wishlist Routes
 app.use('/api/wishlist', wishlistRoutes);
 
-// Get all spices from the Neon Database!
+// Loads the product list with ratings. Only review ratings are fetched (not full review rows).
+async function loadAllProducts() {
+  const products = await prisma.product.findMany({
+    where: { isArchived: false },
+    orderBy: { id: 'desc' },
+    include: {
+      farmer: true,
+      reviews: { select: { rating: true } }
+    }
+  });
+
+  const productsWithRatings = products.map(product => {
+    const reviewsCount = product.reviews.length;
+    const rating = reviewsCount > 0
+      ? parseFloat((product.reviews.reduce((acc, curr) => acc + curr.rating, 0) / reviewsCount).toFixed(1))
+      : 0; // Default to 0 when there are no reviews
+
+    const { reviews, ...productData } = product;
+    return {
+      ...productData,
+      rating,
+      reviewsCount
+    };
+  });
+
+  productCache.set('all_products', productsWithRatings);
+  return productsWithRatings;
+}
+
+// Get all spices from the database
 app.get('/api/products', async (req, res) => {
   try {
-    const cachedProducts = productCache.get('all_products');
-    if (cachedProducts) {
-      return res.json(cachedProducts);
-    }
-
-    const products = await prisma.product.findMany({
-      where: { isArchived: false },
-      orderBy: { id: 'desc' },
-      include: { 
-        farmer: true,
-        reviews: true
-      }
-    });
-
-    const productsWithRatings = products.map(product => {
-      const reviewsCount = product.reviews.length;
-      const rating = reviewsCount > 0 
-        ? parseFloat((product.reviews.reduce((acc, curr) => acc + curr.rating, 0) / reviewsCount).toFixed(1))
-        : 0; // Default to 0 when there are no reviews
-      
-      const { reviews, ...productData } = product;
-      return {
-        ...productData,
-        rating,
-        reviewsCount
-      };
-    });
-
-    productCache.set('all_products', productsWithRatings);
-    res.json(productsWithRatings);
+    res.json(productCache.get('all_products') || await loadAllProducts());
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch products' });
@@ -384,40 +385,41 @@ app.delete('/api/products/:id', verifyToken, async (req, res) => {
   }
 });
 
+// Loads the farmer list with ratings. Only product id/name are needed (the "supplies" tags and
+// the admin dropdown), and only review ratings, so nothing else is fetched from the database.
+async function loadAllFarmers() {
+  const farmers = await prisma.farmer.findMany({
+    include: {
+      products: { where: { isArchived: false }, select: { id: true, name: true } },
+      reviews: { select: { rating: true } }
+    }
+  });
+
+  const farmersWithRatings = farmers.map(farmer => {
+    const reviewsCount = farmer.reviews.length;
+    const rating = reviewsCount > 0
+      ? parseFloat((farmer.reviews.reduce((acc, curr) => acc + curr.rating, 0) / reviewsCount).toFixed(1))
+      : farmer.rating; // Fallback to seed rating
+
+    const { reviews, ...farmerData } = farmer;
+    return {
+      ...farmerData,
+      rating,
+      reviewsCount
+    };
+  });
+
+  // Sort by rating desc
+  farmersWithRatings.sort((a, b) => b.rating - a.rating);
+
+  farmerCache.set('all_farmers', farmersWithRatings);
+  return farmersWithRatings;
+}
+
 // Get all farmers
 app.get('/api/farmers', async (req, res) => {
   try {
-    const cachedFarmers = farmerCache.get('all_farmers');
-    if (cachedFarmers) {
-      return res.json(cachedFarmers);
-    }
-
-    const farmers = await prisma.farmer.findMany({
-      include: { 
-        products: true,
-        reviews: true
-      }
-    });
-
-    const farmersWithRatings = farmers.map(farmer => {
-      const reviewsCount = farmer.reviews.length;
-      const rating = reviewsCount > 0 
-        ? parseFloat((farmer.reviews.reduce((acc, curr) => acc + curr.rating, 0) / reviewsCount).toFixed(1))
-        : farmer.rating; // Fallback to seed rating
-
-      const { reviews, ...farmerData } = farmer;
-      return {
-        ...farmerData,
-        rating,
-        reviewsCount
-      };
-    });
-
-    // Sort by rating desc
-    farmersWithRatings.sort((a, b) => b.rating - a.rating);
-
-    farmerCache.set('all_farmers', farmersWithRatings);
-    res.json(farmersWithRatings);
+    res.json(farmerCache.get('all_farmers') || await loadAllFarmers());
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch farmers' });
@@ -485,4 +487,19 @@ app.listen(PORT, () => {
   console.log(`✅ Backend Server is running on http://localhost:${PORT}`);
   // Returns stock held by checkouts that were never paid
   startReservationSweeper();
+
+  // Warm up right after a (cold) start: open the database connection and pre-load the product and
+  // farmer lists, so the first visitor after Render wakes the server doesn't wait for them.
+  prisma.$connect()
+    .then(() => Promise.all([loadAllProducts(), loadAllFarmers()]))
+    .then(() => console.log('✅ Database connected and caches warmed'))
+    .catch((err) => console.error('Startup warm-up failed (requests will load on demand):', err.message));
+
+  // Refresh both lists shortly before their 5-minute cache expires, so visitors always get the
+  // cached copy instead of occasionally waiting on the database. (Admin edits clear the cache
+  // immediately, so changes still appear right away.)
+  setInterval(() => {
+    Promise.all([loadAllProducts(), loadAllFarmers()])
+      .catch((err) => console.error('Background cache refresh failed:', err.message));
+  }, 4 * 60 * 1000).unref();
 });
