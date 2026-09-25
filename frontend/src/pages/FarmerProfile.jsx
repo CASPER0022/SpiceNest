@@ -95,7 +95,7 @@ export default function FarmerProfile() {
   };
 
   const isAdmin = useMemo(() => {
-    return user && ['heyitsmealbinjohn@gmail.com', 'bibinjohn2018@gmail.com'].includes(user.email);
+    return user?.role === 'ADMIN';
   }, [user]);
 
   const handleDeleteReview = async (reviewId) => {
@@ -350,6 +350,7 @@ export default function FarmerProfile() {
                   <textarea
                     id="comment"
                     rows={4}
+                    maxLength={2000}
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
                     placeholder={`Tell others about your experience sourcing spices from ${farmer.name}...`}

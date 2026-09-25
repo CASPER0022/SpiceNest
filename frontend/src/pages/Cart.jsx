@@ -20,7 +20,7 @@ const loadRazorpayScript = () => {
 };
 
 const AVAILABLE_COUPONS = [
-  { code: 'STARTER', discount: 70, description: '₹70 off on your first premium spice purchase!' },
+  { code: 'STARTER', discount: 70, firstOrderOnly: true, description: '₹70 off on your first premium spice purchase! (Log in to use)' },
   { code: 'SPICE50', discount: 50, description: '₹50 off on our organic Western Ghats spices!' }
 ];
 
@@ -65,6 +65,18 @@ export default function Cart() {
   const [couponError, setCouponError] = useState('');
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+  // The server makes the final decision (e.g. STARTER only on a first order); this just gives
+  // guests an immediate hint instead of an error at payment time.
+  const applyCoupon = (coupon) => {
+    if (coupon.firstOrderOnly && !user) {
+      setCouponError(`${coupon.code} is for your first order. Please log in to use it.`);
+      return;
+    }
+    setAppliedCoupon(coupon);
+    setCouponCode('');
+    setCouponError('');
+  };
 
   // Initialize address state whenever the user loads or changes (adjusting state during render,
   // instead of in an effect, avoids an extra render pass)
@@ -327,9 +339,7 @@ export default function Cart() {
                     onClick={() => {
                       const matched = AVAILABLE_COUPONS.find(c => c.code === couponCode.trim().toUpperCase());
                       if (matched) {
-                        setAppliedCoupon(matched);
-                        setCouponCode('');
-                        setCouponError('');
+                        applyCoupon(matched);
                       } else if (!couponCode.trim()) {
                         setCouponError('Please enter a coupon code.');
                       } else {
@@ -359,11 +369,7 @@ export default function Cart() {
                           <p className="text-xs text-gray-500 font-bold leading-relaxed pr-4">{coupon.description}</p>
                         </div>
                         <button
-                          onClick={() => {
-                            setAppliedCoupon(coupon);
-                            setCouponCode('');
-                            setCouponError('');
-                          }}
+                          onClick={() => applyCoupon(coupon)}
                           className="text-xs font-black text-emerald-700 hover:text-emerald-50 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-600 border border-emerald-200 hover:border-transparent py-2 px-5 rounded-xl cursor-pointer transition-all duration-200 shrink-0 shadow-sm hover:shadow-md"
                         >
                           Apply
