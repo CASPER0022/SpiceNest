@@ -4,52 +4,310 @@ import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import pkg from '@prisma/client';
 import { sendOrderConfirmation, sendCustomAdminMessage } from '../utils/emailService.js';
-import jwt from 'jsonwebtoken';
-import { verifyToken } from './auth.js';
-import { JWT_SECRET, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, STRIPE_SECRET_KEY, FRONTEND_URL } from '../config.js';
-import { priceCart, CheckoutError, WEIGHT_OPTIONS } from '../utils/pricing.js';
+import { verifyToken, optionalAuth, getRequestUser } from './auth.js';
+import { RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, STRIPE_SECRET_KEY, FRONTEND_URL } from '../config.js';
+import { priceCart, CheckoutError } from '../utils/pricing.js';
 
-const { PrismaClient } = pkg;
+const { PrismaClient, Prisma } = pkg;
 const prisma = new PrismaClient();
 const router = express.Router();
 
 // ==========================================
 // HELPERS
 // ==========================================
-function parseWeightToKg(weightStr) {
-  if (!weightStr) return 0.1;
-  const lower = weightStr.toLowerCase().trim();
-  if (lower.endsWith('kg')) {
-    const val = parseFloat(lower.replace('kg', ''));
-    return isNaN(val) ? 1.0 : val;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const TRACKING_TOKEN_REGEX = /^[a-f0-9]{48}$/;
+const PENDING_CHECKOUT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+// How long stock is held for an unpaid checkout. The Razorpay modal closes itself after 25 minutes
+// (Cart.jsx); Stripe's minimum session lifetime is 30 minutes.
+const RAZORPAY_RESERVATION_MS = 30 * 60 * 1000;
+const STRIPE_SESSION_MS = 31 * 60 * 1000;
+
+// Allowed shipping address fields and their maximum lengths. Anything else is dropped.
+const ADDRESS_FIELDS = {
+  fullName: 100,
+  mobileNumber: 20,
+  email: 254,
+  pincode: 10,
+  houseNo: 200,
+  area: 200,
+  landmark: 200,
+  city: 100,
+  state: 100
+};
+const REQUIRED_ADDRESS_FIELDS = ['fullName', 'mobileNumber', 'email', 'pincode', 'houseNo', 'area', 'city', 'state'];
+
+// The real client IP. Express derives req.ip from X-Forwarded-For using the "trust proxy"
+// setting, so clients cannot inject arbitrary values.
+function getClientIp(req) {
+  const ip = req.ip || req.socket.remoteAddress || '';
+  return ip.startsWith('::ffff:') ? ip.slice(7) : ip;
+}
+
+// Validates the client's address and returns a clean object containing only known fields.
+function sanitizeAddress(raw, clientIp) {
+  let parsed = raw;
+  if (typeof raw === 'string') {
+    try {
+      parsed = JSON.parse(raw);
+    } catch (e) {
+      throw new CheckoutError('Invalid shipping address.');
+    }
   }
-  if (lower.endsWith('g')) {
-    const val = parseFloat(lower.replace('g', ''));
-    return isNaN(val) ? 0.1 : val / 1000.0;
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new CheckoutError('Invalid shipping address.');
   }
-  const val = parseFloat(lower);
-  return isNaN(val) ? 0.1 : val;
+
+  const clean = {};
+  for (const [field, maxLength] of Object.entries(ADDRESS_FIELDS)) {
+    const value = parsed[field];
+    if (value === undefined || value === null) {
+      clean[field] = '';
+      continue;
+    }
+    if (typeof value !== 'string' && typeof value !== 'number') {
+      throw new CheckoutError('Invalid shipping address.');
+    }
+    const text = String(value).trim();
+    if (text.length > maxLength) {
+      throw new CheckoutError(`Shipping address field "${field}" is too long.`);
+    }
+    clean[field] = text;
+  }
+
+  if (REQUIRED_ADDRESS_FIELDS.some((field) => !clean[field])) {
+    throw new CheckoutError('Please complete all required shipping address fields.');
+  }
+  if (!EMAIL_REGEX.test(clean.email)) {
+    throw new CheckoutError('Please enter a valid email address.');
+  }
+
+  clean.email = clean.email.toLowerCase();
+  clean.clientIp = clientIp;
+  return clean;
+}
+
+function parseAddress(address) {
+  try {
+    const parsed = typeof address === 'string' ? JSON.parse(address) : address;
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+const round3 = (n) => Math.round(n * 1000) / 1000;
+const TX_OPTIONS = { maxWait: 10000, timeout: 20000 };
+const lineKey = (productId, weight) => `${productId}:${weight}`;
+
+// Locks the given product rows (SELECT ... FOR UPDATE, in ID order to avoid deadlocks) and
+// returns their current stock. The locks are held until the transaction ends.
+async function lockProductStock(tx, productIds) {
+  const stockByProduct = new Map();
+  for (const productId of [...new Set(productIds)].sort((a, b) => a - b)) {
+    const rows = await tx.$queryRaw`SELECT "stock" FROM "Product" WHERE "id" = ${productId} FOR UPDATE`;
+    if (rows.length > 0) stockByProduct.set(productId, Number(rows[0].stock));
+  }
+  return stockByProduct;
+}
+
+// Deducts each cart line from the locked stock (sequentially, so several weights of one product
+// add up). Returns a per-line snapshot and whether any line needed more stock than was left.
+// Stock is floored at 0, never negative.
+function deductLines(lines, stockByProduct) {
+  let shortfall = false;
+  const snapshots = lines.map((line) => {
+    const initialStock = stockByProduct.get(line.productId) ?? 0;
+    if (initialStock < line.kg) shortfall = true;
+    const finalStock = round3(Math.max(0, initialStock - line.kg));
+    stockByProduct.set(line.productId, finalStock);
+    return { productId: line.productId, weight: line.weight, kg: line.kg, initialStock, finalStock };
+  });
+  return { snapshots, shortfall };
+}
+
+async function writeStock(tx, stockByProduct) {
+  for (const [productId, stock] of stockByProduct) {
+    await tx.product.update({ where: { id: productId }, data: { stock } });
+  }
+}
+
+/**
+ * Remembers who is paying, where it ships and what is in the cart, keyed by the payment
+ * provider's order/session ID (confirmation reads everything from here, never from the client),
+ * and RESERVES the stock until reservedUntil. Throws CheckoutError if an item sold out.
+ */
+async function reserveCheckout({ id, provider, req, address, priced, reservedUntil }) {
+  await prisma.$transaction(async (tx) => {
+    const stockByProduct = await lockProductStock(tx, priced.lines.map((line) => line.productId));
+    const { snapshots, shortfall } = deductLines(priced.lines, stockByProduct);
+    if (shortfall) {
+      throw new CheckoutError('Sorry, an item in your cart just sold out. Please review your cart and try again.');
+    }
+    await writeStock(tx, stockByProduct);
+
+    await tx.pendingCheckout.create({
+      data: {
+        id,
+        provider,
+        userId: req.user ? req.user.id : null,
+        address: JSON.stringify(address),
+        items: priced.lines.map((line) => ({ id: line.productId, weight: line.weight, quantity: line.quantity })),
+        couponCode: priced.couponCode,
+        reserved: true,
+        reservation: snapshots,
+        reservedUntil
+      }
+    });
+  }, TX_OPTIONS);
+
+  // Opportunistic cleanup of old checkouts that were never paid (their stock is already released)
+  prisma.pendingCheckout
+    .deleteMany({ where: { reserved: false, createdAt: { lt: new Date(Date.now() - PENDING_CHECKOUT_TTL_MS) } } })
+    .catch((err) => console.error('Pending checkout cleanup failed:', err));
+}
+
+// Returns the stock of every unpaid checkout whose reservation has expired. Each release locks the
+// PendingCheckout row first (the same order recordPaidOrder uses), so a checkout can never be
+// both paid from its reservation and released.
+async function releaseExpiredReservations() {
+  const expired = await prisma.pendingCheckout.findMany({
+    where: { reserved: true, reservedUntil: { lt: new Date() } },
+    select: { id: true },
+    take: 100
+  });
+
+  for (const { id } of expired) {
+    try {
+      await prisma.$transaction(async (tx) => {
+        const rows = await tx.$queryRaw`SELECT "reserved", "reservation" FROM "PendingCheckout" WHERE "id" = ${id} FOR UPDATE`;
+        if (rows.length === 0 || !rows[0].reserved) return; // paid or released in the meantime
+
+        const kgByProduct = new Map();
+        for (const snap of rows[0].reservation || []) {
+          kgByProduct.set(snap.productId, (kgByProduct.get(snap.productId) || 0) + snap.kg);
+        }
+        for (const productId of [...kgByProduct.keys()].sort((a, b) => a - b)) {
+          await tx.product.updateMany({ where: { id: productId }, data: { stock: { increment: kgByProduct.get(productId) } } });
+        }
+        await tx.pendingCheckout.update({ where: { id }, data: { reserved: false } });
+      }, TX_OPTIONS);
+      console.log(`Released expired stock reservation for checkout ${id}`);
+    } catch (err) {
+      console.error(`Failed to release stock reservation for checkout ${id}:`, err);
+    }
+  }
+}
+
+let reservationSweeper = null;
+export function startReservationSweeper(intervalMs = 60 * 1000) {
+  if (reservationSweeper) return;
+  const run = () => releaseExpiredReservations().catch((err) => console.error('Reservation sweep failed:', err));
+  run();
+  reservationSweeper = setInterval(run, intervalMs);
+  reservationSweeper.unref();
+}
+
+const ORDER_INCLUDE = { items: { include: { product: true } } };
+
+/**
+ * Records a paid order in ONE transaction. Normally the stock was reserved at checkout and is
+ * simply kept. If the reservation had expired and been released (or there is none, e.g. a legacy
+ * payment), stock is deducted now under row locks. If it ran out while the customer was paying,
+ * the order is still recorded (they have paid) but marked "On Hold" for an admin to refund or
+ * restock, and stock is floored at 0 instead of going negative.
+ */
+async function recordPaidOrder({ lines, userId, address, totalAmount, paymentFields, pendingCheckoutId }) {
+  return prisma.$transaction(async (tx) => {
+    let reservation = null;
+    if (pendingCheckoutId) {
+      const rows = await tx.$queryRaw`SELECT "reserved", "reservation" FROM "PendingCheckout" WHERE "id" = ${pendingCheckoutId} FOR UPDATE`;
+      if (rows.length > 0 && rows[0].reserved) reservation = rows[0].reservation;
+    }
+
+    let snapshots;
+    let oversold = false;
+    if (reservation) {
+      snapshots = reservation; // stock was already deducted when the checkout started
+    } else {
+      const stockByProduct = await lockProductStock(tx, lines.map((line) => line.productId));
+      const result = deductLines(lines, stockByProduct);
+      snapshots = result.snapshots;
+      oversold = result.shortfall;
+      await writeStock(tx, stockByProduct);
+    }
+    const snapshotByLine = new Map(snapshots.map((snap) => [lineKey(snap.productId, snap.weight), snap]));
+
+    const orderItemsData = lines.map((line) => {
+      const snap = snapshotByLine.get(lineKey(line.productId, line.weight));
+      return {
+        productId: line.productId,
+        productName: line.product.name,
+        productImage: line.product.images && line.product.images.length > 0 ? line.product.images[0] : '',
+        quantity: line.quantity,
+        price: line.unitPrice,
+        weight: line.weight,
+        initialStock: snap ? snap.initialStock : null,
+        finalStock: snap ? snap.finalStock : null
+      };
+    });
+
+    if (oversold) {
+      console.warn(`Order oversold stock (payment ${JSON.stringify(paymentFields)}); recording it as On Hold.`);
+    }
+
+    const order = await tx.order.create({
+      data: {
+        userId,
+        totalAmount,
+        address,
+        status: oversold ? 'On Hold' : 'PAID',
+        trackingToken: crypto.randomBytes(24).toString('hex'),
+        ...paymentFields,
+        items: { create: orderItemsData }
+      },
+      include: ORDER_INCLUDE
+    });
+
+    if (pendingCheckoutId) {
+      await tx.pendingCheckout.deleteMany({ where: { id: pendingCheckoutId } });
+    }
+    return order;
+  }, TX_OPTIONS);
+}
+
+const isUniqueViolation = (err) => err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002';
+
+// Sends the confirmation email in the background. Logged-in buyers get it at their account email
+// (verified). Guests get it at the unverified checkout email they typed, so their version contains
+// NO buyer-supplied text (no name, no address): only our product names, amounts and the tracking
+// link. That way nobody can use checkout to send their own words from our address.
+function sendConfirmationInBackground(order) {
+  (async () => {
+    let recipient = null;
+    if (order.userId) {
+      const user = await prisma.user.findUnique({ where: { id: order.userId }, select: { email: true } });
+      recipient = user?.email || null;
+    } else {
+      recipient = parseAddress(order.address).email || null;
+    }
+    if (!recipient) return;
+
+    const trackingUrl = `${FRONTEND_URL}/track-order?id=${order.id}&token=${order.trackingToken}`;
+    console.log(`📧 Sending confirmation for order ${order.id}`);
+    await sendOrderConfirmation(recipient, order, trackingUrl, { includeBuyerDetails: Boolean(order.userId) });
+  })().catch((e) => console.error('Background email task failed:', e));
 }
 
 // ==========================================
 // RAZORPAY CHECKOUT ROUTE
 // ==========================================
-router.post('/create-razorpay-order', async (req, res) => {
+router.post('/create-razorpay-order', optionalAuth, async (req, res) => {
   try {
-    const { items, userId, address, couponCode } = req.body;
+    const { items, address, couponCode } = req.body;
 
-    // Capture the client IP address securely
-    const clientIpRaw = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
-    const clientIp = clientIpRaw.includes('::ffff:') ? clientIpRaw.split('::ffff:')[1] : clientIpRaw;
-
-    let addressWithIp = address;
-    try {
-      const parsedAddress = typeof address === 'string' ? JSON.parse(address) : address;
-      parsedAddress.clientIp = clientIp;
-      addressWithIp = JSON.stringify(parsedAddress);
-    } catch (e) {
-      console.error('Failed to inject IP to address:', e);
-    }
+    // The buyer comes from the session token (or is a guest), never from the request body
+    const cleanAddress = sanitizeAddress(address, getClientIp(req));
 
     // Price the cart entirely on the server (prices, stock, coupon, shipping come from our DB/config)
     const priced = await priceCart(prisma, items, couponCode);
@@ -68,13 +326,20 @@ router.post('/create-razorpay-order', async (req, res) => {
     };
 
     const order = await razorpay.orders.create(options);
+    await reserveCheckout({
+      id: order.id,
+      provider: 'razorpay',
+      req,
+      address: cleanAddress,
+      priced,
+      reservedUntil: new Date(Date.now() + RAZORPAY_RESERVATION_MS)
+    });
 
     res.json({
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,
-      keyId: RAZORPAY_KEY_ID,
-      addressWithIp
+      keyId: RAZORPAY_KEY_ID
     });
   } catch (error) {
     if (error instanceof CheckoutError) {
@@ -88,25 +353,12 @@ router.post('/create-razorpay-order', async (req, res) => {
 // ==========================================
 // STRIPE CHECKOUT ROUTE
 // ==========================================
-router.post('/create-checkout-session', async (req, res) => {
+router.post('/create-checkout-session', optionalAuth, async (req, res) => {
   try {
     const stripe = new Stripe(STRIPE_SECRET_KEY);
-    const { items, userId, address, couponCode } = req.body;
+    const { items, address, couponCode } = req.body;
 
-    // Capture the client IP address securely
-    const clientIpRaw = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
-    // Clean IPv6 prefix if present (e.g. ::ffff:)
-    const clientIp = clientIpRaw.includes('::ffff:') ? clientIpRaw.split('::ffff:')[1] : clientIpRaw;
-
-    let addressWithIp = address;
-    try {
-      const parsedAddress = typeof address === 'string' ? JSON.parse(address) : address;
-      parsedAddress.clientIp = clientIp;
-      addressWithIp = JSON.stringify(parsedAddress);
-    } catch (e) {
-      console.error('Failed to inject IP to address:', e);
-    }
-
+    const cleanAddress = sanitizeAddress(address, getClientIp(req));
     const frontendUrl = FRONTEND_URL;
 
     // Price the cart entirely on the server (prices, stock, coupon, shipping come from our DB/config)
@@ -159,9 +411,8 @@ router.post('/create-checkout-session', async (req, res) => {
       discounts.push({ coupon: stripeCoupon.id });
     }
 
-    // 3. GST Tax (5%) is now inclusive in product prices, so we do not add it as a separate billing item.
-
-    // 3. Create a secure Checkout Session
+    // 3. Create a secure Checkout Session. The buyer, address and cart are stored server-side
+    //    (PendingCheckout), not in client-influenced metadata.
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: lineItems,
@@ -170,10 +421,18 @@ router.post('/create-checkout-session', async (req, res) => {
       // Include session_id in the success URL so we can verify it
       success_url: `${frontendUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${frontendUrl}/cart`,
-      metadata: {
-        userId: userId ? userId.toString() : 'guest',
-        address: addressWithIp // This is the JSON string of the address with embedded IP
-      }
+      metadata: { cartHash: priced.cartHash },
+      // The session cannot be paid after this, so the reservation below safely outlives it
+      expires_at: Math.floor((Date.now() + STRIPE_SESSION_MS) / 1000)
+    });
+
+    await reserveCheckout({
+      id: session.id,
+      provider: 'stripe',
+      req,
+      address: cleanAddress,
+      priced,
+      reservedUntil: new Date(Date.now() + STRIPE_SESSION_MS + 5 * 60 * 1000)
     });
 
     res.json({ url: session.url });
@@ -190,9 +449,11 @@ router.post('/create-checkout-session', async (req, res) => {
 // CONFIRM RAZORPAY ORDER ROUTE
 // ==========================================
 router.post('/confirm-razorpay-order', async (req, res) => {
-  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, items, userId, address, couponCode } = req.body;
+  // Only the payment proof is read from the client. The buyer, address and cart come from the
+  // PendingCheckout saved when the Razorpay order was created.
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
-  if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+  if (typeof razorpay_order_id !== 'string' || typeof razorpay_payment_id !== 'string' || !razorpay_signature) {
     return res.status(400).json({ error: 'Missing payment details.' });
   }
 
@@ -212,14 +473,32 @@ router.post('/confirm-razorpay-order', async (req, res) => {
     // 2. Check if order already exists (prevent duplicate submissions)
     const existingOrder = await prisma.order.findUnique({
       where: { razorpayOrderId: razorpay_order_id },
-      include: { items: { include: { product: true } } }
+      include: ORDER_INCLUDE
     });
 
     if (existingOrder) {
       return res.json({ success: true, order: existingOrder, message: 'Order already recorded' });
     }
 
-    // 3. Fetch the payment order from Razorpay: it holds the amount actually charged and the
+    // 3. Load what was recorded server-side when this payment order was created
+    let pending = await prisma.pendingCheckout.findUnique({ where: { id: razorpay_order_id } });
+    if (pending && pending.provider !== 'razorpay') {
+      return res.status(400).json({ error: 'We could not find the checkout for this payment. Please contact support with your payment ID: ' + razorpay_payment_id });
+    }
+    if (!pending) {
+      // Legacy payment: started before server-side checkout records existed, by a page that still
+      // sends the cart and address. The cart is verified against the hash Razorpay stored below,
+      // and the order is ALWAYS recorded as a guest order, so it can't be attached to any account.
+      pending = {
+        id: null,
+        userId: null,
+        items: req.body.items,
+        couponCode: req.body.couponCode,
+        address: JSON.stringify(sanitizeAddress(req.body.address, getClientIp(req)))
+      };
+    }
+
+    // 4. Fetch the payment order from Razorpay: it holds the amount actually charged and the
     //    hash of the cart that was priced when the order was created.
     const razorpay = new Razorpay({
       key_id: RAZORPAY_KEY_ID,
@@ -227,9 +506,8 @@ router.post('/confirm-razorpay-order', async (req, res) => {
     });
     const rzpOrder = await razorpay.orders.fetch(razorpay_order_id);
 
-    // 4. Re-price the submitted cart on the server and make sure it is the SAME cart that was paid for.
-    //    Availability is not enforced here: the customer has already paid.
-    const priced = await priceCart(prisma, items, couponCode, { enforceAvailability: false });
+    // 5. Re-price the stored cart. Availability is not enforced here: the customer has already paid.
+    const priced = await priceCart(prisma, pending.items, pending.couponCode, { enforceAvailability: false });
     if (!rzpOrder.notes || rzpOrder.notes.cartHash !== priced.cartHash) {
       return res.status(400).json({ error: 'Cart does not match the paid order. Please contact support with your payment ID: ' + razorpay_payment_id });
     }
@@ -237,96 +515,55 @@ router.post('/confirm-razorpay-order', async (req, res) => {
       // Prices changed between checkout and confirmation; the customer was charged rzpOrder.amount
       console.warn(`Amount mismatch for Razorpay order ${razorpay_order_id}: charged ${rzpOrder.amount}, repriced ${Math.round(priced.total * 100)}`);
     }
-    const finalTotal = rzpOrder.amount / 100; // what the customer actually paid
 
-    // Track stock per product so multiple weight lines of one product deduct sequentially
-    const runningStock = new Map();
-    const orderItemsData = priced.lines.map(line => {
-      const initialStock = runningStock.has(line.productId) ? runningStock.get(line.productId) : line.product.stock;
-      const finalStock = initialStock - line.kg;
-      runningStock.set(line.productId, finalStock);
-
-      return {
-        productId: line.productId,
-        productName: line.product.name,
-        productImage: line.product.images && line.product.images.length > 0 ? line.product.images[0] : '',
-        quantity: line.quantity,
-        price: line.unitPrice,
-        weight: line.weight,
-        initialStock: initialStock,
-        finalStock: finalStock
-      };
-    });
-
-    // 4. Create the Order in our database
-    const order = await prisma.order.create({
-      data: {
-        userId: userId ? userId.toString() : null,
-        totalAmount: finalTotal,
-        address,
-        razorpayOrderId: razorpay_order_id,
-        razorpayPaymentId: razorpay_payment_id,
-        items: {
-          create: orderItemsData
-        }
-      },
-      include: { items: { include: { product: true } } }
-    });
-
-    // Decrement stock for each item in the order
-    for (const item of orderItemsData) {
-      const totalDeductionKg = WEIGHT_OPTIONS[item.weight].kg * item.quantity;
-      
-      await prisma.product.update({
-        where: { id: item.productId },
-        data: {
-          stock: {
-            decrement: totalDeductionKg
-          }
-        }
-      });
-      console.log(`Decremented stock for product ${item.productName} by ${totalDeductionKg} kg.`);
-    }
-
-    // 5. Send response immediately
-    res.json({ success: true, order });
-
-    // 6. Send confirmation email in background
+    // 6. Create the order and deduct stock atomically
+    let order;
     try {
-      const parsedAddress = typeof address === 'string' ? JSON.parse(address) : address;
-      const recipientEmail = parsedAddress.email;
-      if (recipientEmail) {
-        console.log(`📧 Sending confirmation to: ${recipientEmail}`);
-        sendOrderConfirmation(recipientEmail, order);
+      order = await recordPaidOrder({
+        lines: priced.lines,
+        userId: pending.userId,
+        address: pending.address,
+        totalAmount: rzpOrder.amount / 100, // what the customer actually paid
+        paymentFields: { razorpayOrderId: razorpay_order_id, razorpayPaymentId: razorpay_payment_id },
+        pendingCheckoutId: pending.id
+      });
+    } catch (err) {
+      // A concurrent confirmation of the same payment won the race; its transaction recorded the order
+      if (isUniqueViolation(err)) {
+        const raced = await prisma.order.findUnique({ where: { razorpayOrderId: razorpay_order_id }, include: ORDER_INCLUDE });
+        if (raced) return res.json({ success: true, order: raced, message: 'Order already recorded' });
       }
-    } catch (e) {
-      console.error('Background email task failed:', e);
+      throw err;
     }
+
+    // 7. Send response immediately, then the confirmation email in the background
+    res.json({ success: true, order });
+    sendConfirmationInBackground(order);
   } catch (error) {
     if (error instanceof CheckoutError) {
       return res.status(error.status).json({ error: error.message });
     }
     console.error('Razorpay confirmation error:', error);
-    res.status(500).json({ error: 'Failed to confirm order: ' + error.message });
+    res.status(500).json({ error: 'Failed to confirm order. Please contact support with your payment ID: ' + razorpay_payment_id });
   }
 });
 
 // ==========================================
-// CONFIRM ORDER ROUTE
+// CONFIRM ORDER ROUTE (Stripe)
 // ==========================================
 router.get('/confirm-order', async (req, res) => {
   const { session_id } = req.query;
-  
-  if (!session_id) {
+
+  if (typeof session_id !== 'string' || !session_id || session_id.length > 255) {
     return res.status(400).json({ error: 'Session ID is required' });
   }
 
   try {
     const stripe = new Stripe(STRIPE_SECRET_KEY);
-    
+
     // 1. Retrieve the session from Stripe
     const session = await stripe.checkout.sessions.retrieve(session_id);
-    
+
     if (session.payment_status !== 'paid') {
       return res.status(400).json({ error: 'Payment not completed' });
     }
@@ -334,100 +571,52 @@ router.get('/confirm-order', async (req, res) => {
     // 2. Check if order already exists (to prevent duplicates on refresh)
     const existingOrder = await prisma.order.findUnique({
       where: { stripeSessionId: session_id },
-      include: { items: { include: { product: true } } }
+      include: ORDER_INCLUDE
     });
 
     if (existingOrder) {
       return res.json({ success: true, order: existingOrder, message: 'Order already recorded' });
     }
 
-    // 3. Get line items and all products to match them up
-    const lineItems = await stripe.checkout.sessions.listLineItems(session_id);
-    const products = await prisma.product.findMany();
-    
-    // 4. Create the Order in our database
-    const userId = session.metadata.userId === 'guest' ? null : session.metadata.userId;
-    const address = session.metadata.address;
-
-    const orderItemsData = lineItems.data
-      .filter(item => item.description !== 'Shipping Charges' && item.description !== 'GST (5%)')
-      .map(item => {
-        // Parse description e.g. "Black Pepper (250g)"
-        const match = item.description.match(/^(.+?)\s*(?:\(([^)]+)\))?$/);
-        const name = match ? match[1].trim() : item.description;
-        const weight = match && match[2] ? match[2].trim() : '100g';
-
-        const product = products.find(p => p.name === name);
-        if (!product) {
-          throw new Error(`Product not found in database: ${name}`);
-        }
-
-        const itemWeightKg = parseWeightToKg(weight);
-        const totalDeductionKg = itemWeightKg * item.quantity;
-        const initialStock = product.stock;
-        const finalStock = initialStock - totalDeductionKg;
-
-        // Update local object to support sequential deduction if same product has multiple line items
-        product.stock = finalStock;
-
-        return {
-          productId: product.id,
-          productName: product.name,
-          productImage: product.images && product.images.length > 0 ? product.images[0] : '',
-          quantity: item.quantity,
-          price: item.amount_total / 100 / item.quantity,
-          weight: weight,
-          initialStock: initialStock,
-          finalStock: finalStock
-        };
-      });
-
-    const order = await prisma.order.create({
-      data: {
-        userId,
-        totalAmount: session.amount_total / 100,
-        address,
-        stripeSessionId: session_id,
-        items: {
-          create: orderItemsData
-        }
-      },
-      include: { items: { include: { product: true } } }
-    });
-
-    // Decrement stock for each item in the order
-    for (const item of orderItemsData) {
-      const itemWeightKg = parseWeightToKg(item.weight);
-      const totalDeductionKg = itemWeightKg * item.quantity;
-      
-      await prisma.product.update({
-        where: { id: item.productId },
-        data: {
-          stock: {
-            decrement: totalDeductionKg
-          }
-        }
-      });
-      console.log(`Decremented stock for product ${item.productName} by ${totalDeductionKg} kg.`);
+    // 3. Load the buyer, address and cart recorded server-side when the session was created
+    const pending = await prisma.pendingCheckout.findUnique({ where: { id: session_id } });
+    if (!pending || pending.provider !== 'stripe') {
+      return res.status(400).json({ error: 'We could not find the checkout for this payment. Please contact support.' });
     }
-    
-    // 5. Send response to user immediately (don't block the UI)
-    res.json({ success: true, order });
 
-    // 6. Send confirmation email in the background (NOT awaited)
+    const priced = await priceCart(prisma, pending.items, pending.couponCode, { enforceAvailability: false });
+    if (session.metadata?.cartHash !== priced.cartHash) {
+      return res.status(400).json({ error: 'Cart does not match the paid order. Please contact support.' });
+    }
+
+    // 4. Create the order and deduct stock atomically
+    let order;
     try {
-      const parsedAddress = JSON.parse(address);
-      if (parsedAddress.email) {
-        console.log(`📧 Sending confirmation to: ${parsedAddress.email}`);
-        // We do NOT await here to ensure the user is never blocked
-        sendOrderConfirmation(parsedAddress.email, order);
+      order = await recordPaidOrder({
+        lines: priced.lines,
+        userId: pending.userId,
+        address: pending.address,
+        totalAmount: session.amount_total / 100, // what the customer actually paid
+        paymentFields: { stripeSessionId: session_id },
+        pendingCheckoutId: pending.id
+      });
+    } catch (err) {
+      if (isUniqueViolation(err)) {
+        const raced = await prisma.order.findUnique({ where: { stripeSessionId: session_id }, include: ORDER_INCLUDE });
+        if (raced) return res.json({ success: true, order: raced, message: 'Order already recorded' });
       }
-    } catch (e) {
-      console.error('Background email task failed:', e);
+      throw err;
     }
+
+    // 5. Send response to user immediately, then the confirmation email in the background
+    res.json({ success: true, order });
+    sendConfirmationInBackground(order);
   } catch (error) {
+    if (error instanceof CheckoutError) {
+      return res.status(error.status).json({ error: error.message });
+    }
     console.error('Order confirmation error:', error);
-    res.status(500).json({ error: 'Failed to confirm order: ' + error.message });
+    res.status(500).json({ error: 'Failed to confirm order. Please contact support.' });
   }
 });
 
@@ -671,86 +860,113 @@ router.put('/admin/orders/:id/address', verifyToken, async (req, res) => {
 // ==========================================
 // PUBLIC TRACK ORDER ROUTE
 // ==========================================
-router.get('/track-order', async (req, res) => {
-  try {
-    const { id, email } = req.query;
+const maskName = (name) => {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '';
+  return parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0]}.` : parts[0];
+};
+const maskPhone = (phone) => {
+  const digits = String(phone || '').replace(/\D/g, '');
+  return digits.length > 4 ? `******${digits.slice(-4)}` : '';
+};
 
-    if (!id || !email) {
+// Only the fields the tracking page needs. Never userId, clientIp or payment identifiers.
+// With "limited" access (order ID + email only) the street address, phone and messages are hidden.
+function toTrackingView(order, address, fullAccess) {
+  const view = {
+    id: order.id,
+    status: order.status,
+    totalAmount: order.totalAmount,
+    createdAt: order.createdAt,
+    updatedAt: order.updatedAt,
+    limited: !fullAccess,
+    items: order.items.map((item) => ({
+      id: item.id,
+      productName: item.productName || item.product?.name || 'Product',
+      productImage: item.productImage || item.product?.images?.[0] || '',
+      quantity: item.quantity,
+      price: item.price,
+      weight: item.weight
+    }))
+  };
+
+  if (fullAccess) {
+    view.address = JSON.stringify({
+      fullName: address.fullName || '',
+      mobileNumber: address.mobileNumber || '',
+      email: address.email || order.user?.email || '',
+      houseNo: address.houseNo || '',
+      area: address.area || '',
+      landmark: address.landmark || '',
+      city: address.city || '',
+      state: address.state || '',
+      pincode: address.pincode || ''
+    });
+    view.messages = order.messages.map((msg) => ({ id: msg.id, message: msg.message, createdAt: msg.createdAt }));
+  } else {
+    view.address = JSON.stringify({
+      fullName: maskName(address.fullName),
+      mobileNumber: maskPhone(address.mobileNumber),
+      email: address.email || order.user?.email || '',
+      city: address.city || '',
+      state: address.state || '',
+      pincode: address.pincode || ''
+    });
+    view.messages = [];
+  }
+  return view;
+}
+
+// Access (checked in this order):
+//   1. the logged-in owner of the order            -> full details
+//   2. order ID + the secret token from the email  -> full details
+//   3. order ID + checkout/account email           -> limited details (rate limited in server.js)
+// Every failure returns the same 404 so the endpoint does not reveal which order IDs exist.
+router.get('/track-order', async (req, res) => {
+  const notFound = () => res.status(404).json({ error: 'No order matches these details. Please check the Order ID and email.' });
+
+  try {
+    const { id, email, token } = req.query;
+
+    if (typeof id !== 'string' || !/^\d{1,9}$/.test(id.trim())) {
+      return res.status(400).json({ error: 'Invalid Order ID format' });
+    }
+    const hasToken = typeof token === 'string' && TRACKING_TOKEN_REGEX.test(token);
+    const queryEmail = typeof email === 'string' && email.length <= 254 ? email.toLowerCase().trim() : '';
+
+    const loggedInUser = await getRequestUser(req);
+    if (!hasToken && !queryEmail && !loggedInUser) {
       return res.status(400).json({ error: 'Order ID and Email Address are required' });
     }
 
-    const orderId = parseInt(id, 10);
-    if (isNaN(orderId)) {
-      return res.status(400).json({ error: 'Invalid Order ID format' });
-    }
-
     const order = await prisma.order.findUnique({
-      where: { id: orderId },
+      where: { id: Number(id.trim()) },
       include: {
-        user: {
-          select: {
-            email: true
-          }
-        },
-        items: {
-          include: {
-            product: true
-          }
-        },
-        messages: {
-          orderBy: {
-            createdAt: 'desc'
-          }
-        }
+        user: { select: { email: true } },
+        items: { include: { product: { select: { name: true, images: true } } } },
+        messages: { orderBy: { createdAt: 'desc' } }
       }
     });
+    if (!order) return notFound();
 
-    if (!order) {
-      return res.status(404).json({ error: 'Order not found' });
-    }
+    const address = parseAddress(order.address);
+    let fullAccess = false;
 
-    // Try to identify if a user is logged in via Authorization header
-    let loggedInUser = null;
-    const authHeader = req.headers['authorization'] || req.headers['Authorization'];
-    if (authHeader) {
-      const token = authHeader.split(' ')[1];
-      if (token && token !== 'null' && token !== 'undefined') {
-        try {
-          const verified = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
-          loggedInUser = await prisma.user.findUnique({
-            where: { id: parseInt(verified.id, 10) }
-          });
-        } catch (err) {
-          console.error('Track order token verification error:', err.message);
-        }
-      }
-    }
-
-    let parsedAddress = {};
-    try {
-      parsedAddress = JSON.parse(order.address);
-    } catch (e) {
-      console.error('Error parsing order address for verification:', e);
-    }
-
-    const checkoutEmail = parsedAddress.email ? parsedAddress.email.toLowerCase().trim() : '';
-    const userEmail = order.user?.email ? order.user.email.toLowerCase().trim() : '';
-    const queryEmail = email.toLowerCase().trim();
-
-    if (loggedInUser) {
-      // Logged in: either checkout email or associated registered email is acceptable
-      if (queryEmail !== checkoutEmail && queryEmail !== userEmail) {
-        return res.status(403).json({ error: 'Verification failed: Email does not match this Order' });
-      }
+    if (loggedInUser && order.userId === loggedInUser.id) {
+      fullAccess = true;
+    } else if (hasToken && order.trackingToken) {
+      const given = Buffer.from(token);
+      const expected = Buffer.from(order.trackingToken);
+      fullAccess = given.length === expected.length && crypto.timingSafeEqual(given, expected);
+      if (!fullAccess) return notFound();
     } else {
-      // Logged out: strictly match checkout email (with fallback to userEmail for older orders where checkoutEmail is empty)
-      const strictTargetEmail = checkoutEmail || userEmail;
-      if (queryEmail !== strictTargetEmail) {
-        return res.status(403).json({ error: 'Verification failed: Email does not match this Order' });
-      }
+      const checkoutEmail = typeof address.email === 'string' ? address.email.toLowerCase().trim() : '';
+      const userEmail = order.user?.email ? order.user.email.toLowerCase().trim() : '';
+      const matches = queryEmail && (queryEmail === checkoutEmail || queryEmail === userEmail);
+      if (!matches) return notFound();
     }
 
-    res.json({ success: true, order });
+    res.json({ success: true, order: toTrackingView(order, address, fullAccess) });
   } catch (error) {
     console.error('Track order lookup error:', error);
     res.status(500).json({ error: 'Failed to retrieve order tracking info' });
