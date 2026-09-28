@@ -16,8 +16,9 @@ export default function Orders() {
   const statusStyles = {
     PAID: 'bg-emerald-50 text-emerald-800 border-emerald-150',
     Processing: 'bg-blue-50 text-blue-800 border-blue-150',
+    Shipped: 'bg-indigo-50 text-indigo-800 border-indigo-150',
     'On Hold': 'bg-gray-50 text-gray-700 border-gray-150',
-    Completed: 'bg-emerald-50 text-emerald-800 border-emerald-150',
+    Delivered: 'bg-emerald-50 text-emerald-800 border-emerald-150',
     Cancelled: 'bg-red-50 text-red-800 border-red-150',
     'Pending Payment': 'bg-amber-50 text-amber-800 border-amber-150',
     Refunded: 'bg-purple-50 text-purple-800 border-purple-150',
@@ -27,8 +28,9 @@ export default function Orders() {
   const statusColors = {
     PAID: 'bg-emerald-500',
     Processing: 'bg-blue-500',
+    Shipped: 'bg-indigo-500',
     'On Hold': 'bg-gray-400',
-    Completed: 'bg-emerald-500',
+    Delivered: 'bg-emerald-500',
     Cancelled: 'bg-red-500',
     'Pending Payment': 'bg-amber-500',
     Refunded: 'bg-purple-500',
@@ -43,7 +45,8 @@ export default function Orders() {
       return;
     }
 
-    const fetchOrders = async () => {
+    // `silent` refreshes run in the background to pick up admin status changes without toasts
+    const fetchOrders = async (silent = false) => {
       try {
         const token = localStorage.getItem('token');
         const res = await fetch(`${API_URL}/api/payment/my-orders`, {
@@ -60,14 +63,87 @@ export default function Orders() {
         setOrders(data);
       } catch (err) {
         console.error(err);
-        toast.error(err.message || 'Error loading orders');
+        if (!silent) toast.error(err.message || 'Error loading orders');
       } finally {
         setLoading(false);
       }
     };
 
     fetchOrders();
-  }, [user, navigate, API_URL]);
+
+    const refresh = () => {
+      if (document.visibilityState === 'visible') fetchOrders(true);
+    };
+    const intervalId = setInterval(refresh, 15000);
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [user, authLoading, navigate, API_URL]);
+
+  // Maps the order status (as set by admin) onto the 4-step shipment tracker
+  const getTracker = (status) => {
+    const base = [
+      { label: 'Ordered', desc: 'Payment validated' },
+      { label: 'Processing', desc: 'Harvesting & packing' },
+      { label: 'In Transit', desc: 'Shipped from Idukki' },
+      { label: 'Delivered', desc: 'At your doorstep' }
+    ];
+    // completed = number of finished steps; override = special state for one step
+    let completed = 0;
+    let override = null;
+
+    switch (status) {
+      case 'PAID':
+        completed = 1;
+        break;
+      case 'Processing':
+        completed = 2;
+        break;
+      case 'Shipped':
+        completed = 3;
+        break;
+      case 'Delivered':
+        completed = 4;
+        break;
+      case 'On Hold':
+        completed = 1;
+        override = { idx: 1, state: 'warning', label: 'On Hold', desc: 'Awaiting review' };
+        break;
+      case 'Pending Payment':
+        override = { idx: 0, state: 'warning', label: 'Ordered', desc: 'Awaiting payment' };
+        break;
+      case 'Failed':
+        override = { idx: 0, state: 'error', label: 'Ordered', desc: 'Payment failed' };
+        break;
+      case 'Cancelled':
+        completed = 1;
+        override = { idx: 1, state: 'error', label: 'Cancelled', desc: 'Order cancelled' };
+        break;
+      case 'Refunded':
+        completed = 1;
+        override = { idx: 1, state: 'error', label: 'Refunded', desc: 'Amount refunded' };
+        break;
+      default:
+        completed = 1;
+    }
+
+    const steps = base.map((step, idx) => {
+      if (override && override.idx === idx) {
+        return { ...step, label: override.label, desc: override.desc, state: override.state };
+      }
+      return { ...step, state: idx < completed ? 'done' : 'pending' };
+    });
+
+    // Line spans 3 segments between 4 steps
+    const progress = completed <= 1 ? 0 : ((completed - 1) / 3) * 100;
+
+    return { steps, progress };
+  };
 
   const toggleAddress = (orderId) => {
     setExpandedOrders(prev => ({
@@ -166,13 +242,7 @@ export default function Orders() {
           // Database sequence already generates 5-digit IDs (e.g., 10001+)
           const displayOrderId = order.id;
 
-          // Simple dynamic tracking status (Mocked for premium UX since it's hardseeded as PAID)
-          const steps = [
-            { label: 'Ordered', desc: 'Payment validated', done: true },
-            { label: 'Processing', desc: 'Harvesting & packing', done: true },
-            { label: 'In Transit', desc: 'Shipped from Idukki', done: false },
-            { label: 'Delivered', desc: 'At your doorstep', done: false }
-          ];
+          const { steps, progress } = getTracker(order.status);
 
           return (
             <div 
@@ -256,22 +326,31 @@ export default function Orders() {
                   
                   {/* Progress Line */}
                   <div className="absolute top-3.5 left-[12%] right-[12%] h-[3px] bg-gray-200 z-0">
-                    <div className="h-full bg-emerald-500" style={{ width: '33.33%' }}></div>
+                    <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${progress}%` }}></div>
                   </div>
 
                   {steps.map((step, idx) => (
                     <div key={idx} className="flex flex-col items-center text-center z-10">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center border-4 ${
-                        step.done 
-                          ? 'bg-emerald-500 border-emerald-50 text-white' 
-                          : 'bg-white border-gray-200 text-gray-400'
+                        step.state === 'done'
+                          ? 'bg-emerald-500 border-emerald-50 text-white'
+                          : step.state === 'warning'
+                            ? 'bg-amber-400 border-amber-50 text-white'
+                            : step.state === 'error'
+                              ? 'bg-red-500 border-red-50 text-white'
+                              : 'bg-white border-gray-200 text-gray-400'
                       } shadow-sm transition-all duration-300`}>
                         {idx === 0 && <Package size={12} />}
                         {idx === 1 && <Box size={12} />}
                         {idx === 2 && <Truck size={12} />}
                         {idx === 3 && <MapPin size={12} />}
                       </div>
-                      <span className={`text-[10px] sm:text-xs font-bold mt-2 ${step.done ? 'text-gray-900' : 'text-gray-400'}`}>
+                      <span className={`text-[10px] sm:text-xs font-bold mt-2 ${
+                        step.state === 'done' ? 'text-gray-900'
+                          : step.state === 'warning' ? 'text-amber-700'
+                          : step.state === 'error' ? 'text-red-700'
+                          : 'text-gray-400'
+                      }`}>
                         {step.label}
                       </span>
                       <span className="text-[8px] sm:text-[9px] text-gray-400 font-medium hidden sm:block mt-0.5 max-w-[100px] leading-tight">
