@@ -149,8 +149,9 @@ export default function Dashboard() {
   const statusStyles = {
     PAID: 'bg-emerald-50 text-emerald-700 border-emerald-150',
     Processing: 'bg-blue-50 text-blue-700 border-blue-150',
+    Shipped: 'bg-indigo-50 text-indigo-700 border-indigo-150',
     'On Hold': 'bg-gray-50 text-gray-600 border-gray-150',
-    Completed: 'bg-emerald-50 text-emerald-700 border-emerald-150',
+    Delivered: 'bg-emerald-50 text-emerald-700 border-emerald-150',
     Cancelled: 'bg-red-50 text-red-700 border-red-150',
     'Pending Payment': 'bg-amber-50 text-amber-700 border-amber-150',
     Refunded: 'bg-purple-50 text-purple-700 border-purple-150',
@@ -972,8 +973,9 @@ export default function Dashboard() {
                 >
                   <option value="PAID">PAID</option>
                   <option value="Processing">Processing</option>
+                  <option value="Shipped">Shipped</option>
+                  <option value="Delivered">Delivered</option>
                   <option value="On Hold">On Hold</option>
-                  <option value="Completed">Completed</option>
                   <option value="Cancelled">Cancelled</option>
                   <option value="Pending Payment">Pending Payment</option>
                   <option value="Refunded">Refunded</option>
@@ -2348,8 +2350,9 @@ export default function Dashboard() {
                             >
                                <option value="PAID">PAID</option>
                                <option value="Processing">Processing</option>
+                               <option value="Shipped">Shipped</option>
+                               <option value="Delivered">Delivered</option>
                                <option value="On Hold">On Hold</option>
-                               <option value="Completed">Completed</option>
                                <option value="Cancelled">Cancelled</option>
                                <option value="Pending Payment">Pending Payment</option>
                                <option value="Refunded">Refunded</option>
