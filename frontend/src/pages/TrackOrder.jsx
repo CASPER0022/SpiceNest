@@ -7,7 +7,8 @@ import { useAuth } from '../context/AuthContext';
 const statusTimeline = [
   { status: 'PAID', label: 'Order Paid', desc: 'Transaction approved. Spices reserved from local farm inventory.' },
   { status: 'Processing', label: 'Preparing Shipment', desc: 'Spices are being carefully sorted, weighed, and packed at the farm.' },
-  { status: 'Completed', label: 'Shipped & Delivered', desc: 'Western Ghats premium spices dispatched to your doorstep!' }
+  { status: 'Shipped', label: 'Shipped', desc: 'Western Ghats premium spices dispatched from Idukki and on their way.' },
+  { status: 'Delivered', label: 'Delivered', desc: 'Your farm-fresh spices have arrived at your doorstep!' }
 ];
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -154,7 +155,8 @@ export default function TrackOrder() {
   const getStatusIndex = (currentStatus) => {
     if (currentStatus === 'PAID') return 0;
     if (currentStatus === 'Processing' || currentStatus === 'On Hold') return 1;
-    if (currentStatus === 'Completed') return 2;
+    if (currentStatus === 'Shipped') return 2;
+    if (currentStatus === 'Delivered') return 3;
     return 1; // Default fallback to Processing
   };
 
@@ -240,8 +242,9 @@ export default function TrackOrder() {
               const statusStyles = {
                 PAID: 'bg-emerald-50 text-emerald-700 border-emerald-100',
                 Processing: 'bg-blue-50 text-blue-700 border-blue-100',
+                Shipped: 'bg-indigo-50 text-indigo-700 border-indigo-100',
                 'On Hold': 'bg-gray-50 text-gray-600 border-gray-100',
-                Completed: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+                Delivered: 'bg-emerald-50 text-emerald-700 border-emerald-100',
                 Cancelled: 'bg-red-50 text-red-700 border-red-100',
                 'Pending Payment': 'bg-amber-50 text-amber-700 border-amber-100',
                 Refunded: 'bg-purple-50 text-purple-700 border-purple-100',
