@@ -20,6 +20,12 @@ export const COUPONS = {
   SPICE50: { discount: 50 },
 };
 
+// A product is sold out once not even the smallest pack is left. Sold-out products are hidden from
+// customers (shop, product page, farmer pages, wishlist, shopping feeds) but stay in the admin
+// dashboard, and reappear by themselves when restocked.
+export const MIN_PACK_KG = Math.min(...Object.values(WEIGHT_OPTIONS).map((option) => option.kg));
+export const isInStock = (product) => product.stock >= MIN_PACK_KG;
+
 export const FREE_SHIPPING_THRESHOLD = 500;
 export const SHIPPING_CHARGE = 100;
 export const MAX_LINES = 50;

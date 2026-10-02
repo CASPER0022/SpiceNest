@@ -216,8 +216,10 @@ export default function Dashboard() {
         const data = await res.json();
         setOrders(data);
 
-        // Fetch products list too!
-        const prodRes = await fetch(`${API_URL}/api/products`);
+        // Fetch products list too, including sold-out ones (hidden from customers)
+        const prodRes = await fetch(`${API_URL}/api/products?includeOutOfStock=1`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
         if (prodRes.ok) {
           const prodData = await prodRes.json();
           setProducts(prodData);

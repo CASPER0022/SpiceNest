@@ -87,7 +87,9 @@ import paymentRoutes, { startReservationSweeper } from './routes/payment.js';
 import cartRoutes from './routes/cart.js';
 import reviewsRoutes from './routes/reviews.js';
 import wishlistRoutes from './routes/wishlist.js';
+import feedRoutes from './routes/feed.js';
 import { verifyToken, getRequestUser } from './routes/auth.js';
+import { MIN_PACK_KG, isInStock } from './utils/pricing.js';
 
 // ==========================================
 // Middleware (Software that runs before your routes)
@@ -188,6 +190,9 @@ app.use('/api/reviews', reviewsRoutes);
 // Wishlist Routes
 app.use('/api/wishlist', wishlistRoutes);
 
+// Product feeds for Google Merchant Center and Facebook / Instagram shops
+app.use('/api/feed', feedRoutes);
+
 // Loads the product list with ratings. Only review ratings are fetched (not full review rows).
 async function loadAllProducts() {
   const products = await prisma.product.findMany({
@@ -217,10 +222,16 @@ async function loadAllProducts() {
   return productsWithRatings;
 }
 
-// Get all spices from the database
+// Get all spices from the database. Customers only get products in stock; the admin dashboard
+// asks for sold-out ones too with ?includeOutOfStock=1.
 app.get('/api/products', async (req, res) => {
   try {
-    res.json(productCache.get('all_products') || await loadAllProducts());
+    const products = productCache.get('all_products') || await loadAllProducts();
+    if (req.query.includeOutOfStock === '1') {
+      const viewer = await getRequestUser(req);
+      if (viewer?.role === 'ADMIN') return res.json(products);
+    }
+    res.json(products.filter(isInStock));
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch products' });
@@ -248,9 +259,9 @@ app.get('/api/products/:id', async (req, res) => {
     const id = await resolveProductId(req.params.id);
     if (id === null) return res.status(404).json({ error: 'Product not found' });
     const cacheKey = `product_${id}`;
-    // Archived products are hidden from customers (admins can still open them)
+    // Archived and sold-out products are hidden from customers (admins can still open them)
     const sendProduct = async (product) => {
-      if (product.isArchived) {
+      if (product.isArchived || !isInStock(product)) {
         const viewer = await getRequestUser(req);
         if (viewer?.role !== 'ADMIN') return res.status(404).json({ error: 'Product not found' });
       }
@@ -424,7 +435,7 @@ app.delete('/api/products/:id', verifyToken, async (req, res) => {
 async function loadAllFarmers() {
   const farmers = await prisma.farmer.findMany({
     include: {
-      products: { where: { isArchived: false }, select: { id: true, name: true } },
+      products: { where: { isArchived: false, stock: { gte: MIN_PACK_KG } }, select: { id: true, name: true } },
       reviews: { select: { rating: true } }
     }
   });
@@ -474,7 +485,7 @@ app.get('/api/farmers/:id', async (req, res) => {
     const farmer = await prisma.farmer.findUnique({
       where: { id },
       include: {
-        products: { where: { isArchived: false } },
+        products: { where: { isArchived: false, stock: { gte: MIN_PACK_KG } } },
         reviews: {
           include: {
             user: {

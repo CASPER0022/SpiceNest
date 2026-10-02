@@ -1,6 +1,7 @@
 import express from 'express';
 import prisma from '../db.js';
 import { verifyToken } from './auth.js';
+import { isInStock } from '../utils/pricing.js';
 
 const router = express.Router();
 
@@ -16,8 +17,9 @@ router.get('/', verifyToken, async (req, res) => {
       include: { product: true }
     });
 
-    // Map database structures to matching frontend product structures
-    const formattedItems = items.map(item => ({
+    // Map database structures to matching frontend product structures. Archived and sold-out
+    // products stay saved but are not shown (they come back when restocked).
+    const formattedItems = items.filter(item => !item.product.isArchived && isInStock(item.product)).map(item => ({
       id: item.product.id,
       name: item.product.name,
       price: item.product.price,
@@ -113,7 +115,7 @@ router.post('/sync', verifyToken, async (req, res) => {
       include: { product: true }
     });
 
-    const formattedItems = dbItems.map(item => ({
+    const formattedItems = dbItems.filter(item => !item.product.isArchived && isInStock(item.product)).map(item => ({
       id: item.product.id,
       name: item.product.name,
       price: item.product.price,
