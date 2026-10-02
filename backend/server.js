@@ -5,6 +5,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import compression from 'compression';
 import prisma from './db.js';
+import { uniqueProductSlug, backfillProductSlugs, SLUG_REGEX } from './utils/slug.js';
 
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
@@ -226,11 +227,26 @@ app.get('/api/products', async (req, res) => {
   }
 });
 
-// Get a single product by ID
+// Product ID for a route param that is either a numeric ID (old /product/1 links) or a slug
+async function resolveProductId(raw) {
+  const id = parseRouteId(raw);
+  if (id !== null) return id;
+  if (typeof raw !== 'string' || raw.length > 100 || !SLUG_REGEX.test(raw)) return null;
+
+  const cacheKey = `slug_${raw}`;
+  const cachedId = productCache.get(cacheKey);
+  if (cachedId) return cachedId;
+  const product = await prisma.product.findUnique({ where: { slug: raw }, select: { id: true } });
+  if (!product) return null;
+  productCache.set(cacheKey, product.id);
+  return product.id;
+}
+
+// Get a single product by slug (or by ID, for old links)
 app.get('/api/products/:id', async (req, res) => {
   try {
-    const id = parseRouteId(req.params.id);
-    if (id === null) return res.status(400).json({ error: 'Invalid product ID' });
+    const id = await resolveProductId(req.params.id);
+    if (id === null) return res.status(404).json({ error: 'Product not found' });
     const cacheKey = `product_${id}`;
     // Archived products are hidden from customers (admins can still open them)
     const sendProduct = async (product) => {
@@ -354,7 +370,8 @@ app.post('/api/products', verifyToken, async (req, res) => {
         category,
         farmerId: parseInt(farmerId, 10),
         images: productImages,
-        story: story || null
+        story: story || null,
+        slug: await uniqueProductSlug(prisma, name)
       },
       include: {
         farmer: true
@@ -508,6 +525,8 @@ app.listen(PORT, () => {
   // Warm up right after a (cold) start: open the database connection and pre-load the product and
   // farmer lists, so the first visitor after Render wakes the server doesn't wait for them.
   prisma.$connect()
+    // Products created before slugs existed get one (no-op once every product has a slug)
+    .then(() => backfillProductSlugs(prisma))
     .then(() => Promise.all([loadAllProducts(), loadAllFarmers()]))
     .then(() => console.log('✅ Database connected and caches warmed'))
     .catch((err) => console.error('Startup warm-up failed (requests will load on demand):', err.message));

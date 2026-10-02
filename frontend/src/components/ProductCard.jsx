@@ -44,7 +44,7 @@ export default function ProductCard({ product }) {
   };
 
   return (
-    <Link to={`/product/${product.id}`} className={`bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 group flex flex-col cursor-pointer block relative ${isOutOfStock ? 'opacity-85' : ''}`}>
+    <Link to={`/product/${product.slug || product.id}`} className={`bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 group flex flex-col cursor-pointer block relative ${isOutOfStock ? 'opacity-85' : ''}`}>
       
       {/* Dynamic Weight Selection Overlay (Fills the entire card!) */}
       {showWeightOverlay && (

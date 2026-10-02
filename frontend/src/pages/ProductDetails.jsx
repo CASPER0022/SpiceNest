@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ChevronLeft, ShoppingCart, Star, Heart, Share2, Truck, ShieldCheck, Leaf, Plus, Minus } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useViewed } from '../context/ViewedContext';
@@ -16,7 +16,11 @@ const WEIGHT_OPTIONS = [
 ];
 
 export default function ProductDetails() {
-  const { id } = useParams();
+  const { slug } = useParams();
+  // Shopping feed links (Google / Facebook) open a specific weight, e.g. ?weight=250g
+  const [searchParams] = useSearchParams();
+  const requestedWeight = searchParams.get('weight');
+  const loadedProductRef = useRef(null);
   const navigate = useNavigate();
   const { addToCart } = useCart();
   const { addToViewed } = useViewed();
@@ -92,13 +96,20 @@ export default function ProductDetails() {
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
   useEffect(() => {
-    fetch(`${API_URL}/api/products/${id}`)
+    // Already showing this product (we just redirected an old /product/1 link to its slug URL)
+    if (loadedProductRef.current?.slug === slug) return;
+    fetch(`${API_URL}/api/products/${slug}`)
       .then((res) => {
         if (!res.ok) throw new Error('Product not found');
         return res.json();
       })
       .then((data) => {
+        loadedProductRef.current = data;
         setProduct(data);
+        // Old /product/1 links move to the SEO-friendly URL, e.g. /product/black-pepper
+        if (data.slug && data.slug !== slug) {
+          navigate(`/product/${data.slug}${window.location.search}`, { replace: true });
+        }
         if (data.images && data.images.length > 0) {
           setActiveImage(data.images[0]);
         }
@@ -110,19 +121,29 @@ export default function ProductDetails() {
         setError(err.message);
         setLoading(false);
       });
-  }, [id, API_URL]);
+  }, [slug, API_URL, navigate]);
+
+  // Product name in the browser tab and search results
+  useEffect(() => {
+    if (!product?.name) return;
+    document.title = `${product.name} | Idukki Origins`;
+    return () => {
+      document.title = 'Idukki Origins';
+    };
+  }, [product?.name]);
 
   useEffect(() => {
     if (product && product.stock !== undefined) {
-      // Find the first option that fits in stock
-      const firstAvailable = WEIGHT_OPTIONS.find(opt => opt.kg <= product.stock);
+      // The weight asked for in the link if it is in stock, otherwise the first option that fits
+      const requested = WEIGHT_OPTIONS.find(opt => opt.label === requestedWeight && opt.kg <= product.stock);
+      const firstAvailable = requested || WEIGHT_OPTIONS.find(opt => opt.kg <= product.stock);
       if (firstAvailable) {
         setSelectedWeight(firstAvailable);
       } else {
         setSelectedWeight(WEIGHT_OPTIONS[0]);
       }
     }
-  }, [product]);
+  }, [product, requestedWeight]);
 
   useEffect(() => {
     if (product && product.stock !== undefined && selectedWeight) {
@@ -205,7 +226,7 @@ export default function ProductDetails() {
       setNewComment('');
       
       // Reload product details to update reviews and calculated rating
-      const updatedRes = await fetch(`${API_URL}/api/products/${id}`);
+      const updatedRes = await fetch(`${API_URL}/api/products/${product.id}`);
       if (updatedRes.ok) {
         const updatedProduct = await updatedRes.json();
         setProduct(updatedProduct);
@@ -238,7 +259,7 @@ export default function ProductDetails() {
       toast.success('Review deleted successfully.');
       
       // Reload product details
-      const updatedRes = await fetch(`${API_URL}/api/products/${id}`);
+      const updatedRes = await fetch(`${API_URL}/api/products/${product.id}`);
       if (updatedRes.ok) {
         const updatedProduct = await updatedRes.json();
         setProduct(updatedProduct);

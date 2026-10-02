@@ -18,6 +18,9 @@ datasource db {
 model Product {
   id          Int      @id @default(autoincrement())
   name        String
+  // URL name used in /product/<slug>. Set once on creation and kept when the product is renamed,
+  // so links shared or indexed by search engines keep working.
+  slug        String?  @unique
   description String
   price       Float
   category    String

@@ -2,6 +2,7 @@ import { Link, useSearchParams, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { CheckCircle, Package, MapPin, Calendar, Loader2, AlertCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { trackPurchase } from '../utils/analytics';
 
 export default function Success() {
   const { clearCart } = useCart();
@@ -47,6 +48,10 @@ export default function Success() {
 
     confirmOrder();
   }, [sessionId, location.state]);
+
+  useEffect(() => {
+    if (order) trackPurchase(order);
+  }, [order]);
 
   if (loading) {
     return (
