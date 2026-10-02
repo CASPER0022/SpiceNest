@@ -6,6 +6,7 @@ import { useViewed } from '../context/ViewedContext';
 import { useAuth } from '../context/AuthContext';
 import { useWishlist } from '../context/WishlistContext';
 import toast from 'react-hot-toast';
+import { trackViewItem } from '../utils/analytics';
 
 const WEIGHT_OPTIONS = [
   { label: '100g', multiplier: 1.0, kg: 0.1, discountPercent: 0 },
@@ -102,6 +103,7 @@ export default function ProductDetails() {
           setActiveImage(data.images[0]);
         }
         addToViewed(data);
+        trackViewItem(data);
         setLoading(false);
       })
       .catch((err) => {

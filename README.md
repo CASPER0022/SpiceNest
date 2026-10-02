@@ -56,6 +56,13 @@ DATABASE_URL="postgresql://user:password@host.aws.neon.tech/neondb?sslmode=requi
 RAZORPAY_KEY_ID="rzp_test_your_key_id"
 RAZORPAY_KEY_SECRET="your_key_secret"
 
+# Production: keep both key sets and flip RAZORPAY_MODE between "test" and "live"
+# (then the plain RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET above are not needed)
+# RAZORPAY_MODE="test"
+# RAZORPAY_TEST_KEY_ID="rzp_test_..."      RAZORPAY_LIVE_KEY_ID="rzp_live_..."
+# RAZORPAY_TEST_KEY_SECRET="..."           RAZORPAY_LIVE_KEY_SECRET="..."
+# RAZORPAY_TEST_WEBHOOK_SECRET="..."       RAZORPAY_LIVE_WEBHOOK_SECRET="..."
+
 # REQUIRED: the server refuses to start without these. Generate JWT_SECRET with:
 #   node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 JWT_SECRET="a_long_random_string_of_at_least_32_characters"

@@ -6,16 +6,33 @@ dotenv.config();
 // ==========================================
 // REQUIRED SECRETS: no fallbacks, the server refuses to start without them.
 // ==========================================
-const REQUIRED = ['JWT_SECRET', 'RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET', 'STRIPE_SECRET_KEY'];
+// Razorpay test/live switch: set RAZORPAY_MODE=test or live and keep both key sets configured
+// (RAZORPAY_TEST_KEY_ID / _KEY_SECRET / _WEBHOOK_SECRET and RAZORPAY_LIVE_...). Without
+// RAZORPAY_MODE the plain RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET / RAZORPAY_WEBHOOK_SECRET are used.
+const RAZORPAY_MODE = (process.env.RAZORPAY_MODE || '').trim().toLowerCase();
+if (RAZORPAY_MODE && RAZORPAY_MODE !== 'test' && RAZORPAY_MODE !== 'live') {
+  throw new Error('FATAL ERROR: RAZORPAY_MODE must be "test" or "live".');
+}
+const RAZORPAY_PREFIX = RAZORPAY_MODE ? `RAZORPAY_${RAZORPAY_MODE.toUpperCase()}_` : 'RAZORPAY_';
+const RAZORPAY_KEY_ID_VAR = `${RAZORPAY_PREFIX}KEY_ID`;
+const RAZORPAY_KEY_SECRET_VAR = `${RAZORPAY_PREFIX}KEY_SECRET`;
+const RAZORPAY_WEBHOOK_SECRET_VAR = `${RAZORPAY_PREFIX}WEBHOOK_SECRET`;
+
+const REQUIRED = ['JWT_SECRET', RAZORPAY_KEY_ID_VAR, RAZORPAY_KEY_SECRET_VAR, 'STRIPE_SECRET_KEY'];
 
 const missing = REQUIRED.filter((name) => !process.env[name] || !process.env[name].trim());
 if (missing.length > 0) {
   throw new Error(`FATAL ERROR: missing required environment variable(s): ${missing.join(', ')}`);
 }
 
+// Catch a live key in the test slot (or vice versa) before it takes real money or fails checkouts
+if (RAZORPAY_MODE && !process.env[RAZORPAY_KEY_ID_VAR].trim().startsWith(`rzp_${RAZORPAY_MODE}_`)) {
+  throw new Error(`FATAL ERROR: ${RAZORPAY_KEY_ID_VAR} must start with rzp_${RAZORPAY_MODE}_ when RAZORPAY_MODE=${RAZORPAY_MODE}.`);
+}
+
 // Placeholder values that used to be hardcoded fallbacks (or are obviously insecure)
 const BANNED_SECRETS = ['super-secret-key-for-learning', 'dummysecret', 'secret', 'changeme'];
-for (const name of ['JWT_SECRET', 'RAZORPAY_KEY_SECRET']) {
+for (const name of ['JWT_SECRET', RAZORPAY_KEY_SECRET_VAR]) {
   if (BANNED_SECRETS.includes(process.env[name].trim().toLowerCase())) {
     throw new Error(`FATAL ERROR: ${name} is set to a known placeholder value. Use a real secret.`);
   }
@@ -29,21 +46,23 @@ if (process.env.JWT_SECRET.length < 32) {
   console.warn(`⚠️ WARNING: ${message}`);
 }
 
-if (process.env.NODE_ENV === 'production' && process.env.RAZORPAY_KEY_ID.startsWith('rzp_test_')) {
+export const JWT_SECRET = process.env.JWT_SECRET;
+export const RAZORPAY_KEY_ID = process.env[RAZORPAY_KEY_ID_VAR].trim();
+export const RAZORPAY_KEY_SECRET = process.env[RAZORPAY_KEY_SECRET_VAR].trim();
+export const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
+
+console.log(`💳 Razorpay running in ${RAZORPAY_KEY_ID.startsWith('rzp_live_') ? 'LIVE' : 'TEST'} mode (${RAZORPAY_KEY_ID_VAR}).`);
+if (process.env.NODE_ENV === 'production' && RAZORPAY_KEY_ID.startsWith('rzp_test_')) {
   console.warn('⚠️ WARNING: Running in production with a Razorpay TEST key id.');
 }
 
-export const JWT_SECRET = process.env.JWT_SECRET;
-export const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID;
-export const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
-export const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
-
 // Payment webhook secrets (optional, but needed to record orders when the customer closes the tab
 // before the success page loads). Set them in the Razorpay / Stripe dashboards and here.
-export const RAZORPAY_WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET || '';
+// Razorpay keeps separate webhooks for Test and Live mode, so each mode has its own secret.
+export const RAZORPAY_WEBHOOK_SECRET = (process.env[RAZORPAY_WEBHOOK_SECRET_VAR] || '').trim();
 export const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
 if (process.env.NODE_ENV === 'production' && !RAZORPAY_WEBHOOK_SECRET) {
-  console.warn('⚠️ WARNING: RAZORPAY_WEBHOOK_SECRET is not set. Paid orders are only recorded if the customer returns to the site.');
+  console.warn(`⚠️ WARNING: ${RAZORPAY_WEBHOOK_SECRET_VAR} is not set. Paid orders are only recorded if the customer returns to the site.`);
 }
 
 // Session lifetime. Kept short because tokens live in localStorage; revocation uses User.tokenVersion.

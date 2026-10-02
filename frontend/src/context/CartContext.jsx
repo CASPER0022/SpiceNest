@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useMemo, useEffect } from 'react';
 import { useAuth } from './AuthContext';
+import { trackAddToCart } from '../utils/analytics';
 
 const CartContext = createContext();
 
@@ -103,6 +104,7 @@ export function CartProvider({ children }) {
     });
 
     setIsCartOpen(true); // Open drawer when item added
+    trackAddToCart(product, weight, priceToUse);
 
     // Background DB sync if logged in
     const token = localStorage.getItem('token');

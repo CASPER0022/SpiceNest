@@ -4,6 +4,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
+import { trackBeginCheckout } from '../utils/analytics';
 
 const loadRazorpayScript = () => {
   return new Promise((resolve) => {
@@ -172,6 +173,7 @@ export default function Cart() {
       weight: item.weight,
       quantity: item.quantity
     }));
+    trackBeginCheckout(cartItems, Math.max(0, cartTotal - (appliedCoupon ? appliedCoupon.discount : 0)));
     setIsProcessing(true);
     try {
       const isLoaded = await loadRazorpayScript();
