@@ -6,8 +6,25 @@ export default function Contact() {
         <p className="text-lg font-bold text-emerald-800">Get in Touch 📞</p>
         <div className="space-y-3 font-semibold text-gray-700">
           <p>📍 Location: Kanjikuzhy, Idukki, Kerala - 685606</p>
-          <p>📞 Phone: +91 8921663449, +91 9645425742</p>
-          <p>📧 Email: info.idukkiorigins@gmail.com</p>
+          <p>
+            📞 Phone:{' '}
+            <a href="tel:+918921663449" className="text-emerald-700 hover:underline">+91 8921663449</a>,{' '}
+            <a href="tel:+919645425742" className="text-emerald-700 hover:underline">+91 9645425742</a>
+          </p>
+          <p>
+            💬 WhatsApp:{' '}
+            <a href="https://wa.me/918921663449" target="_blank" rel="noopener noreferrer" className="text-emerald-700 hover:underline">+91 8921663449</a>
+          </p>
+          <p>
+            📧 Email:{' '}
+            <a href="mailto:info.idukkiorigins@gmail.com" className="text-emerald-700 hover:underline break-all">info.idukkiorigins@gmail.com</a>
+          </p>
+          <p>
+            📱 Follow us:{' '}
+            <a href="https://www.instagram.com/idukkiorigins_com/" target="_blank" rel="noopener noreferrer" className="text-emerald-700 hover:underline">Instagram</a>
+            {' · '}
+            <a href="https://www.facebook.com/share/1Bnz5VSXGN/" target="_blank" rel="noopener noreferrer" className="text-emerald-700 hover:underline">Facebook</a>
+          </p>
         </div>
       </div>
     </div>
