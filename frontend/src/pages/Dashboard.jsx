@@ -3,14 +3,24 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { 
   Package, Calendar, CreditCard, ChevronDown, ChevronUp, MapPin, 
-  TrendingUp, Layers, Users, ShoppingBag, Percent, ArrowRightLeft, DollarSign, Activity,
-  ArrowLeft, Mail, Clock, Globe, Search, Trash2, Download, Phone
+  TrendingUp, Layers, Users, ShoppingBag, Percent, ArrowRightLeft, IndianRupee, Activity,
+  ArrowLeft, Mail, Clock, Globe, Search, Trash2, Download, Phone, Info, Scale
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import TaxReport from '../components/TaxReport';
+import { normalizeIndianMobile, PHONE_ERROR } from '../utils/phone';
 
 // Date periods shared by Sales Analytics and the Order Registry
 const DATE_PERIODS = ['Today', 'Last 7 days', 'This month', 'Last month', 'Year', 'Custom'];
+
+// Couriers for tracking numbers. Keep the ids in sync with backend/utils/carriers.js
+const CARRIERS = [
+  { id: 'india-post', name: 'India Post', numberLabel: 'Article / tracking number', example: 'EM123456789IN' },
+  { id: 'delhivery', name: 'Delhivery', numberLabel: 'AWB / tracking number', example: '1234567890123' },
+  { id: 'dtdc', name: 'DTDC', numberLabel: 'Consignment / tracking number', example: 'D12345678' }
+];
+// Orders saved before couriers could be chosen were India Post
+const carrierById = (id) => CARRIERS.find(c => c.id === id) || CARRIERS[0];
 
 // 'YYYY-MM-DD' from a date input -> local midnight of that day
 const parseDateInput = (value) => {
@@ -53,6 +63,76 @@ const inPeriod = (date, range) => {
   const time = new Date(date);
   return (!range.from || time >= range.from) && (!range.to || time < range.to);
 };
+
+// Number of days a period covers (whole days, at least 1), for daily averages
+const periodDays = (range) => {
+  if (!range?.from) return 1;
+  const end = range.to || new Date();
+  return Math.max(1, Math.ceil((end - range.from) / (24 * 60 * 60 * 1000)));
+};
+
+// Sales figures: GST is included in all prices, shipping is ₹100 below ₹500 (same as checkout)
+const GST_RATE = 0.05;
+const FREE_SHIPPING_THRESHOLD = 500;
+const SHIPPING_CHARGE = 100;
+// Statuses that are not a sale. Refunded / Cancelled are shown separately; Failed and
+// Pending Payment were never paid.
+const REFUNDED_STATUSES = ['Refunded', 'Cancelled'];
+const NON_SALE_STATUSES = [...REFUNDED_STATUSES, 'Failed', 'Pending Payment'];
+
+// Shipping and coupon discount of one order. Orders store the price paid per item and the
+// total, so both are worked out the same way checkout charged them (and the invoice shows them).
+const orderBreakdown = (order) => {
+  const itemsTotal = order.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const shipping = itemsTotal > 0 && itemsTotal < FREE_SHIPPING_THRESHOLD ? SHIPPING_CHARGE : 0;
+  const gap = itemsTotal + shipping - order.totalAmount;
+  const discount = gap >= 1 ? Math.round(gap) : 0; // coupons are whole rupees; smaller gaps are rounding
+  return { itemsTotal, shipping, discount };
+};
+
+// Date filter bar (All time + DATE_PERIODS, with From / To dates for Custom), used by the Order
+// Registry and Product Sales. countLabel describes what is shown, e.g. "23 orders".
+function PeriodFilter({ period, onPeriodChange, startDate, onStartDateChange, endDate, onEndDateChange, countLabel }) {
+  const dateInputClass = 'text-xs font-bold text-gray-700 bg-white border border-gray-200 px-2 py-1 rounded-lg focus:outline-none focus:border-emerald-500';
+  return (
+    <div className="bg-white/80 p-4 rounded-2xl border border-gray-100 flex flex-wrap items-center justify-between gap-4 shadow-sm">
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap gap-2">
+          {['All time', ...DATE_PERIODS].map(option => (
+            <button
+              key={option}
+              onClick={() => onPeriodChange(option)}
+              aria-pressed={period === option}
+              className={`text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl transition-all border ${
+                period === option
+                  ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm'
+                  : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
+              }`}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+
+        {period === 'Custom' && (
+          <div className="flex items-center gap-3 bg-gray-50 p-1.5 rounded-xl border border-gray-200 animate-fadeIn">
+            <div className="flex items-center gap-1.5 px-2">
+              <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider">From</span>
+              <input type="date" value={startDate} onChange={(e) => onStartDateChange(e.target.value)} className={dateInputClass} />
+            </div>
+            <div className="flex items-center gap-1.5 px-2">
+              <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider">To</span>
+              <input type="date" value={endDate} onChange={(e) => onEndDateChange(e.target.value)} className={dateInputClass} />
+            </div>
+          </div>
+        )}
+      </div>
+      <div className="text-xs font-semibold text-emerald-800 bg-emerald-50/70 border border-emerald-100/50 px-4 py-2 rounded-xl">
+        {period === 'Custom' && !startDate ? 'Choose a From date' : `Showing: ${period} (${countLabel})`}
+      </div>
+    </div>
+  );
+}
 
 // Order Registry filter for checkouts that were never paid (they are not orders)
 const ABANDONED_FILTER = 'Abandoned Checkout';
@@ -135,7 +215,7 @@ export default function Dashboard() {
   const [restoreStockOnDelete, setRestoreStockOnDelete] = useState(true);
   const [deletingOrder, setDeletingOrder] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(null); // e.g. "10020-invoice"
-  // India Post tracking number pop-up: { id, customerName, status, value, markShipped, notifyCustomer }
+  // Courier tracking number pop-up: { id, customerName, status, carrier, value, markShipped, notifyCustomer }
   const [trackingEdit, setTrackingEdit] = useState(null);
   const [savingTracking, setSavingTracking] = useState(false);
   const [selectedCustomerEmail, setSelectedCustomerEmail] = useState(null);
@@ -150,6 +230,10 @@ export default function Dashboard() {
   const [registryPeriod, setRegistryPeriod] = useState('All time');
   const [registryStartDate, setRegistryStartDate] = useState('');
   const [registryEndDate, setRegistryEndDate] = useState('');
+  // Product Sales date filter (its own period, independent of Sales Analytics)
+  const [productPeriod, setProductPeriod] = useState('All time');
+  const [productStartDate, setProductStartDate] = useState('');
+  const [productEndDate, setProductEndDate] = useState('');
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [editAddressForm, setEditAddressForm] = useState(null);
   const [updatingAddress, setUpdatingAddress] = useState(false);
@@ -322,20 +406,20 @@ export default function Dashboard() {
 
   const handleSaveTracking = async () => {
     if (!trackingEdit) return;
-    const { id, value, markShipped, notifyCustomer } = trackingEdit;
+    const { id, carrier, value, markShipped, notifyCustomer } = trackingEdit;
     setSavingTracking(true);
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(`${API_URL}/api/payment/admin/orders/${id}/tracking`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ trackingNumber: value, markShipped, notifyCustomer })
+        body: JSON.stringify({ trackingNumber: value, carrier, markShipped, notifyCustomer })
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Failed to save tracking number');
 
       setOrders(prevOrders => prevOrders.map(o => o.id === id
-        ? { ...o, status: data.order.status, trackingNumber: data.order.trackingNumber }
+        ? { ...o, status: data.order.status, trackingNumber: data.order.trackingNumber, shippingCarrier: data.order.shippingCarrier }
         : o));
       setTrackingEdit(null);
       if (!data.order.trackingNumber) {
@@ -572,10 +656,15 @@ export default function Dashboard() {
         return;
       }
     }
+    const mobileNumber = normalizeIndianMobile(editAddressForm.mobileNumber);
+    if (!mobileNumber) {
+      toast.error(PHONE_ERROR);
+      return;
+    }
 
     setUpdatingAddress(true);
     const token = localStorage.getItem('token');
-    
+
     try {
       const res = await fetch(`${API_URL}/api/payment/admin/orders/${orderId}/address`, {
         method: 'PUT',
@@ -583,7 +672,7 @@ export default function Dashboard() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ address: editAddressForm })
+        body: JSON.stringify({ address: { ...editAddressForm, mobileNumber } })
       });
 
       const data = await res.json();
@@ -703,38 +792,46 @@ export default function Dashboard() {
     });
   };
 
-  // Metrics Calculations based on the filtered orders
-  const calculateMetrics = () => {
-    const grossSales = filteredOrders.reduce((sum, order) => sum + order.totalAmount, 0);
-    
-    // Find unique days with orders in the filtered range
-    const uniqueDays = new Set(
-      filteredOrders.map(order => new Date(order.createdAt).toDateString())
-    ).size || 1;
+  // Orders that count as sales: paid and not refunded / cancelled
+  const salesOrders = filteredOrders.filter(order => !NON_SALE_STATUSES.includes(order.status));
 
-    const avgGrossDailySales = grossSales / uniqueDays;
-    
-    // Simulate coupons/fees for realistic net metrics
-    const worthOfCouponsUsed = grossSales * 0.05; // Simulated 5% coupons
-    const refunded = 0; // Simulated refund ₹0
-    const chargedForShipping = 0; // Free Shipping simulated
-    const netSales = grossSales - worthOfCouponsUsed - refunded;
-    const avgNetDailySales = netSales / uniqueDays;
-    
-    const ordersPlaced = filteredOrders.length;
-    
-    const itemsPurchased = filteredOrders.reduce((sum, order) => {
-      return sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0);
-    }, 0);
+  // Sales Analytics figures for the selected period. Each card's tooltip explains its figure.
+  const calculateMetrics = () => {
+    const range = periodRange(timeFilter, customStartDate, customEndDate);
+    const days = periodDays(range);
+
+    let grossSales = 0;
+    let chargedForShipping = 0;
+    let worthOfCouponsUsed = 0;
+    let itemsPurchased = 0;
+    let kgPurchased = 0;
+    for (const order of salesOrders) {
+      const breakdown = orderBreakdown(order);
+      grossSales += order.totalAmount;
+      chargedForShipping += breakdown.shipping;
+      worthOfCouponsUsed += breakdown.discount;
+      for (const item of order.items) {
+        itemsPurchased += item.quantity;
+        kgPurchased += parseWeightToKg(item.weight) * item.quantity;
+      }
+    }
+    // Prices include 5% GST (shipping too), so net = (gross - shipping) without the GST
+    const netSales = (grossSales - chargedForShipping) / (1 + GST_RATE);
+
+    const refundedOrders = filteredOrders.filter(order => REFUNDED_STATUSES.includes(order.status));
+    const refunded = refundedOrders.reduce((sum, order) => sum + order.totalAmount, 0);
 
     return {
+      days,
       grossSales,
-      avgGrossDailySales,
+      avgGrossDailySales: grossSales / days,
       netSales,
-      avgNetDailySales,
-      ordersPlaced,
+      avgNetDailySales: netSales / days,
+      ordersPlaced: salesOrders.length,
       itemsPurchased,
+      kgPurchased,
       refunded,
+      refundedCount: refundedOrders.length,
       chargedForShipping,
       worthOfCouponsUsed
     };
@@ -767,7 +864,7 @@ export default function Dashboard() {
       }
 
       // Populate actual order volumes hourly
-      filteredOrders.forEach(order => {
+      salesOrders.forEach(order => {
         const orderDate = new Date(order.createdAt);
         const hourLabel = `${orderDate.getHours().toString().padStart(2, '0')}:00`;
         if (grouped[hourLabel] !== undefined) {
@@ -814,7 +911,7 @@ export default function Dashboard() {
       }
 
       // Populate actual order volumes daily
-      filteredOrders.forEach(order => {
+      salesOrders.forEach(order => {
         const dayLabel = new Date(order.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
         if (grouped[dayLabel] !== undefined) {
           grouped[dayLabel] += order.totalAmount;
@@ -875,6 +972,9 @@ export default function Dashboard() {
     };
   };
 
+  const productRange = periodRange(productPeriod, productStartDate, productEndDate);
+  const productPeriodOrders = orders.filter(order => inPeriod(order.createdAt, productRange));
+
   const calculateProductAnalytics = () => {
     const productStats = {};
 
@@ -893,7 +993,7 @@ export default function Dashboard() {
       };
     });
 
-    filteredOrders.forEach(order => {
+    productPeriodOrders.forEach(order => {
       order.items.forEach(item => {
         const prodId = item.productId;
         if (!prodId) return;
@@ -2134,27 +2234,54 @@ export default function Dashboard() {
               
               {/* Left Column Stacked Metrics - Exact matching values from photo but with Premium UX! */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 h-fit">
-                {[
-                  { label: 'gross sales in this period', value: `₹${metrics.grossSales.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: 'border-emerald-600', icon: TrendingUp },
-                  { label: 'average gross daily sales', value: `₹${metrics.avgGrossDailySales.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: 'border-emerald-400', icon: Activity },
-                  { label: 'net sales in this period', value: `₹${metrics.netSales.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: 'border-blue-600', icon: DollarSign },
-                  { label: 'average net daily sales', value: `₹${metrics.avgNetDailySales.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: 'border-blue-400', icon: Layers },
-                  { label: 'orders placed', value: metrics.ordersPlaced, color: 'border-gray-300', icon: Package },
-                  { label: 'items purchased', value: metrics.itemsPurchased, color: 'border-gray-300', icon: ShoppingBag },
-                  { label: 'refunded orders', value: `₹${metrics.refunded.toFixed(2)}`, color: 'border-red-500', icon: ArrowRightLeft },
-                  { label: 'charged for shipping', value: metrics.chargedForShipping > 0 ? `₹${metrics.chargedForShipping.toFixed(2)}` : '₹0.00 (Free)', color: 'border-amber-500', icon: MapPin },
-                  { label: 'worth of coupons used', value: `₹${metrics.worthOfCouponsUsed.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: 'border-purple-500', icon: Percent }
-                ].map((item, idx) => (
-                  <div 
-                    key={idx} 
-                    className={`bg-white p-5 rounded-2xl border-l-4 ${item.color} border border-gray-150/70 shadow-sm flex items-center gap-4 hover:shadow-md transition-all`}
+                {(() => {
+                  const rupees = (n) => `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                  const dayText = `${metrics.days} day${metrics.days === 1 ? '' : 's'}`;
+                  return [
+                    { label: 'gross sales in this period', value: rupees(metrics.grossSales), color: 'border-emerald-600', icon: TrendingUp,
+                      info: 'Total amount customers paid for orders in this period, after coupon discounts and including shipping and GST. Refunded and cancelled orders are not included.' },
+                    { label: 'average gross daily sales', value: rupees(metrics.avgGrossDailySales), color: 'border-emerald-400', icon: Activity,
+                      info: `Gross sales divided by the number of days in this period (${dayText}), including days with no orders.` },
+                    { label: 'net sales in this period', value: rupees(metrics.netSales), color: 'border-blue-600', icon: IndianRupee,
+                      info: 'What you earned from the products themselves: gross sales minus shipping charges and minus the 5% GST included in prices. This is the figure to compare against your costs.' },
+                    { label: 'average net daily sales', value: rupees(metrics.avgNetDailySales), color: 'border-blue-400', icon: Layers,
+                      info: `Net sales divided by the number of days in this period (${dayText}).` },
+                    { label: 'orders placed', value: metrics.ordersPlaced, color: 'border-gray-300', icon: Package,
+                      info: 'Number of paid orders in this period. Refunded, cancelled, failed and pending-payment orders are not counted.' },
+                    { label: 'items purchased', value: metrics.itemsPurchased, color: 'border-gray-300', icon: ShoppingBag,
+                      info: 'Number of packs sold. For example, 2 × Pepper 250g + 1 × Cardamom 100g counts as 3 items.' },
+                    { label: 'quantity purchased (kg)', value: `${metrics.kgPurchased.toLocaleString('en-IN', { maximumFractionDigits: 2 })} kg`, color: 'border-gray-300', icon: Scale,
+                      info: 'Total weight of spices sold. For example, 2 × 250g + 1 × 1kg = 1.5 kg. Packaging is not included.' },
+                    { label: 'refunded / cancelled orders', value: `${rupees(metrics.refunded)} (${metrics.refundedCount})`, color: 'border-red-500', icon: ArrowRightLeft,
+                      info: 'Value (and number) of orders in this period with status Refunded or Cancelled in the Order Registry. These are left out of all the sales figures above.' },
+                    { label: 'charged for shipping', value: rupees(metrics.chargedForShipping), color: 'border-amber-500', icon: MapPin,
+                      info: 'Delivery charges customers paid: ₹100 on orders under ₹500 (before coupon), free above that. Already included in gross sales.' },
+                    { label: 'worth of coupons used', value: rupees(metrics.worthOfCouponsUsed), color: 'border-purple-500', icon: Percent,
+                      info: 'Total discount given through coupon codes such as SPICE50 and STARTER. Gross sales are already after these discounts.' }
+                  ];
+                })().map((item) => (
+                  <div
+                    key={item.label}
+                    tabIndex={0}
+                    aria-describedby={`metric-info-${item.label.replace(/\W+/g, '-')}`}
+                    className={`group relative bg-white p-5 rounded-2xl border-l-4 ${item.color} border border-gray-150/70 shadow-sm flex items-center gap-4 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all`}
                   >
                     <div className="bg-gray-50 p-2.5 rounded-xl text-gray-400">
                       <item.icon size={20} />
                     </div>
-                    <div className="space-y-0.5">
-                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">{item.label}</span>
+                    <div className="space-y-0.5 min-w-0">
+                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
+                        {item.label} <Info size={11} className="text-gray-300 group-hover:text-emerald-500 shrink-0" />
+                      </span>
                       <span className="text-lg font-black text-gray-800 tracking-tight">{item.value}</span>
+                    </div>
+                    {/* Explanation, on hover (or tap / keyboard focus on touch screens) */}
+                    <div
+                      id={`metric-info-${item.label.replace(/\W+/g, '-')}`}
+                      role="tooltip"
+                      className="pointer-events-none absolute left-4 right-4 top-full mt-2 z-20 rounded-xl bg-gray-900 text-white text-xs font-medium leading-relaxed p-3 shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus:opacity-100 group-focus:visible transition-opacity"
+                    >
+                      {item.info}
                     </div>
                   </div>
                 ))}
@@ -2284,6 +2411,15 @@ export default function Dashboard() {
       ) : activeTab === 'productAnalytics' ? (
         /* Product Sales Analytics Tab */
         <div className="space-y-6 animate-fadeIn">
+          <PeriodFilter
+            period={productPeriod}
+            onPeriodChange={setProductPeriod}
+            startDate={productStartDate}
+            onStartDateChange={setProductStartDate}
+            endDate={productEndDate}
+            onEndDateChange={setProductEndDate}
+            countLabel={`${productPeriodOrders.length} orders`}
+          />
           <div className="bg-white rounded-3xl border border-gray-150 p-6 md:p-8 shadow-sm">
             <div className="flex items-center justify-between mb-8 border-b border-gray-50 pb-4">
               <div>
@@ -2462,55 +2598,15 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* Date filter (same periods as Sales Analytics, plus All time) */}
-          <div className="bg-white/80 p-4 rounded-2xl border border-gray-100 flex flex-wrap items-center justify-between gap-4 shadow-sm">
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex flex-wrap gap-2">
-                {['All time', ...DATE_PERIODS].map(period => (
-                  <button
-                    key={period}
-                    onClick={() => setRegistryPeriod(period)}
-                    aria-pressed={registryPeriod === period}
-                    className={`text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl transition-all border ${
-                      registryPeriod === period
-                        ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm'
-                        : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
-                    }`}
-                  >
-                    {period}
-                  </button>
-                ))}
-              </div>
-
-              {registryPeriod === 'Custom' && (
-                <div className="flex items-center gap-3 bg-gray-50 p-1.5 rounded-xl border border-gray-200 animate-fadeIn">
-                  <div className="flex items-center gap-1.5 px-2">
-                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider">From</span>
-                    <input
-                      type="date"
-                      value={registryStartDate}
-                      onChange={(e) => setRegistryStartDate(e.target.value)}
-                      className="text-xs font-bold text-gray-700 bg-white border border-gray-200 px-2 py-1 rounded-lg focus:outline-none focus:border-emerald-500"
-                    />
-                  </div>
-                  <div className="flex items-center gap-1.5 px-2">
-                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider">To</span>
-                    <input
-                      type="date"
-                      value={registryEndDate}
-                      onChange={(e) => setRegistryEndDate(e.target.value)}
-                      className="text-xs font-bold text-gray-700 bg-white border border-gray-200 px-2 py-1 rounded-lg focus:outline-none focus:border-emerald-500"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="text-xs font-semibold text-emerald-800 bg-emerald-50/70 border border-emerald-100/50 px-4 py-2 rounded-xl">
-              {registryPeriod === 'Custom' && !registryStartDate
-                ? 'Choose a From date'
-                : `Showing: ${registryPeriod} (${isAbandonedView ? `${filteredAbandonedCheckouts.length} abandoned checkouts` : `${filteredRegistryOrders.length} orders`})`}
-            </div>
-          </div>
+          <PeriodFilter
+            period={registryPeriod}
+            onPeriodChange={setRegistryPeriod}
+            startDate={registryStartDate}
+            onStartDateChange={setRegistryStartDate}
+            endDate={registryEndDate}
+            onEndDateChange={setRegistryEndDate}
+            countLabel={isAbandonedView ? `${filteredAbandonedCheckouts.length} abandoned checkouts` : `${filteredRegistryOrders.length} orders`}
+          />
 
           {/* Status filter: show only the orders with one status */}
           <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter orders by status">
@@ -2751,19 +2847,19 @@ export default function Dashboard() {
                           </div>
                         </td>
                         <td className="px-6 py-5 whitespace-nowrap">
-                          {/* India Post article number */}
+                          {/* Courier and tracking number */}
                           {order.trackingNumber ? (
                             <button
-                              onClick={() => setTrackingEdit({ id: order.id, customerName, status: order.status, value: order.trackingNumber, markShipped: false, notifyCustomer: false })}
+                              onClick={() => setTrackingEdit({ id: order.id, customerName, status: order.status, carrier: carrierById(order.shippingCarrier).id, value: order.trackingNumber, markShipped: false, notifyCustomer: false })}
                               title="Edit tracking number"
                               className="flex flex-col items-start text-left group/tracking"
                             >
-                              <span className="text-[9px] font-black uppercase tracking-wider text-gray-400">India Post</span>
+                              <span className="text-[9px] font-black uppercase tracking-wider text-gray-400">{carrierById(order.shippingCarrier).name}</span>
                               <span className="font-mono text-xs font-bold text-gray-800 group-hover/tracking:text-emerald-600">{order.trackingNumber}</span>
                             </button>
                           ) : (
                             <button
-                              onClick={() => setTrackingEdit({ id: order.id, customerName, status: order.status, value: '', markShipped: true, notifyCustomer: true })}
+                              onClick={() => setTrackingEdit({ id: order.id, customerName, status: order.status, carrier: CARRIERS[0].id, value: '', markShipped: true, notifyCustomer: true })}
                               className="text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 px-2.5 py-1.5 rounded-lg transition-colors"
                             >
                               + Add tracking
@@ -2812,7 +2908,7 @@ export default function Dashboard() {
             </table>
           </div>
 
-          {/* India Post tracking number */}
+          {/* Courier tracking number */}
           {trackingEdit && (
             <div
               className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
@@ -2829,10 +2925,29 @@ export default function Dashboard() {
                   handleSaveTracking();
                 }}
               >
-                <h3 id="tracking-title" className="text-lg font-black text-gray-900 mb-1">India Post tracking · Order #{trackingEdit.id}</h3>
+                <h3 id="tracking-title" className="text-lg font-black text-gray-900 mb-1">Shipment tracking · Order #{trackingEdit.id}</h3>
                 <p className="text-sm text-gray-500 mb-5">{trackingEdit.customerName}</p>
+                <p className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2" id="courier-label">Courier</p>
+                <div className="grid grid-cols-3 gap-2 mb-4" role="radiogroup" aria-labelledby="courier-label">
+                  {CARRIERS.map(carrier => (
+                    <button
+                      key={carrier.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={trackingEdit.carrier === carrier.id}
+                      onClick={() => setTrackingEdit(t => ({ ...t, carrier: carrier.id }))}
+                      className={`text-xs font-black px-2 py-2.5 rounded-xl border transition-all ${
+                        trackingEdit.carrier === carrier.id
+                          ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm'
+                          : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      {carrier.name}
+                    </button>
+                  ))}
+                </div>
                 <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2" htmlFor="tracking-number">
-                  Article / tracking number
+                  {carrierById(trackingEdit.carrier).numberLabel}
                 </label>
                 <input
                   id="tracking-number"
@@ -2840,7 +2955,7 @@ export default function Dashboard() {
                   autoFocus
                   value={trackingEdit.value}
                   onChange={(e) => setTrackingEdit(t => ({ ...t, value: e.target.value.toUpperCase() }))}
-                  placeholder="e.g. EM123456789IN"
+                  placeholder={`e.g. ${carrierById(trackingEdit.carrier).example}`}
                   className="w-full font-mono text-base tracking-wider p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none mb-4"
                 />
                 <label className="flex items-center gap-3 text-sm text-gray-700 mb-2 cursor-pointer">

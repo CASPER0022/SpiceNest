@@ -314,21 +314,21 @@ export default function TrackOrder() {
       {/* Order Tracking Display */}
       {order && !loading && (
         <div id="tracking-details-section" className="space-y-8 animate-fadeIn">
-          {/* India Post article number (shown for order ID + email lookups and secret links) */}
+          {/* Courier and tracking number (shown for order ID + email lookups and secret links) */}
           {order.trackingNumber && (
             <div className="bg-emerald-50 border border-emerald-100 rounded-3xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700 mb-1">Shipped via India Post</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700 mb-1">Shipped via {order.carrier?.name || 'India Post'}</p>
                 <p className="font-mono text-xl font-bold text-gray-900 tracking-wider break-all">{order.trackingNumber}</p>
-                <p className="text-xs text-gray-500 mt-1">On the India Post website, open "Track Consignment" and enter this number.</p>
+                <p className="text-xs text-gray-500 mt-1">{order.carrier?.help || 'On the courier website, enter this number to track your parcel.'}</p>
               </div>
               <a
-                href="https://www.indiapost.gov.in"
+                href={order.carrier?.url || 'https://www.indiapost.gov.in'}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="shrink-0 inline-flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-5 py-3 rounded-xl transition-colors"
               >
-                Track on India Post
+                Track on {order.carrier?.name || 'India Post'}
               </a>
             </div>
           )}

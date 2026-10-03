@@ -6,6 +6,7 @@ import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { trackBeginCheckout } from '../utils/analytics';
 import { INDIAN_STATES, INDIAN_UNION_TERRITORIES, matchIndianState } from '../utils/indianStates';
+import { normalizeIndianMobile, PHONE_ERROR } from '../utils/phone';
 
 const loadRazorpayScript = () => {
   return new Promise((resolve) => {
@@ -34,6 +35,8 @@ function savedAddressState(user) {
     if (parsed && typeof parsed === 'object') {
       // Saved before the State dropdown existed: match the typed name, or ask for it again
       parsed.state = matchIndianState(parsed.state);
+      // Saved before the 10-digit rule: keep a valid number (as 10 digits), otherwise ask again
+      parsed.mobileNumber = normalizeIndianMobile(parsed.mobileNumber);
       const required = ['fullName', 'mobileNumber', 'email', 'pincode', 'houseNo', 'area', 'city', 'state'];
       const isComplete = required.every(field => parsed[field]?.trim());
       return { fields: parsed, editing: !isComplete };
@@ -95,7 +98,11 @@ export default function Cart() {
   const handleSaveAddress = async () => {
     const required = ['fullName', 'mobileNumber', 'email', 'pincode', 'houseNo', 'area', 'city', 'state'];
     const missing = required.filter(field => !address[field]?.trim());
-    
+
+    if (missing.length === 0 && !normalizeIndianMobile(address.mobileNumber)) {
+      toast.error(PHONE_ERROR, { style: { borderRadius: '10px', background: '#333', color: '#fff' } });
+      return false;
+    }
     if (missing.length > 0) {
       toast.error('Please fill in all required address fields.', {
         style: { borderRadius: '10px', background: '#333', color: '#fff' }
@@ -150,6 +157,11 @@ export default function Cart() {
        toast.error('Please complete all required shipping address fields.', {
          style: { borderRadius: '10px', background: '#333', color: '#fff' }
        });
+       setIsEditingAddress(true);
+       return;
+    }
+    if (!normalizeIndianMobile(address.mobileNumber)) {
+       toast.error(PHONE_ERROR, { style: { borderRadius: '10px', background: '#333', color: '#fff' } });
        setIsEditingAddress(true);
        return;
     }
@@ -428,13 +440,32 @@ export default function Cart() {
                       onChange={(e) => setAddress({...address, fullName: e.target.value})}
                       className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
                     />
-                    <input
-                      type="text"
-                      placeholder="Mobile Number (Required)"
-                      value={address.mobileNumber}
-                      onChange={(e) => setAddress({...address, mobileNumber: e.target.value})}
-                      className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
-                    />
+                    <div>
+                      <input
+                        type="tel"
+                        inputMode="numeric"
+                        autoComplete="tel-national"
+                        placeholder="10-digit Mobile Number (Required)"
+                        value={address.mobileNumber}
+                        onChange={(e) => {
+                          // Digits only; a pasted "+91 94467 20133" or "09446720133" becomes the 10 digits
+                          const digits = e.target.value.replace(/\D/g, '');
+                          const mobileNumber = digits.length > 10 ? (normalizeIndianMobile(digits) || digits.slice(0, 10)) : digits;
+                          setAddress({ ...address, mobileNumber });
+                        }}
+                        aria-invalid={address.mobileNumber.length > 0 && !normalizeIndianMobile(address.mobileNumber)}
+                        aria-describedby="mobile-number-error"
+                        className={`w-full p-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none ${
+                          address.mobileNumber.length === 10 && !normalizeIndianMobile(address.mobileNumber) ? 'border-red-400' : 'border-gray-300'
+                        }`}
+                      />
+                      {address.mobileNumber.length === 10 && !normalizeIndianMobile(address.mobileNumber) && (
+                        <p id="mobile-number-error" className="text-xs text-red-600 mt-1">Indian mobile numbers start with 6, 7, 8 or 9.</p>
+                      )}
+                      {address.mobileNumber.length > 0 && address.mobileNumber.length < 10 && (
+                        <p id="mobile-number-error" className="text-xs text-gray-400 mt-1">{10 - address.mobileNumber.length} more digit{address.mobileNumber.length === 9 ? '' : 's'}</p>
+                      )}
+                    </div>
                     <input
                       type="email"
                       placeholder="Email Address (Required for Confirmation)"
@@ -517,6 +548,10 @@ export default function Cart() {
                         });
                         return;
                       }
+                      if (!normalizeIndianMobile(address.mobileNumber)) {
+                        toast.error(PHONE_ERROR, { style: { borderRadius: '10px', background: '#333', color: '#fff' } });
+                        return;
+                      }
                       setIsEditingAddress(false);
                     }}
                     disabled={isSavingAddress}
@@ -546,14 +581,17 @@ export default function Cart() {
               const discountedSubtotal = Math.max(0, cartTotal - (appliedCoupon ? appliedCoupon.discount : 0));
               const shippingCharges = cartTotal < 500 ? 100 : 0;
               const finalTotal = Math.round(discountedSubtotal + shippingCharges);
-              // Prices include 5% GST, so the GST inside the total is total x 5/105 (same rule as the
+              // Prices include GST: 5% on the spices, 18% on shipping (same rule as invoices and the
               // dashboard tax report). Kerala: CGST + SGST; other states and UTs: IGST.
-              const gstAmount = Math.round(finalTotal * 5 / 105 * 100) / 100;
+              const goodsGst = Math.round((finalTotal - shippingCharges) * 5 / 105 * 100) / 100;
+              const shippingGst = Math.round(shippingCharges * 18 / 118 * 100) / 100;
+              const gstAmount = Math.round((goodsGst + shippingGst) * 100) / 100;
               const gstLabel = !address.state
-                ? 'Includes GST (5%)'
+                ? 'Includes GST'
                 : address.state === 'Kerala'
-                  ? 'Includes GST (2.5% CGST + 2.5% SGST)'
-                  : 'Includes GST (5% IGST)';
+                  ? 'Includes GST (CGST + SGST)'
+                  : 'Includes GST (IGST)';
+              const gstDetail = shippingCharges > 0 ? '5% on spices, 18% on shipping' : '5% on spices';
 
               return (
                 <div className="space-y-3 mb-6">
@@ -572,7 +610,7 @@ export default function Cart() {
                     </div>
                   )}
                   <div className="flex justify-between text-gray-400 text-xs italic">
-                    <span>{gstLabel}</span>
+                    <span>{gstLabel} <span className="not-italic">· {gstDetail}</span></span>
                     <span>₹{gstAmount.toFixed(2)}</span>
                   </div>
                   <div className="border-t pt-4 flex justify-between items-end">

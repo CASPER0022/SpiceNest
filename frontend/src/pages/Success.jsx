@@ -4,6 +4,19 @@ import { CheckCircle, Package, MapPin, Calendar, Loader2, AlertCircle } from 'lu
 import { useEffect, useState } from 'react';
 import { trackPurchase } from '../utils/analytics';
 
+// Product photo for the order summary, or a package icon when there is none / it fails to load
+function ItemImage({ src, alt }) {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) {
+    return (
+      <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shrink-0" aria-hidden="true">
+        <Package size={20} />
+      </div>
+    );
+  }
+  return <img src={src} alt={alt} onError={() => setFailed(true)} className="w-12 h-12 rounded-xl object-cover border border-gray-100 bg-gray-50 shrink-0" />;
+}
+
 export default function Success() {
   const { clearCart } = useCart();
   const location = useLocation();
@@ -115,9 +128,16 @@ export default function Success() {
                 <h3 className="font-bold text-gray-900 mb-3">Items</h3>
                 <div className="space-y-3">
                   {order?.items?.map((item, idx) => (
-                    <div key={idx} className="flex justify-between text-sm">
-                      <span className="text-gray-600">{item.product?.name} x {item.quantity}</span>
-                      <span className="font-medium">₹{(item.price * item.quantity).toFixed(2)}</span>
+                    <div key={idx} className="flex items-center gap-3 text-sm">
+                      <ItemImage src={item.productImage || item.product?.images?.[0]} alt={item.productName || item.product?.name || 'Product'} />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-800 truncate">{item.productName || item.product?.name || 'Product'}</p>
+                        <p className="text-xs text-gray-500">
+                          <span className="font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">{item.weight}</span>
+                          <span className="ml-2">× {item.quantity}</span>
+                        </p>
+                      </div>
+                      <span className="font-medium shrink-0">₹{(item.price * item.quantity).toFixed(2)}</span>
                     </div>
                   ))}
                 </div>

@@ -1,15 +1,14 @@
 // ==========================================
 // GST TAX INVOICE (PDF)
-// Built from a recorded order. Prices include 5% GST, so the tax matches the monthly GST report:
-// total paid x 5/105, split CGST + SGST for Kerala and IGST for other states (see utils/tax.js).
+// Built from a recorded order. Prices include GST (5% on goods, 18% on shipping), computed exactly
+// like the monthly GST report: CGST + SGST for Kerala, IGST for other states (see utils/tax.js).
 // Seller details can be overridden with environment variables without a code change:
 //   SELLER_GSTIN, SELLER_FSSAI, SELLER_LEGAL_NAME, SELLER_ADDRESS, SELLER_PHONE, SELLER_EMAIL
 // ==========================================
 import PDFDocument from 'pdfkit';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { matchState, orderTax, STATE_CODES, HOME_STATE } from './tax.js';
-import { FREE_SHIPPING_THRESHOLD, SHIPPING_CHARGE } from './pricing.js';
+import { matchState, orderTax, orderAmounts, STATE_CODES, HOME_STATE, GST_RATE } from './tax.js';
 import { plainPersonName } from './personName.js';
 
 const ASSETS = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'assets');
@@ -106,25 +105,24 @@ export function invoiceData(order) {
       amount: round2(Number(item.price) * item.quantity)
     };
   });
-  const itemsTotal = round2(lines.reduce((sum, line) => sum + line.amount, 0));
-  const shipping = itemsTotal > 0 && itemsTotal < FREE_SHIPPING_THRESHOLD ? SHIPPING_CHARGE : 0;
-  const gap = round2(itemsTotal + shipping - total);
-  const discount = gap >= 1 ? Math.round(gap) : 0; // coupons are whole rupees
-  const roundOff = round2(total - (itemsTotal + shipping - discount));
-
+  // Shipping, coupon and rounding, derived the same way as the GST report (utils/tax.js)
+  const { shipping, discount, roundOff } = orderAmounts(order);
   if (discount) lines.push({ description: 'Discount (coupon)', hsn: '', quantity: null, rate: null, amount: -discount });
-  if (shipping) lines.push({ description: 'Shipping & delivery', hsn: SHIPPING_SAC, quantity: 1, rate: shipping, amount: shipping });
   if (roundOff) lines.push({ description: 'Round off', hsn: '', quantity: null, rate: null, amount: roundOff });
 
-  // Taxable value per line, adjusted so the lines add up exactly to the order's taxable value
-  const tax = orderTax(total, state);
+  // Goods lines (5% GST): taxable value per line, adjusted so they add up exactly to the goods'
+  // taxable value. Shipping (18% GST) is its own line.
+  const tax = orderTax(order, state);
   let allocated = 0;
   lines.forEach((line, i) => {
     line.taxable = i === lines.length - 1
-      ? round2(tax.taxable - allocated)
-      : round2(line.amount * 100 / 105);
+      ? round2(tax.goods.taxable - allocated)
+      : round2(line.amount / (1 + GST_RATE));
     allocated = round2(allocated + line.taxable);
   });
+  if (shipping) {
+    lines.push({ description: 'Shipping & delivery (18% GST)', hsn: SHIPPING_SAC, quantity: 1, rate: shipping, amount: shipping, taxable: tax.shipping.taxable });
+  }
 
   return {
     number: invoiceNumber(order),
@@ -270,9 +268,13 @@ export function renderInvoicePdf(order, { includeBuyerDetails = true } = {}) {
     const summaryX = right - 220;
     const summary = [
       ['Taxable Value', money(data.tax.taxable)],
+      // Goods at 5%, shipping at 18% (shipping rows only when shipping was charged)
       ...(data.isHomeState
-        ? [['CGST @ 2.5%', money(data.tax.cgst)], ['SGST @ 2.5%', money(data.tax.sgst)]]
-        : [['IGST @ 5%', money(data.tax.igst)]]),
+        ? [['CGST @ 2.5% (goods)', money(data.tax.goods.cgst)], ['SGST @ 2.5% (goods)', money(data.tax.goods.sgst)]]
+        : [['IGST @ 5% (goods)', money(data.tax.goods.igst)]]),
+      ...(data.tax.shipping.tax === 0 ? [] : data.isHomeState
+        ? [['CGST @ 9% (shipping)', money(data.tax.shipping.cgst)], ['SGST @ 9% (shipping)', money(data.tax.shipping.sgst)]]
+        : [['IGST @ 18% (shipping)', money(data.tax.shipping.igst)]]),
       ['Total GST', money(data.tax.tax)]
     ];
     let sy = y;

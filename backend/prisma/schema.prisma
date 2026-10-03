@@ -79,8 +79,11 @@ model Order {
   stripeSessionId   String?        @unique
   razorpayOrderId   String?        @unique
   razorpayPaymentId String?        @unique
-  // India Post article number (e.g. EM123456789IN), entered by an admin when the parcel is booked
+  // Courier tracking number (India Post article no. like EM123456789IN, Delhivery / DTDC AWB),
+  // entered by an admin when the parcel is booked
   trackingNumber  String?
+  // Which courier: "india-post" | "delhivery" | "dtdc" (see utils/carriers.js); null = India Post
+  shippingCarrier String?
   // Random secret emailed to the customer; lets them track the order without guessing IDs.
   trackingToken   String?        @unique
   items           OrderItem[]

@@ -46,9 +46,12 @@ export async function buildExcel(report, title) {
     { header: 'Orders', key: 'orders', width: 9 },
     { header: 'Sales (incl. GST)', key: 'sales', width: 18, style: { numFmt: RUPEES } },
     { header: 'Taxable value', key: 'taxable', width: 16, style: { numFmt: RUPEES } },
-    { header: 'CGST 2.5%', key: 'cgst', width: 13, style: { numFmt: RUPEES } },
-    { header: 'SGST 2.5%', key: 'sgst', width: 13, style: { numFmt: RUPEES } },
-    { header: 'IGST 5%', key: 'igst', width: 13, style: { numFmt: RUPEES } },
+    { header: 'CGST 2.5% (goods)', key: 'goodsCgst', width: 17, style: { numFmt: RUPEES } },
+    { header: 'SGST 2.5% (goods)', key: 'goodsSgst', width: 17, style: { numFmt: RUPEES } },
+    { header: 'IGST 5% (goods)', key: 'goodsIgst', width: 16, style: { numFmt: RUPEES } },
+    { header: 'CGST 9% (shipping)', key: 'shippingCgst', width: 18, style: { numFmt: RUPEES } },
+    { header: 'SGST 9% (shipping)', key: 'shippingSgst', width: 18, style: { numFmt: RUPEES } },
+    { header: 'IGST 18% (shipping)', key: 'shippingIgst', width: 19, style: { numFmt: RUPEES } },
     { header: 'Total GST', key: 'tax', width: 14, style: { numFmt: RUPEES } }
   ];
   for (const row of report.states) details.addRow(row);
@@ -74,13 +77,14 @@ router.get('/report', verifyToken, async (req, res) => {
     const { start, end } = istMonthRange(year, month);
     const orders = await prisma.order.findMany({
       where: { createdAt: { gte: start, lt: end } },
-      select: { id: true, totalAmount: true, status: true, address: true }
+      // Items are needed to tell the shipping charge (18% GST) apart from the goods (5%)
+      select: { id: true, totalAmount: true, status: true, address: true, items: { select: { price: true, quantity: true } } }
     });
     const report = buildTaxReport(orders);
     const period = `${MONTH_NAMES[month - 1]} ${year}`;
 
     if (req.query.format === 'xlsx') {
-      const buffer = await buildExcel(report, `GST report for ${period} (prices include 5% GST; Kerala: CGST + SGST, other states: IGST)`);
+      const buffer = await buildExcel(report, `GST report for ${period} (prices include GST: 5% on goods, 18% on shipping; Kerala: CGST + SGST, other states: IGST)`);
       res.set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.set('Content-Disposition', `attachment; filename="${MONTH_NAMES[month - 1]} ${year} Tax.xlsx"`);
       return res.send(Buffer.from(buffer));

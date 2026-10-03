@@ -16,8 +16,8 @@ function previousMonth() {
     : { year: now.getFullYear(), month: now.getMonth() };
 }
 
-// Monthly GST per state: Kerala 2.5% CGST + 2.5% SGST, other states and UTs 5% IGST.
-// Prices include GST, so the tax is the amount paid x 5/105 (worked out on the server).
+// Monthly GST per state (worked out on the server). Prices include GST: 5% on goods, 18% on
+// shipping. Kerala: CGST + SGST; other states and UTs: IGST.
 export default function TaxReport({ apiUrl }) {
   const [period, setPeriod] = useState(previousMonth);
   const [report, setReport] = useState(null);
@@ -211,7 +211,8 @@ export default function TaxReport({ apiUrl }) {
           </div>
 
           <p className="text-[11px] text-gray-400 font-medium">
-            Prices include 5% GST, so tax = amount paid (including shipping) × 5/105. Kerala orders: 2.5% CGST + 2.5% SGST; other states and union territories: 5% IGST.
+            Prices include GST: 5% on goods (tax = goods amount × 5/105) and 18% on the shipping charge (tax = shipping × 18/118).
+            Kerala orders: 2.5% CGST + 2.5% SGST on goods, 9% CGST + 9% SGST on shipping; other states and union territories: 5% IGST on goods, 18% IGST on shipping.
             Orders are counted in the month they were placed (Indian time).
             {report.excludedOrders > 0 && ` ${report.excludedOrders} cancelled / refunded / failed / pending order(s) are not counted.`}
           </p>

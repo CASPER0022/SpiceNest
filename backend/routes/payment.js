@@ -6,6 +6,8 @@ import pkg from '@prisma/client';
 import prisma from '../db.js';
 import { sendOrderConfirmation, sendCustomAdminMessage, sendShippingUpdate } from '../utils/emailService.js';
 import { plainPersonName } from '../utils/personName.js';
+import { CARRIERS, DEFAULT_CARRIER, carrierFor, trackingInfo } from '../utils/carriers.js';
+import { normalizeIndianMobile } from '../utils/phone.js';
 import { renderInvoicePdf, invoiceFileName } from '../utils/invoice.js';
 import { renderShippingLabelPdf, labelFileName } from '../utils/shippingLabel.js';
 import { verifyToken, optionalAuth, getRequestUser } from './auth.js';
@@ -84,6 +86,11 @@ function sanitizeAddress(raw, clientIp) {
   }
   if (!EMAIL_REGEX.test(clean.email)) {
     throw new CheckoutError('Please enter a valid email address.');
+  }
+  // Couriers need a reachable Indian mobile number: stored as exactly 10 digits
+  clean.mobileNumber = normalizeIndianMobile(clean.mobileNumber);
+  if (!clean.mobileNumber) {
+    throw new CheckoutError('Please enter a valid 10-digit mobile number.');
   }
 
   clean.email = clean.email.toLowerCase();
@@ -1126,8 +1133,9 @@ router.get('/admin/orders/:id/invoice', verifyToken, async (req, res) => {
 });
 
 // ==========================================
-// SAVE INDIA POST TRACKING NUMBER (ADMIN ONLY)
-// Body: { trackingNumber, markShipped = true, notifyCustomer = true }. An empty number clears it.
+// SAVE COURIER TRACKING NUMBER (ADMIN ONLY)
+// Body: { trackingNumber, carrier = 'india-post' | 'delhivery' | 'dtdc', markShipped = true,
+// notifyCustomer = true }. An empty number clears it.
 // With markShipped, a PAID / Processing order becomes "Shipped". With notifyCustomer, the customer
 // is emailed the tracking number (same recipient and name rules as the order confirmation).
 // ==========================================
@@ -1153,6 +1161,10 @@ router.put('/admin/orders/:id/tracking', verifyToken, async (req, res) => {
     if (trackingNumber && !TRACKING_NUMBER_REGEX.test(trackingNumber)) {
       return res.status(400).json({ error: 'Tracking number should be 6-30 letters or digits, e.g. EM123456789IN.' });
     }
+    const carrierId = req.body.carrier || DEFAULT_CARRIER;
+    if (!CARRIERS[carrierId]) {
+      return res.status(400).json({ error: 'Choose India Post, Delhivery or DTDC.' });
+    }
     const markShipped = req.body.markShipped !== false;
     const notifyCustomer = req.body.notifyCustomer !== false;
 
@@ -1161,7 +1173,7 @@ router.put('/admin/orders/:id/tracking', verifyToken, async (req, res) => {
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    const data = { trackingNumber: trackingNumber || null };
+    const data = { trackingNumber: trackingNumber || null, shippingCarrier: trackingNumber ? carrierId : null };
     if (trackingNumber && markShipped && ['PAID', 'Processing'].includes(existing.status)) {
       data.status = 'Shipped';
     }
@@ -1175,11 +1187,17 @@ router.put('/admin/orders/:id/tracking', verifyToken, async (req, res) => {
         // Guests' typed names are only used when they are a plain personal name
         const name = order.userId ? (address.fullName || '') : plainPersonName(address.fullName);
         const trackingUrl = order.trackingToken ? `${FRONTEND_URL}/track-order?id=${order.id}&token=${order.trackingToken}` : '';
-        emailed = await sendShippingUpdate(recipient, name, order, trackingNumber, trackingUrl);
+        const carrier = carrierFor(carrierId);
+        emailed = await sendShippingUpdate(recipient, name, order, trackingNumber, trackingUrl, {
+          name: carrier.name,
+          numberLabel: carrier.numberLabel,
+          url: carrier.trackingUrl(trackingNumber),
+          help: carrier.help
+        });
       }
     }
 
-    res.json({ success: true, order: { id: order.id, status: order.status, trackingNumber: order.trackingNumber }, emailed });
+    res.json({ success: true, order: { id: order.id, status: order.status, trackingNumber: order.trackingNumber, shippingCarrier: order.shippingCarrier }, emailed });
   } catch (error) {
     console.error('Save tracking number error:', error);
     res.status(500).json({ error: 'Failed to save tracking number' });
@@ -1294,9 +1312,10 @@ function toTrackingView(order, address, fullAccess) {
     createdAt: order.createdAt,
     updatedAt: order.updatedAt,
     limited: !fullAccess,
-    // India Post article number: shown with order ID + email too (it reveals parcel movement only,
-    // not the street address)
+    // Courier tracking number and courier: shown with order ID + email too (they reveal parcel
+    // movement only, not the street address)
     trackingNumber: order.trackingNumber || null,
+    carrier: trackingInfo(order),
     items: order.items.map((item) => ({
       id: item.id,
       productName: item.productName || item.product?.name || 'Product',

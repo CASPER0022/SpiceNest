@@ -13,6 +13,23 @@ const SUPPORT_EMAIL = 'info.idukkiorigins@gmail.com';
 const escapeHtml = (value) =>
   String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+// Product photos are stored as site paths ("/images/pepper/pepper-1.jpg"); emails need full URLs
+const SITE_URL = (process.env.FRONTEND_URL || 'https://www.idukkiorigins.com').replace(/\/+$/, '');
+const absoluteImageUrl = (path) => {
+  if (!path) return '';
+  if (/^https?:\/\//i.test(path)) return path;
+  return encodeURI(`${SITE_URL}/${String(path).replace(/^\/+/, '')}`);
+};
+
+// 48px product photo for email item lists, or a leaf badge when the product has none
+const itemImageHtml = (item) => {
+  const url = absoluteImageUrl(item.productImage || item.product?.images?.[0]);
+  if (!url) {
+    return '<div style="width: 48px; height: 48px; border-radius: 8px; background: #ecfdf5; text-align: center; line-height: 48px; font-size: 22px;">🌿</div>';
+  }
+  return `<img src="${escapeHtml(url)}" width="48" height="48" alt="" style="display: block; width: 48px; height: 48px; object-fit: cover; border-radius: 8px; border: 1px solid #eee;">`;
+};
+
 // Escaped address field, or '' when missing (so it never renders as "undefined")
 const addr = (address, field) => escapeHtml(address && address[field] ? address[field] : '');
 
@@ -49,7 +66,15 @@ export async function sendOrderConfirmation(to, order, trackingUrl, { includeBuy
 
     const itemsHtml = order.items.map(item => `
       <tr>
-        <td style="padding: 10px; border-bottom: 1px solid #eee;">${escapeHtml(item.productName || item.product?.name || 'Product')} (${escapeHtml(item.weight)})</td>
+        <td style="padding: 10px; border-bottom: 1px solid #eee;">
+          <table role="presentation" style="border-collapse: collapse;"><tr>
+            <td style="padding: 0 12px 0 0; vertical-align: middle;">${itemImageHtml(item)}</td>
+            <td style="padding: 0; vertical-align: middle;">
+              <strong>${escapeHtml(item.productName || item.product?.name || 'Product')}</strong><br>
+              <span style="display: inline-block; margin-top: 3px; font-size: 12px; font-weight: bold; color: #047857; background: #ecfdf5; padding: 1px 6px; border-radius: 4px;">${escapeHtml(item.weight)}</span>
+            </td>
+          </tr></table>
+        </td>
         <td style="padding: 10px; border-bottom: 1px solid #eee;">${escapeHtml(item.quantity)}</td>
         <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">₹${item.price.toFixed(2)}</td>
       </tr>
@@ -353,14 +378,15 @@ export async function sendCustomAdminMessage(to, name, order, messageContent) {
 
 
 /**
- * Tells the customer their parcel has been booked with India Post, with the article number.
+ * Tells the customer their parcel has been booked with the courier, with the tracking number.
  * @param {string} to - recipient (verified account email, or the guest's checkout email)
  * @param {string} name - greeting name ('' for the generic greeting)
  * @param {object} order - Order with items
- * @param {string} trackingNumber - India Post article number, e.g. EM123456789IN
+ * @param {string} trackingNumber - courier tracking number, e.g. EM123456789IN
  * @param {string} [trackingUrl] - secret order tracking link on our site
+ * @param {{ name: string, url: string, help: string, numberLabel: string }} carrier - see utils/carriers.js
  */
-export async function sendShippingUpdate(to, name, order, trackingNumber, trackingUrl) {
+export async function sendShippingUpdate(to, name, order, trackingNumber, trackingUrl, carrier) {
   try {
     if (!process.env.BREVO_API_KEY) {
       console.error('❌ BREVO_API_KEY is missing');
@@ -382,13 +408,13 @@ export async function sendShippingUpdate(to, name, order, trackingNumber, tracki
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
           <h1 style="color: #059669; text-align: center;">Your order is on its way! 📦</h1>
           <p>Hi ${safeName},</p>
-          <p>Good news! Your order <strong>#${order.id}</strong> has been packed and handed over to <strong>India Post</strong>.</p>
+          <p>Good news! Your order <strong>#${order.id}</strong> has been packed and handed over to <strong>${escapeHtml(carrier.name)}</strong>.</p>
 
           <div style="background: #ecfdf5; border: 1px solid #a7f3d0; padding: 20px; border-radius: 10px; margin: 25px 0; text-align: center;">
-            <p style="margin: 0; font-size: 12px; color: #047857; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">India Post Article / Tracking Number</p>
+            <p style="margin: 0; font-size: 12px; color: #047857; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">${escapeHtml(carrier.name)} ${escapeHtml(carrier.numberLabel)}</p>
             <p style="margin: 8px 0 14px 0; font-size: 24px; font-weight: bold; letter-spacing: 2px; color: #111827;">${safeNumber}</p>
-            <a href="https://www.indiapost.gov.in" style="background: #059669; color: #fff; text-decoration: none; padding: 10px 22px; border-radius: 8px; font-weight: bold; display: inline-block;">Track on India Post</a>
-            <p style="margin: 12px 0 0 0; font-size: 12px; color: #6b7280;">On the India Post website, open "Track Consignment" and enter the number above. Tracking usually starts within 24 hours of booking.</p>
+            <a href="${escapeHtml(carrier.url)}" style="background: #059669; color: #fff; text-decoration: none; padding: 10px 22px; border-radius: 8px; font-weight: bold; display: inline-block;">Track on ${escapeHtml(carrier.name)}</a>
+            <p style="margin: 12px 0 0 0; font-size: 12px; color: #6b7280;">${escapeHtml(carrier.help)} Tracking usually starts within 24 hours of booking.</p>
           </div>
 
           <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
