@@ -29,7 +29,7 @@ export default function PrivacyPolicy() {
           </p>
           <p className="font-semibold text-gray-800">How do I withdraw my consent?</p>
           <p>
-            If after you opt-in, you change your mind, you may withdraw your consent for us to contact you, for the continued collection, use or disclosure of your information, at anytime, by contacting us at <strong>+91 8921663449, +91 9645425742</strong> or mailing us at: <strong>heyitsmealbinjohn@gmail.com</strong>
+            If after you opt-in, you change your mind, you may withdraw your consent for us to contact you, for the continued collection, use or disclosure of your information, at anytime, by contacting us at <strong>+91 8921663449, +91 9645425742</strong> or mailing us at: <strong>info.idukkiorigins@gmail.com</strong>
           </p>
         </section>
 
@@ -113,7 +113,7 @@ export default function PrivacyPolicy() {
         <section className="space-y-4 border-t pt-8 border-gray-150">
           <h2 className="text-xl font-bold text-emerald-800">QUESTIONS AND CONTACT INFORMATION</h2>
           <p>
-            If you would like to: access, correct, amend or delete any personal information we have about you, register a complaint, or simply want more information, contact our Privacy Compliance Officer at <strong>heyitsmealbinjohn@gmail.com</strong> or by mail at:
+            If you would like to: access, correct, amend or delete any personal information we have about you, register a complaint, or simply want more information, contact our Privacy Compliance Officer at <strong>info.idukkiorigins@gmail.com</strong> or by mail at:
           </p>
           <div className="bg-gray-50 border border-gray-100 p-6 rounded-2xl text-sm font-semibold text-gray-700 space-y-1">
             <p className="font-extrabold text-gray-900">Privacy Compliance Officer</p>

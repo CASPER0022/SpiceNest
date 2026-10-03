@@ -93,7 +93,7 @@ export default function Footer() {
               </div>
               <div className="flex items-center text-sm text-gray-400">
                 <Mail size={18} className="mr-3 text-emerald-500 shrink-0" />
-                <span>heyitsmealbinjohn@gmail.com</span>
+                <span>info.idukkiorigins@gmail.com</span>
               </div>
               <div className="flex items-center text-sm text-gray-400">
                 <Clock size={18} className="mr-3 text-emerald-500 shrink-0" />

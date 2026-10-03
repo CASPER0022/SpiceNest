@@ -23,7 +23,7 @@ export default function RefundPolicy() {
             Next, contact your bank or credit card company. There is often some processing time before a refund is officially posted.
           </p>
           <p>
-            If you’ve done all of this and you still have not received your refund yet, please contact us at <strong>heyitsmealbinjohn@gmail.com</strong> or WhatsApp us.
+            If you’ve done all of this and you still have not received your refund yet, please contact us at <strong>info.idukkiorigins@gmail.com</strong> or WhatsApp us.
           </p>
         </section>
       </div>

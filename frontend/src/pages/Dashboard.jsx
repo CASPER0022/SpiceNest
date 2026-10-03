@@ -4,9 +4,49 @@ import { useAuth } from '../context/AuthContext';
 import { 
   Package, Calendar, CreditCard, ChevronDown, ChevronUp, MapPin, 
   TrendingUp, Layers, Users, ShoppingBag, Percent, ArrowRightLeft, DollarSign, Activity,
-  ArrowLeft, Mail, Clock, Globe, Search, Trash2
+  ArrowLeft, Mail, Clock, Globe, Search, Trash2, Download, Phone
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+// Order Registry filter for checkouts that were never paid (they are not orders)
+const ABANDONED_FILTER = 'Abandoned Checkout';
+
+const formatAbandonedAddress = (a = {}) =>
+  [a.houseNo, a.area, a.landmark, a.city, a.state, a.pincode].filter(Boolean).join(', ');
+
+// Downloads the abandoned checkouts as a CSV file (for follow-up / marketing)
+const exportAbandonedCsv = (checkouts) => {
+  const header = ['Abandoned on', 'Name', 'Phone', 'Email', 'Address', 'City', 'State', 'Pincode', 'Cart', 'Cart value (INR)', 'Coupon', 'Attempts', 'Registered customer'];
+  const rows = checkouts.map(c => [
+    new Date(c.createdAt).toLocaleString('en-IN'),
+    c.address.fullName,
+    c.address.mobileNumber,
+    c.address.email,
+    formatAbandonedAddress(c.address),
+    c.address.city,
+    c.address.state,
+    c.address.pincode,
+    c.items.map(i => `${i.name} ${i.weight} x${i.quantity}`).join('; '),
+    c.cartValue,
+    c.couponCode,
+    c.attempts,
+    c.registered ? 'Yes' : 'No'
+  ]);
+  const cell = (value) => {
+    const text = value === null || value === undefined ? '' : String(value);
+    return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  };
+  const csv = [header, ...rows].map(row => row.map(cell).join(',')).join('\r\n');
+  // The byte order mark makes Excel read the file as UTF-8 (₹, Malayalam names)
+  const url = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `abandoned-checkouts-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+};
 
 const parseAddress = (addressStr) => {
   try {
@@ -53,7 +93,9 @@ export default function Dashboard() {
   const [adminMessage, setAdminMessage] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All'); // Order Registry: 'All' or one order status
+  const [statusFilter, setStatusFilter] = useState('All'); // Order Registry: 'All', one order status, or ABANDONED_FILTER
+  // Customers who filled in their details and opened the payment window but never paid
+  const [abandonedCheckouts, setAbandonedCheckouts] = useState([]);
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [editAddressForm, setEditAddressForm] = useState(null);
   const [updatingAddress, setUpdatingAddress] = useState(false);
@@ -259,6 +301,14 @@ export default function Dashboard() {
           setProducts(prodData);
         }
 
+        // Checkouts that were never paid (shown under "Abandoned Checkout" in the Order Registry)
+        const abandonedRes = await fetch(`${API_URL}/api/payment/admin/abandoned-checkouts`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (abandonedRes.ok) {
+          setAbandonedCheckouts(await abandonedRes.json());
+        }
+
         // Fetch farmers list for dropdown
         const farmRes = await fetch(`${API_URL}/api/farmers`);
         if (farmRes.ok) {
@@ -356,6 +406,13 @@ export default function Dashboard() {
     counts[order.status] = (counts[order.status] || 0) + 1;
     return counts;
   }, {});
+  const isAbandonedView = statusFilter === ABANDONED_FILTER;
+  const filteredAbandonedCheckouts = abandonedCheckouts.filter(checkout => {
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return true;
+    const a = checkout.address || {};
+    return [a.fullName, a.email, a.mobileNumber, a.city].some(value => value?.toLowerCase().includes(query));
+  });
   const filteredRegistryOrders = statusFilter === 'All'
     ? searchedRegistryOrders
     : searchedRegistryOrders.filter(order => order.status === statusFilter);
@@ -2344,9 +2401,127 @@ export default function Dashboard() {
                   </button>
                 );
               })}
+            <span className="hidden sm:block w-px h-6 bg-gray-200 mx-1" aria-hidden="true" />
+            <button
+              onClick={() => setStatusFilter(ABANDONED_FILTER)}
+              aria-pressed={isAbandonedView}
+              title="Customers who entered their details and opened the payment window but did not pay"
+              className={`inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-wider px-3.5 py-2 rounded-full border transition-all ${
+                isAbandonedView
+                  ? 'bg-gray-900 text-white border-gray-900 shadow-sm'
+                  : 'bg-orange-50 text-orange-700 border-orange-200 hover:shadow-sm'
+              }`}
+            >
+              {ABANDONED_FILTER}
+              <span className={`px-1.5 py-0.5 rounded-full text-[9px] ${isAbandonedView ? 'bg-white/20' : 'bg-white/70'}`}>{filteredAbandonedCheckouts.length}</span>
+            </button>
           </div>
 
-          <div className="bg-white rounded-3xl border border-gray-150/70 shadow-sm overflow-hidden">
+          {/* Abandoned checkouts are not orders, so they get their own table */}
+          {isAbandonedView && (
+            <div className="bg-white rounded-3xl border border-gray-150/70 shadow-sm overflow-hidden">
+              <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-gray-50">
+                <p className="text-xs text-gray-500 font-medium max-w-xl">
+                  Customers who entered their details and opened the payment window but did not pay. Customers who bought later are left out, and repeat attempts are merged. Kept for 90 days.
+                </p>
+                <button
+                  onClick={() => exportAbandonedCsv(filteredAbandonedCheckouts)}
+                  disabled={filteredAbandonedCheckouts.length === 0}
+                  className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-wider bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl transition-all disabled:opacity-40"
+                >
+                  <Download size={14} /> Export CSV
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-100">
+                  <thead className="bg-gray-50/50">
+                    <tr>
+                      <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Customer</th>
+                      <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Contact</th>
+                      <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Address</th>
+                      <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Cart</th>
+                      <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Cart Value</th>
+                      <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Stopped At Payment</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-50">
+                    {filteredAbandonedCheckouts.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-16 text-center text-sm font-bold text-gray-500">
+                          {searchQuery.trim() ? 'No abandoned checkouts match your search.' : 'No abandoned checkouts right now.'}
+                        </td>
+                      </tr>
+                    ) : filteredAbandonedCheckouts.map(checkout => {
+                      const a = checkout.address || {};
+                      const phoneDigits = String(a.mobileNumber || '').replace(/\D/g, '').slice(-10);
+                      return (
+                        <tr key={checkout.id} className="hover:bg-gray-50/50 transition-colors align-top">
+                          <td className="px-6 py-5">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center text-orange-700 text-xs font-black uppercase shadow-inner">
+                                {(a.fullName || '?')[0]}
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-sm font-bold text-gray-800">{a.fullName || 'Unknown'}</span>
+                                <span className="text-[10px] text-gray-400 font-semibold">
+                                  {checkout.registered ? 'Registered customer' : 'Guest'}
+                                  {checkout.attempts > 1 && ` · ${checkout.attempts} attempts`}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-5 text-xs">
+                            {a.mobileNumber && (
+                              <div className="flex items-center gap-2 font-bold text-gray-800">
+                                <Phone size={12} className="text-gray-400" />
+                                <a href={`tel:${a.mobileNumber}`} className="hover:text-emerald-600">{a.mobileNumber}</a>
+                                {phoneDigits.length === 10 && (
+                                  <a
+                                    href={`https://wa.me/91${phoneDigits}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[9px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full hover:bg-emerald-100"
+                                  >
+                                    WhatsApp
+                                  </a>
+                                )}
+                              </div>
+                            )}
+                            {a.email && (
+                              <div className="flex items-center gap-2 text-gray-500 mt-1">
+                                <Mail size={12} className="text-gray-400" />
+                                <a href={`mailto:${a.email}`} className="hover:text-emerald-600 break-all">{a.email}</a>
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-6 py-5 text-xs text-gray-600 max-w-xs">{formatAbandonedAddress(a) || '-'}</td>
+                          <td className="px-6 py-5 text-xs text-gray-700">
+                            {checkout.items.map(item => (
+                              <div key={`${item.productId}-${item.weight}`}>
+                                {item.name} <span className="text-gray-400">{item.weight} × {item.quantity}</span>
+                              </div>
+                            ))}
+                            {checkout.couponCode && (
+                              <span className="inline-block mt-1 text-[9px] font-black uppercase tracking-wider text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full">{checkout.couponCode}</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-5 whitespace-nowrap text-sm font-extrabold text-orange-600">₹{checkout.cartValue.toFixed(2)}</td>
+                          <td className="px-6 py-5 whitespace-nowrap text-sm font-medium text-gray-600">
+                            {new Date(checkout.createdAt).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })}
+                            <span className="block text-[10px] text-gray-400">
+                              {new Date(checkout.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          <div className={`bg-white rounded-3xl border border-gray-150/70 shadow-sm overflow-hidden ${isAbandonedView ? 'hidden' : ''}`}>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-100">
                 <thead className="bg-gray-50/50">

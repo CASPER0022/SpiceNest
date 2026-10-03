@@ -3,6 +3,11 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+// Emails are sent from SENDER_EMAIL, which must be a verified sender in Brevo (Senders & IP),
+// otherwise Brevo rejects every email. Customer replies go to SUPPORT_EMAIL.
+const SENDER_EMAIL = process.env.BREVO_SENDER_EMAIL || 'heyitsmealbinjohn@gmail.com';
+const SUPPORT_EMAIL = 'info.idukkiorigins@gmail.com';
+
 // Every user- or admin-supplied value interpolated into email HTML MUST go through this.
 const escapeHtml = (value) =>
   String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -102,9 +107,9 @@ ${includeBuyerDetails ? `
     const response = await client.transactionalEmails.sendTransacEmail({
       subject: `Order Confirmed! Order ID: #${order.id}`,
       htmlContent: htmlContent,
-      sender: { name: "Idukki Origins", email: "heyitsmealbinjohn@gmail.com" },
+      sender: { name: "Idukki Origins", email: SENDER_EMAIL },
       to: [{ email: to, name: includeBuyerDetails && address.fullName ? address.fullName : "Valued Customer" }],
-      replyTo: { email: "heyitsmealbinjohn@gmail.com", name: "Idukki Origins Support" }
+      replyTo: { email: SUPPORT_EMAIL, name: "Idukki Origins Support" }
     });
 
     console.log('✅ Email sent via Brevo:', response.data?.messageId || response.messageId || 'Success');
@@ -164,9 +169,9 @@ export async function sendVerificationEmail(to, name, verifyUrl) {
     const response = await client.transactionalEmails.sendTransacEmail({
       subject: "Verify your Idukki Origins account 🌿",
       htmlContent: htmlContent,
-      sender: { name: "Idukki Origins", email: "heyitsmealbinjohn@gmail.com" },
+      sender: { name: "Idukki Origins", email: SENDER_EMAIL },
       to: [{ email: to, name: name || "Valued Customer" }],
-      replyTo: { email: "heyitsmealbinjohn@gmail.com", name: "Idukki Origins Support" }
+      replyTo: { email: SUPPORT_EMAIL, name: "Idukki Origins Support" }
     });
 
     console.log('✅ Verification email sent via Brevo:', response.data?.messageId || response.messageId || 'Success');
@@ -226,9 +231,9 @@ export async function sendPasswordResetEmail(to, name, resetUrl) {
     const response = await client.transactionalEmails.sendTransacEmail({
       subject: "Reset Your Idukki Origins Password 🌿",
       htmlContent: htmlContent,
-      sender: { name: "Idukki Origins", email: "heyitsmealbinjohn@gmail.com" },
+      sender: { name: "Idukki Origins", email: SENDER_EMAIL },
       to: [{ email: to, name: name || "Valued Customer" }],
-      replyTo: { email: "heyitsmealbinjohn@gmail.com", name: "Idukki Origins Support" }
+      replyTo: { email: SUPPORT_EMAIL, name: "Idukki Origins Support" }
     });
 
     console.log('✅ Reset email sent via Brevo:', response.data?.messageId || response.messageId || 'Success');
@@ -326,9 +331,9 @@ export async function sendCustomAdminMessage(to, name, order, messageContent) {
     const response = await client.transactionalEmails.sendTransacEmail({
       subject: `Update on your Idukki Origins Order #${order.id} 🌿`,
       htmlContent: htmlContent,
-      sender: { name: "Idukki Origins Admin", email: "heyitsmealbinjohn@gmail.com" },
+      sender: { name: "Idukki Origins Admin", email: SENDER_EMAIL },
       to: [{ email: to, name: name || "Valued Customer" }],
-      replyTo: { email: "heyitsmealbinjohn@gmail.com", name: "Idukki Origins Support" }
+      replyTo: { email: SUPPORT_EMAIL, name: "Idukki Origins Support" }
     });
 
     console.log('✅ Custom message email sent via Brevo:', response.data?.messageId || response.messageId || 'Success');

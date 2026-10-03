@@ -250,7 +250,7 @@ export default function TermsConditions() {
         <section className="space-y-3 border-t pt-8 border-gray-150">
           <h2 className="text-xl font-bold text-emerald-800">SECTION 20 – CONTACT INFORMATION</h2>
           <p>
-            Questions about the Terms of Service should be sent to us at <strong>heyitsmealbinjohn@gmail.com</strong>.
+            Questions about the Terms of Service should be sent to us at <strong>info.idukkiorigins@gmail.com</strong>.
           </p>
         </section>
 

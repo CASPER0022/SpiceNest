@@ -40,7 +40,7 @@ export default function CancellationReturn() {
         <section className="space-y-3">
           <h2 className="text-xl font-bold text-emerald-800">Exchanges</h2>
           <p>
-            If you need to exchange an item, send us an email at <strong>heyitsmealbinjohn@gmail.com</strong> or WhatsApp us.
+            If you need to exchange an item, send us an email at <strong>info.idukkiorigins@gmail.com</strong> or WhatsApp us.
           </p>
         </section>
       </div>
