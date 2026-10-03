@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { trackBeginCheckout } from '../utils/analytics';
+import { INDIAN_STATES, INDIAN_UNION_TERRITORIES, matchIndianState } from '../utils/indianStates';
 
 const loadRazorpayScript = () => {
   return new Promise((resolve) => {
@@ -31,6 +32,8 @@ function savedAddressState(user) {
   try {
     const parsed = JSON.parse(user.address);
     if (parsed && typeof parsed === 'object') {
+      // Saved before the State dropdown existed: match the typed name, or ask for it again
+      parsed.state = matchIndianState(parsed.state);
       const required = ['fullName', 'mobileNumber', 'email', 'pincode', 'houseNo', 'area', 'city', 'state'];
       const isComplete = required.every(field => parsed[field]?.trim());
       return { fields: parsed, editing: !isComplete };
@@ -457,13 +460,6 @@ export default function Cart() {
                     </div>
                     <input
                       type="text"
-                      placeholder="State (Required)"
-                      value={address.state}
-                      onChange={(e) => setAddress({...address, state: e.target.value})}
-                      className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
-                    />
-                    <input
-                      type="text"
                       placeholder="House No., Building Name (Required)"
                       value={address.houseNo}
                       onChange={(e) => setAddress({...address, houseNo: e.target.value})}
@@ -476,6 +472,31 @@ export default function Cart() {
                       onChange={(e) => setAddress({...address, area: e.target.value})}
                       className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
                     />
+                    <div className="grid grid-cols-2 gap-3">
+                      <select
+                        aria-label="State (Required)"
+                        value={address.state}
+                        onChange={(e) => setAddress({...address, state: e.target.value})}
+                        className={`w-full p-2.5 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-emerald-500 outline-none ${address.state ? 'text-gray-900' : 'text-gray-400'}`}
+                      >
+                        <option value="" disabled>State (Required)</option>
+                        <optgroup label="States">
+                          {INDIAN_STATES.map(state => <option key={state} value={state} className="text-gray-900">{state}</option>)}
+                        </optgroup>
+                        <optgroup label="Union Territories">
+                          {INDIAN_UNION_TERRITORIES.map(state => <option key={state} value={state} className="text-gray-900">{state}</option>)}
+                        </optgroup>
+                      </select>
+                      {/* We only ship within India */}
+                      <select
+                        aria-label="Country"
+                        value="India"
+                        onChange={() => {}}
+                        className="w-full p-2.5 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-emerald-500 outline-none"
+                      >
+                        <option value="India">India</option>
+                      </select>
+                    </div>
                     <input
                       type="text"
                       placeholder="Landmark (Optional)"

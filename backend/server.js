@@ -88,6 +88,7 @@ import cartRoutes from './routes/cart.js';
 import reviewsRoutes from './routes/reviews.js';
 import wishlistRoutes from './routes/wishlist.js';
 import feedRoutes from './routes/feed.js';
+import taxRoutes from './routes/tax.js';
 import { verifyToken, getRequestUser } from './routes/auth.js';
 import { MIN_PACK_KG, isInStock } from './utils/pricing.js';
 
@@ -192,6 +193,9 @@ app.use('/api/wishlist', wishlistRoutes);
 
 // Product feeds for Google Merchant Center and Facebook / Instagram shops
 app.use('/api/feed', feedRoutes);
+
+// Monthly GST report (admin dashboard)
+app.use('/api/tax', taxRoutes);
 
 // Loads the product list with ratings. Only review ratings are fetched (not full review rows).
 async function loadAllProducts() {
