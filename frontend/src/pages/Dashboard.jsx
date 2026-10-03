@@ -7,6 +7,7 @@ import {
   ArrowLeft, Mail, Clock, Globe, Search, Trash2, Download, Phone
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import TaxReport from '../components/TaxReport';
 
 // Order Registry filter for checkouts that were never paid (they are not orders)
 const ABANDONED_FILTER = 'Abandoned Checkout';
@@ -1980,6 +1981,16 @@ export default function Dashboard() {
           >
             Inventory
           </button>
+          <button 
+            onClick={() => setActiveTab('tax')}
+            className={`text-xs font-black uppercase tracking-wider px-5 py-2.5 rounded-full transition-all ${
+              activeTab === 'tax' 
+                ? 'bg-white text-emerald-700 shadow-md transform scale-105' 
+                : 'text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            Tax Report
+          </button>
         </div>
       </div>
 
@@ -2710,6 +2721,9 @@ export default function Dashboard() {
           )}
         </div>
         </div>
+      ) : activeTab === 'tax' ? (
+        /* Monthly GST report per state */
+        <TaxReport apiUrl={API_URL} />
       ) : (
         /* Product Management Tab */
         <div className="space-y-8 animate-fadeIn">

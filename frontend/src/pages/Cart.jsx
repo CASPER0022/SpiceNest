@@ -544,10 +544,16 @@ export default function Cart() {
             {/* Total Section */}
             {(() => {
               const discountedSubtotal = Math.max(0, cartTotal - (appliedCoupon ? appliedCoupon.discount : 0));
-              // Calculate exact 5% inclusive GST of the discounted subtotal, rounded to nearest integer
-              const gstAmount = Math.round(discountedSubtotal * 0.05);
               const shippingCharges = cartTotal < 500 ? 100 : 0;
               const finalTotal = Math.round(discountedSubtotal + shippingCharges);
+              // Prices include 5% GST, so the GST inside the total is total x 5/105 (same rule as the
+              // dashboard tax report). Kerala: CGST + SGST; other states and UTs: IGST.
+              const gstAmount = Math.round(finalTotal * 5 / 105 * 100) / 100;
+              const gstLabel = !address.state
+                ? 'Includes GST (5%)'
+                : address.state === 'Kerala'
+                  ? 'Includes GST (2.5% CGST + 2.5% SGST)'
+                  : 'Includes GST (5% IGST)';
 
               return (
                 <div className="space-y-3 mb-6">
@@ -566,8 +572,8 @@ export default function Cart() {
                     </div>
                   )}
                   <div className="flex justify-between text-gray-400 text-xs italic">
-                    <span>Includes GST (5%)</span>
-                    <span>₹{gstAmount}</span>
+                    <span>{gstLabel}</span>
+                    <span>₹{gstAmount.toFixed(2)}</span>
                   </div>
                   <div className="border-t pt-4 flex justify-between items-end">
                     <span className="text-lg font-bold text-gray-900">Total</span>
