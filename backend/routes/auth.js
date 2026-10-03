@@ -242,7 +242,7 @@ router.post('/login', async (req, res) => {
     const token = signSessionToken(user);
 
     // 5. Send token back to frontend
-    res.json({ token, user: { id: user.id, name: user.name, email: user.email, address: user.address, role: user.role } });
+    res.json({ token, user: { id: user.id, name: user.name, email: user.email, address: user.address, role: user.role, createdAt: user.createdAt } });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Login failed' });
@@ -325,7 +325,7 @@ router.get('/me', verifyToken, async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-    res.json({ id: user.id, name: user.name, email: user.email, address: user.address, role: user.role });
+    res.json({ id: user.id, name: user.name, email: user.email, address: user.address, role: user.role, createdAt: user.createdAt });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to verify session' });

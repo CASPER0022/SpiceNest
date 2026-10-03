@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { User, Mail, MapPin, LogOut, Package, Heart, Bell } from 'lucide-react';
+import { User, Mail, MapPin, LogOut, Package, Heart } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AddressForm from '../components/AddressForm';
 import { addressError } from '../utils/address';
@@ -113,7 +113,6 @@ export default function Profile() {
   const quickActions = [
     { icon: Package, label: 'My Orders', desc: 'Track & manage orders', color: 'text-blue-600', bg: 'bg-blue-50', path: '/orders' },
     { icon: Heart, label: 'Wishlist', desc: 'Items you loved', color: 'text-red-600', bg: 'bg-red-50', path: '/wishlist' },
-    { icon: Bell, label: 'Notifications', desc: 'Updates & offers', color: 'text-amber-600', bg: 'bg-amber-50' },
   ];
 
   return (
@@ -152,7 +151,7 @@ export default function Profile() {
           {/* Quick Actions Grid */}
           <div>
             <h3 className="text-sm font-black text-gray-400 uppercase tracking-[0.2em] mb-4 ml-1">Quick Access</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {quickActions.map((item, i) => (
                 <button key={i} onClick={() => item.path && navigate(item.path)} className="flex flex-col items-start p-6 bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-all hover:-translate-y-1 text-left group w-full">
                   <div className={`p-3 ${item.bg} ${item.color} rounded-2xl mb-4 group-hover:scale-110 transition-transform`}>
@@ -221,38 +220,19 @@ export default function Profile() {
                    </div>
                 </div>
 
-                <div className="bg-emerald-50/50 p-6 rounded-2xl border border-emerald-100/50">
-                   <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-2">Member Since</p>
-                   <p className="text-2xl font-black text-emerald-900">May 2024</p>
-                   <p className="text-xs text-emerald-600 mt-1 font-medium italic opacity-70">Idukki Origins Premium Member</p>
-                </div>
+                {/* The account's real sign-up month (sent by the server as createdAt) */}
+                {user.createdAt && (
+                  <div className="bg-emerald-50/50 p-6 rounded-2xl border border-emerald-100/50">
+                     <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-2">Member Since</p>
+                     <p className="text-2xl font-black text-emerald-900">
+                       {new Date(user.createdAt).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
+                     </p>
+                     <p className="text-xs text-emerald-600 mt-1 font-medium italic opacity-70">Thanks for choosing Idukki Origins</p>
+                  </div>
+                )}
               </div>
               )}
             </div>
-          </div>
-
-          {/* Marketing/Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-             <div className="p-8 bg-gray-900 rounded-3xl text-white relative overflow-hidden group">
-                <div className="relative z-10">
-                  <p className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] mb-2">Rewards</p>
-                  <p className="text-3xl font-black mb-1">450 <span className="text-sm font-medium opacity-60">Points</span></p>
-                  <p className="text-xs opacity-60 font-medium">Earn 50 more points for a ₹100 discount</p>
-                </div>
-                <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-125 transition-transform duration-700">
-                   <Package size={120} />
-                </div>
-             </div>
-             <div className="p-8 bg-emerald-600 rounded-3xl text-white relative overflow-hidden group">
-                <div className="relative z-10">
-                  <p className="text-[10px] font-black text-emerald-100 uppercase tracking-[0.2em] mb-2">Invite Friends</p>
-                  <p className="text-2xl font-black mb-2 leading-tight">Get ₹200 for every referral</p>
-                  <button className="text-[10px] font-black bg-white text-emerald-700 px-4 py-2 rounded-xl uppercase shadow-lg">Copy Code</button>
-                </div>
-                <div className="absolute -right-4 -bottom-4 opacity-20 group-hover:scale-125 transition-transform duration-700 rotate-12">
-                   <Heart size={120} />
-                </div>
-             </div>
           </div>
 
         </div>
