@@ -30,6 +30,16 @@ const itemImageHtml = (item) => {
   return `<img src="${escapeHtml(url)}" width="48" height="48" alt="" style="display: block; width: 48px; height: 48px; object-fit: cover; border-radius: 8px; border: 1px solid #eee;">`;
 };
 
+// Item cell used by every order email: photo (or leaf badge), product name and a weight tag
+const itemCellHtml = (item) => `
+          <table role="presentation" style="border-collapse: collapse;"><tr>
+            <td style="padding: 0 12px 0 0; vertical-align: middle;">${itemImageHtml(item)}</td>
+            <td style="padding: 0; vertical-align: middle;">
+              <strong>${escapeHtml(item.productName || item.product?.name || 'Product')}</strong><br>
+              <span style="display: inline-block; margin-top: 3px; font-size: 12px; font-weight: bold; color: #047857; background: #ecfdf5; padding: 1px 6px; border-radius: 4px;">${escapeHtml(item.weight)}</span>
+            </td>
+          </tr></table>`;
+
 // Escaped address field, or '' when missing (so it never renders as "undefined")
 const addr = (address, field) => escapeHtml(address && address[field] ? address[field] : '');
 
@@ -66,15 +76,7 @@ export async function sendOrderConfirmation(to, order, trackingUrl, { includeBuy
 
     const itemsHtml = order.items.map(item => `
       <tr>
-        <td style="padding: 10px; border-bottom: 1px solid #eee;">
-          <table role="presentation" style="border-collapse: collapse;"><tr>
-            <td style="padding: 0 12px 0 0; vertical-align: middle;">${itemImageHtml(item)}</td>
-            <td style="padding: 0; vertical-align: middle;">
-              <strong>${escapeHtml(item.productName || item.product?.name || 'Product')}</strong><br>
-              <span style="display: inline-block; margin-top: 3px; font-size: 12px; font-weight: bold; color: #047857; background: #ecfdf5; padding: 1px 6px; border-radius: 4px;">${escapeHtml(item.weight)}</span>
-            </td>
-          </tr></table>
-        </td>
+        <td style="padding: 10px; border-bottom: 1px solid #eee;">${itemCellHtml(item)}</td>
         <td style="padding: 10px; border-bottom: 1px solid #eee;">${escapeHtml(item.quantity)}</td>
         <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">₹${item.price.toFixed(2)}</td>
       </tr>
@@ -306,7 +308,7 @@ export async function sendCustomAdminMessage(to, name, order, messageContent) {
 
     const itemsHtml = order.items.map(item => `
       <tr>
-        <td style="padding: 10px; border-bottom: 1px solid #eee;">${escapeHtml(item.productName || (item.product && item.product.name) || 'Product')}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #eee;">${itemCellHtml(item)}</td>
         <td style="padding: 10px; border-bottom: 1px solid #eee;">${escapeHtml(item.quantity)}</td>
         <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">₹${item.price.toFixed(2)}</td>
       </tr>
@@ -399,7 +401,7 @@ export async function sendShippingUpdate(to, name, order, trackingNumber, tracki
 
     const itemsHtml = order.items.map(item => `
       <tr>
-        <td style="padding: 8px 10px; border-bottom: 1px solid #eee;">${escapeHtml(item.productName || item.product?.name || 'Product')} (${escapeHtml(item.weight)})</td>
+        <td style="padding: 8px 10px; border-bottom: 1px solid #eee;">${itemCellHtml(item)}</td>
         <td style="padding: 8px 10px; border-bottom: 1px solid #eee; text-align: right;">× ${escapeHtml(item.quantity)}</td>
       </tr>
     `).join('');
