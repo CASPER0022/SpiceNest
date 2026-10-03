@@ -308,7 +308,7 @@ export default function Dashboard() {
         throw new Error(data.error || 'Failed to create product');
       }
 
-      toast.success(`${data.product.name} added to Catalog successfully! 🌶️`);
+      toast.success(`${data.product.name} added to Catalog successfully! 🌿`);
       
       // Update local state by prepending the new product
       setProducts(prevProducts => [data.product, ...prevProducts]);

@@ -427,7 +427,7 @@ export default function Home() {
                   onClick={() => setMobileExpanded(!mobileExpanded)}
                   className="text-xs font-black uppercase tracking-wider bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-6 py-3 rounded-full transition-all active:scale-95 shadow-sm border border-emerald-100/50 cursor-pointer"
                 >
-                  {mobileExpanded ? 'View Less' : 'View More Spices 🌶️'}
+                  {mobileExpanded ? 'View Less' : 'View More Spices 🌿'}
                 </button>
               </div>
             )}
