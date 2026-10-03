@@ -8,7 +8,8 @@ import { sendOrderConfirmation, sendCustomAdminMessage, sendShippingUpdate } fro
 import { plainPersonName } from '../utils/personName.js';
 import { CARRIERS, DEFAULT_CARRIER, carrierFor, trackingInfo } from '../utils/carriers.js';
 import { normalizeIndianMobile } from '../utils/phone.js';
-import { renderInvoicePdf, renderInvoicesPdf, invoiceFileName } from '../utils/invoice.js';
+import { renderInvoicePdf, renderInvoicesPdf, invoiceFileName, invoiceData } from '../utils/invoice.js';
+import { orderAmounts } from '../utils/tax.js';
 import { renderShippingLabelPdf, renderShippingLabelsPdf, labelFileName } from '../utils/shippingLabel.js';
 import { verifyToken, optionalAuth, getRequestUser } from './auth.js';
 import { RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, STRIPE_SECRET_KEY, FRONTEND_URL, RAZORPAY_WEBHOOK_SECRET, STRIPE_WEBHOOK_SECRET } from '../config.js';
@@ -1289,6 +1290,48 @@ router.put('/admin/orders/:id/tracking', verifyToken, async (req, res) => {
   } catch (error) {
     console.error('Save tracking number error:', error);
     res.status(500).json({ error: 'Failed to save tracking number' });
+  }
+});
+
+// ==========================================
+// PRICE & TAX BREAKDOWN (ADMIN ONLY): the same figures as the invoice, for the order details page
+// ==========================================
+router.get('/admin/orders/:id/breakdown', verifyToken, async (req, res) => {
+  try {
+    if (!(await requireAdminUser(req, res))) return;
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: 'Invalid order ID' });
+    }
+    const order = await prisma.order.findUnique({ where: { id }, include: ORDER_INCLUDE });
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    const data = invoiceData(order);
+    const amounts = orderAmounts(order);
+    res.json({
+      invoiceNumber: data.number,
+      state: data.state,
+      stateCode: data.stateCode,
+      isHomeState: data.isHomeState,
+      lines: data.lines.map((line) => ({ ...line, gst: Math.round((line.amount - line.taxable) * 100) / 100 })),
+      amounts,
+      tax: data.tax,
+      shipping: {
+        charge: amounts.shipping,
+        carrier: trackingInfo(order),
+        trackingNumber: order.trackingNumber || null
+      },
+      payment: {
+        provider: order.razorpayPaymentId ? 'Razorpay' : order.stripeSessionId ? 'Stripe' : null,
+        paymentId: order.razorpayPaymentId || null,
+        orderReference: order.razorpayOrderId || order.stripeSessionId || null
+      }
+    });
+  } catch (error) {
+    console.error('Order breakdown error:', error);
+    res.status(500).json({ error: 'Failed to load the price breakdown' });
   }
 });
 

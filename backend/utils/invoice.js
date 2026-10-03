@@ -102,13 +102,14 @@ export function invoiceData(order) {
       hsn: hsnFor(name),
       quantity: item.quantity,
       rate: Number(item.price),
-      amount: round2(Number(item.price) * item.quantity)
+      amount: round2(Number(item.price) * item.quantity),
+      gstRate: 5
     };
   });
   // Shipping, coupon and rounding, derived the same way as the GST report (utils/tax.js)
   const { shipping, discount, roundOff } = orderAmounts(order);
-  if (discount) lines.push({ description: 'Discount (coupon)', hsn: '', quantity: null, rate: null, amount: -discount });
-  if (roundOff) lines.push({ description: 'Round off', hsn: '', quantity: null, rate: null, amount: roundOff });
+  if (discount) lines.push({ description: 'Discount (coupon)', hsn: '', quantity: null, rate: null, amount: -discount, gstRate: 5 });
+  if (roundOff) lines.push({ description: 'Round off', hsn: '', quantity: null, rate: null, amount: roundOff, gstRate: 5 });
 
   // Goods lines (5% GST): taxable value per line, adjusted so they add up exactly to the goods'
   // taxable value. Shipping (18% GST) is its own line.
@@ -121,7 +122,7 @@ export function invoiceData(order) {
     allocated = round2(allocated + line.taxable);
   });
   if (shipping) {
-    lines.push({ description: 'Shipping & delivery (18% GST)', hsn: SHIPPING_SAC, quantity: 1, rate: shipping, amount: shipping, taxable: tax.shipping.taxable });
+    lines.push({ description: 'Shipping & delivery (18% GST)', hsn: SHIPPING_SAC, quantity: 1, rate: shipping, amount: shipping, taxable: tax.shipping.taxable, gstRate: 18 });
   }
 
   return {
