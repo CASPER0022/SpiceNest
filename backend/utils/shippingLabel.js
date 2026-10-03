@@ -4,7 +4,7 @@
 //   - a clear box at the top for the Speed Post / Registered Parcel barcode sticker and postage,
 //     so the counter's sticker never covers the address
 //   - delivery address in the middle with the PIN code in 6 boxes (sorting is done by PIN)
-//   - sender block "If undelivered, return to" with its own PIN boxes
+//   - sender block "If undelivered, return to" (plain address, PIN included)
 //   - our order ID barcode kept small and labelled, away from India Post's sticker
 // ==========================================
 import PDFDocument from 'pdfkit';
@@ -22,9 +22,6 @@ function netWeight(items) {
   if (!grams) return '';
   return grams >= 1000 ? `${grams / 1000} kg` : `${grams} g`;
 }
-
-const SELLER_PIN = (SELLER.address.match(/\b(\d{6})\b/) || [])[1] || '';
-const SELLER_ADDRESS_WITHOUT_PIN = SELLER.address.replace(/\s*-?\s*\b\d{6}\b\s*$/, '');
 
 export function renderShippingLabelPdf(order) {
   return renderShippingLabelsPdf([order]);
@@ -81,8 +78,7 @@ function drawLabel(doc, order, barcode) {
   doc.save().dash(3, { space: 3 }).rect(left, 16, width, 62).lineWidth(0.8).stroke().restore();
   doc.font('regular').fontSize(7).fillColor('#555')
     .text('Space for India Post barcode sticker / postage', left, 18, { width, align: 'center' });
-  doc.font('bold').fontSize(9).fillColor('#000')
-    .text('SPEED POST  /  REGD. PARCEL', left, 64, { width, align: 'center' });
+  doc.fillColor('#000');
 
   // ---- TO
   let y = 88;
@@ -103,7 +99,7 @@ function drawLabel(doc, order, barcode) {
   y = pinBoxes(to.pincode, left + 28, y, 28) + 8;
   line(y, 1.5);
 
-  // ---- Contents, weight, payment
+  // ---- Contents and weight
   y += 6;
   const items = (order.items || [])
     .map((item) => `${item.productName || item.product?.name || 'Item'} ${item.weight} x${item.quantity}`)
@@ -112,9 +108,8 @@ function drawLabel(doc, order, barcode) {
     .font('regular').text(`Spices – ${items || '-'}`, { width, height: 22, ellipsis: true });
   y = Math.min(doc.y, y + 24) + 2;
   const weight = netWeight(order.items);
-  doc.font('bold').fontSize(8)
-    .text(`${weight ? `Net wt: ${weight}   ` : ''}PREPAID – NOT COD, do not collect cash`, left, y, { width });
-  y = doc.y + 5;
+  if (weight) doc.font('bold').fontSize(8).text(`Net wt: ${weight}`, left, y, { width });
+  y = (weight ? doc.y : y) + 5;
   line(y);
 
   // ---- FROM (return address) with our order reference
@@ -124,13 +119,8 @@ function drawLabel(doc, order, barcode) {
   y += 12;
   doc.font('bold').fontSize(10).text(SELLER.name, left, y, { width: fromWidth });
   doc.font('regular').fontSize(8)
-    .text(SELLER_ADDRESS_WITHOUT_PIN, left, doc.y, { width: fromWidth })
+    .text(SELLER.address, left, doc.y, { width: fromWidth })
     .text(`Mob: ${SELLER.phone}`, { width: fromWidth });
-  if (SELLER_PIN) {
-    const pinY = doc.y + 3;
-    doc.font('bold').fontSize(8).text('PIN', left, pinY + 4);
-    pinBoxes(SELLER_PIN, left + 20, pinY, 16);
-  }
 
   // Order reference (bottom right)
   const refX = right - 86;
