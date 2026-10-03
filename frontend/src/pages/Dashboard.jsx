@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import TaxReport from '../components/TaxReport';
+import OrderBreakdown from '../components/OrderBreakdown';
 import { normalizeIndianMobile, PHONE_ERROR } from '../utils/phone';
 
 // Date periods shared by Sales Analytics and the Order Registry
@@ -1412,15 +1413,15 @@ export default function Dashboard() {
                   );
                 })}
               </div>
-
-              {/* Stripe reference info */}
-              <div className="border-t border-gray-100 mt-6 pt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="text-[10px] font-black text-emerald-800 bg-emerald-50 border border-emerald-100/50 p-3 rounded-xl uppercase tracking-widest w-full">
-                  System Verified Stripe Invoice:<br />
-                  <span className="text-[9px] text-gray-500 font-bold break-all lowercase font-mono mt-1 block">{selectedOrder.stripeSessionId}</span>
-                </div>
-              </div>
             </div>
+
+            {/* Prices, coupon, shipping, GST computation, courier and payment reference.
+                Keyed on tracking so it reloads after the tracking number changes. */}
+            <OrderBreakdown
+              key={`${selectedOrder.id}-${selectedOrder.trackingNumber || ''}-${selectedOrder.shippingCarrier || ''}`}
+              apiUrl={API_URL}
+              orderId={selectedOrder.id}
+            />
 
             {/* Recipient Shipping Details Card */}
             <div className="bg-white rounded-3xl border border-gray-150 p-6 md:p-8 shadow-sm">
