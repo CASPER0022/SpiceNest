@@ -3,6 +3,7 @@ import { ShoppingCart } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import ProductToastIcon from './ProductToastIcon';
 
 const WEIGHT_OPTIONS = [
   { label: '100g', multiplier: 1.0, kg: 0.1, discountPercent: 0 },
@@ -33,7 +34,7 @@ export default function ProductCard({ product }) {
     
     addToCart(product, selectedWeightLabel, finalPrice);
     toast.success(`${product.name} (${selectedWeightLabel}) added to cart!`, {
-      icon: '🌶️',
+      icon: <ProductToastIcon product={product} />,
       style: {
         borderRadius: '10px',
         background: '#333',

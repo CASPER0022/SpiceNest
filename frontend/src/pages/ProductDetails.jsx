@@ -6,6 +6,7 @@ import { useViewed } from '../context/ViewedContext';
 import { useAuth } from '../context/AuthContext';
 import { useWishlist } from '../context/WishlistContext';
 import toast from 'react-hot-toast';
+import ProductToastIcon from '../components/ProductToastIcon';
 import { trackViewItem } from '../utils/analytics';
 
 const WEIGHT_OPTIONS = [
@@ -184,7 +185,7 @@ export default function ProductDetails() {
     }
 
     toast.success(`${quantity}x ${product.name} (${selectedWeight.label}) added to cart!`, {
-      icon: '🛒',
+      icon: <ProductToastIcon product={product} />,
       style: {
         borderRadius: '10px',
         background: '#333',
