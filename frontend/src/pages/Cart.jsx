@@ -207,7 +207,9 @@ export default function Cart() {
         amount: data.amount,
         currency: data.currency,
         name: 'Idukki Origins',
-        description: 'Premium Farm-to-Table Spices',
+        // Shown in the Razorpay window and as the note in the customer's UPI app. UPI apps strip
+        // punctuation and cut long notes, so keep it to short plain words.
+        description: 'Thanks for choosing Idukki Origins',
         image: '/images/logo.jpg',
         order_id: data.orderId,
         // Stock is reserved for 30 minutes; close the payment window before the reservation ends

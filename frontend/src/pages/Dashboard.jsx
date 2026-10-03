@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { 
   Package, Calendar, CreditCard, ChevronDown, ChevronUp, MapPin, 
   TrendingUp, Layers, Users, ShoppingBag, Percent, ArrowRightLeft, DollarSign, Activity,
-  ArrowLeft, Mail, Clock, Globe, Search
+  ArrowLeft, Mail, Clock, Globe, Search, Trash2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -44,11 +44,16 @@ export default function Dashboard() {
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   const [selectedOrderId, setSelectedOrderId] = useState(null);
+  // Delete-order confirmation (used to clean up test orders)
+  const [orderToDelete, setOrderToDelete] = useState(null);
+  const [restoreStockOnDelete, setRestoreStockOnDelete] = useState(true);
+  const [deletingOrder, setDeletingOrder] = useState(false);
   const [selectedCustomerEmail, setSelectedCustomerEmail] = useState(null);
   const [selectedProductAnalyticsId, setSelectedProductAnalyticsId] = useState(null);
   const [adminMessage, setAdminMessage] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All'); // Order Registry: 'All' or one order status
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [editAddressForm, setEditAddressForm] = useState(null);
   const [updatingAddress, setUpdatingAddress] = useState(false);
@@ -158,6 +163,9 @@ export default function Dashboard() {
     Failed: 'bg-rose-50 text-rose-700 border-rose-150'
   };
 
+  // Same order as the status dropdown in the Order Registry
+  const orderStatuses = ['PAID', 'Processing', 'Shipped', 'Delivered', 'On Hold', 'Cancelled', 'Pending Payment', 'Refunded', 'Failed'];
+
   const handleStatusChange = async (orderId, newStatus) => {
     try {
       const token = localStorage.getItem('token');
@@ -182,6 +190,32 @@ export default function Dashboard() {
     } catch (err) {
       console.error(err);
       toast.error(err.message || 'Error updating order status');
+    }
+  };
+
+  const handleDeleteOrder = async () => {
+    if (!orderToDelete) return;
+    const orderId = orderToDelete.id;
+    setDeletingOrder(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/api/payment/admin/orders/${orderId}?restoreStock=${restoreStockOnDelete}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to delete order');
+      }
+
+      setOrders(prevOrders => prevOrders.filter(o => o.id !== orderId));
+      setOrderToDelete(null);
+      toast.success(`Order #${orderId} deleted${restoreStockOnDelete ? ' and items returned to stock' : ''}`);
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || 'Error deleting order');
+    } finally {
+      setDeletingOrder(false);
     }
   };
 
@@ -303,7 +337,7 @@ export default function Dashboard() {
     window.scrollTo(0, 0);
   }, [selectedOrderId, selectedCustomerEmail, selectedProductAnalyticsId, editingProductId]);
 
-  const filteredRegistryOrders = orders.filter(order => {
+  const searchedRegistryOrders = orders.filter(order => {
     if (!searchQuery.trim()) return true;
     
     const query = searchQuery.toLowerCase().trim();
@@ -316,6 +350,15 @@ export default function Dashboard() {
     
     return orderIdMatch || customerNameMatch || emailMatch || phoneMatch;
   });
+
+  // Number of (searched) orders per status, for the status filter buttons
+  const registryStatusCounts = searchedRegistryOrders.reduce((counts, order) => {
+    counts[order.status] = (counts[order.status] || 0) + 1;
+    return counts;
+  }, {});
+  const filteredRegistryOrders = statusFilter === 'All'
+    ? searchedRegistryOrders
+    : searchedRegistryOrders.filter(order => order.status === statusFilter);
 
   const toggleOrderExpand = (orderId) => {
     setExpandedOrders(prev => ({
@@ -2278,6 +2321,31 @@ export default function Dashboard() {
             )}
           </div>
 
+          {/* Status filter: show only the orders with one status */}
+          <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter orders by status">
+            {['All', ...orderStatuses]
+              .filter(status => status === 'All' || status === statusFilter || registryStatusCounts[status])
+              .map(status => {
+                const count = status === 'All' ? searchedRegistryOrders.length : (registryStatusCounts[status] || 0);
+                const isActive = statusFilter === status;
+                return (
+                  <button
+                    key={status}
+                    onClick={() => setStatusFilter(status)}
+                    aria-pressed={isActive}
+                    className={`inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-wider px-3.5 py-2 rounded-full border transition-all ${
+                      isActive
+                        ? 'bg-gray-900 text-white border-gray-900 shadow-sm'
+                        : `${statusStyles[status] || 'bg-white text-gray-600 border-gray-200'} hover:shadow-sm`
+                    }`}
+                  >
+                    {status}
+                    <span className={`px-1.5 py-0.5 rounded-full text-[9px] ${isActive ? 'bg-white/20' : 'bg-white/70'}`}>{count}</span>
+                  </button>
+                );
+              })}
+          </div>
+
           <div className="bg-white rounded-3xl border border-gray-150/70 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-100">
@@ -2302,7 +2370,11 @@ export default function Dashboard() {
                           </div>
                           <div className="space-y-1">
                             <p className="text-sm font-bold text-gray-800">No matching orders found</p>
-                            <p className="text-xs text-gray-400 font-medium">Your query did not match any customer names, order IDs, email addresses, or phone numbers.</p>
+                            <p className="text-xs text-gray-400 font-medium">
+                              {searchQuery.trim()
+                                ? 'Your query did not match any customer names, order IDs, email addresses, or phone numbers.'
+                                : `There are no orders with status "${statusFilter}" right now.`}
+                            </p>
                           </div>
                         </div>
                       </td>
@@ -2311,6 +2383,9 @@ export default function Dashboard() {
                     filteredRegistryOrders.map((order) => {
                       const address = parseAddress(order.address);
                       const displayOrderId = order.id;
+                      // Guest checkouts have no account; use the name and email from the shipping address
+                      const customerName = order.user?.name || address?.fullName || 'Guest';
+                      const customerEmail = order.user?.email || address?.email;
 
                   return (
                     <Fragment key={order.id}>
@@ -2327,11 +2402,11 @@ export default function Dashboard() {
                         >
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-700 text-xs font-black uppercase shadow-inner">
-                              {order.user?.name ? order.user.name[0] : 'U'}
+                              {customerName[0]}
                             </div>
                             <div className="flex flex-col">
-                              <span className="text-sm font-bold text-gray-800 hover:text-emerald-600 transition-colors">{order.user?.name || 'Valued User'}</span>
-                              <span className="text-[10px] text-gray-400 font-semibold">{order.user?.email}</span>
+                              <span className="text-sm font-bold text-gray-800 hover:text-emerald-600 transition-colors">{customerName}</span>
+                              <span className="text-[10px] text-gray-400 font-semibold">{customerEmail}</span>
                             </div>
                           </div>
                         </td>
@@ -2370,12 +2445,25 @@ export default function Dashboard() {
                           <span className="text-sm font-bold text-gray-400">-</span>
                         </td>
                         <td className="px-6 py-5 whitespace-nowrap text-right text-xs">
-                          <button 
-                            onClick={() => setSelectedOrderId(order.id)}
-                            className="inline-flex items-center font-black uppercase tracking-wider text-emerald-600 hover:text-emerald-700 bg-emerald-50/50 border border-emerald-100/50 px-3 py-1.5 rounded-lg transition-colors gap-1"
-                          >
-                            Details
-                          </button>
+                          <div className="inline-flex items-center gap-2">
+                            <button 
+                              onClick={() => setSelectedOrderId(order.id)}
+                              className="inline-flex items-center font-black uppercase tracking-wider text-emerald-600 hover:text-emerald-700 bg-emerald-50/50 border border-emerald-100/50 px-3 py-1.5 rounded-lg transition-colors gap-1"
+                            >
+                              Details
+                            </button>
+                            <button
+                              onClick={() => {
+                                setRestoreStockOnDelete(true);
+                                setOrderToDelete({ id: order.id, customerName, totalAmount: order.totalAmount });
+                              }}
+                              title={`Delete order #${order.id}`}
+                              aria-label={`Delete order #${order.id}`}
+                              className="inline-flex items-center text-red-500 hover:text-red-700 bg-red-50/50 hover:bg-red-50 border border-red-100/50 p-1.5 rounded-lg transition-colors"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     </Fragment>
@@ -2385,6 +2473,66 @@ export default function Dashboard() {
               </tbody>
             </table>
           </div>
+
+          {/* Delete order confirmation */}
+          {orderToDelete && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+              onClick={() => !deletingOrder && setOrderToDelete(null)}
+            >
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="delete-order-title"
+                className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 sm:p-8"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-600">
+                    <Trash2 size={18} />
+                  </div>
+                  <h3 id="delete-order-title" className="text-lg font-black text-gray-900">Delete order #{orderToDelete.id}?</h3>
+                </div>
+                <p className="text-sm text-gray-600 mb-1">
+                  {orderToDelete.customerName} · ₹{orderToDelete.totalAmount.toFixed(2)}
+                </p>
+                <p className="text-sm text-gray-600 mb-5">
+                  This permanently removes the order from the dashboard and analytics. It cannot be undone.
+                </p>
+                <label className="flex items-start gap-3 bg-gray-50 border border-gray-100 rounded-2xl p-4 mb-4 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={restoreStockOnDelete}
+                    onChange={(e) => setRestoreStockOnDelete(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 accent-emerald-600"
+                  />
+                  <span className="text-sm text-gray-700">
+                    <span className="font-bold">Also return the items to stock</span>
+                    <span className="block text-xs text-gray-500">Recommended for test orders, so the stock they used is available again.</span>
+                  </span>
+                </label>
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-xl p-3 mb-6">
+                  Deleting does not refund the customer. Issue refunds from the Razorpay dashboard.
+                </p>
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={() => setOrderToDelete(null)}
+                    disabled={deletingOrder}
+                    className="px-4 py-2 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDeleteOrder}
+                    disabled={deletingOrder}
+                    className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-50"
+                  >
+                    {deletingOrder ? 'Deleting...' : 'Delete order'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
         </div>
       ) : (

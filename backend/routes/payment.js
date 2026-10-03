@@ -7,7 +7,7 @@ import prisma from '../db.js';
 import { sendOrderConfirmation, sendCustomAdminMessage } from '../utils/emailService.js';
 import { verifyToken, optionalAuth, getRequestUser } from './auth.js';
 import { RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, STRIPE_SECRET_KEY, FRONTEND_URL, RAZORPAY_WEBHOOK_SECRET, STRIPE_WEBHOOK_SECRET } from '../config.js';
-import { priceCart, CheckoutError } from '../utils/pricing.js';
+import { priceCart, CheckoutError, WEIGHT_OPTIONS, COUPONS, FREE_SHIPPING_THRESHOLD, SHIPPING_CHARGE, getUnitPrice } from '../utils/pricing.js';
 
 const { Prisma } = pkg;
 const router = express.Router();
@@ -17,7 +17,8 @@ const router = express.Router();
 // ==========================================
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const TRACKING_TOKEN_REGEX = /^[a-f0-9]{48}$/;
-const PENDING_CHECKOUT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+// Unpaid checkouts are kept this long: the admin dashboard lists them as abandoned checkouts
+const PENDING_CHECKOUT_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 // How long stock is held for an unpaid checkout. The Razorpay modal closes itself after 25 minutes
 // (Cart.jsx); Stripe's minimum session lifetime is 30 minutes.
 const RAZORPAY_RESERVATION_MS = 30 * 60 * 1000;
@@ -797,6 +798,114 @@ router.get('/admin/dashboard', verifyToken, async (req, res) => {
 });
 
 // ==========================================
+// ABANDONED CHECKOUTS (ADMIN ONLY)
+// Customers who entered their details and opened the payment window but never paid. A checkout
+// counts as abandoned once its stock reservation has been released (the payment window is over).
+// Customers who paid later are left out, and repeat attempts are merged into the latest one.
+// ==========================================
+export async function listAbandonedCheckouts() {
+  const checkouts = await prisma.pendingCheckout.findMany({
+    where: { reserved: false },
+    orderBy: { createdAt: 'desc' },
+    take: 1000
+  });
+  if (checkouts.length === 0) return [];
+
+  // Latest paid order per customer (by email and by phone), to drop those who bought afterwards
+  const oldest = checkouts[checkouts.length - 1].createdAt;
+  const laterOrders = await prisma.order.findMany({
+    where: { createdAt: { gte: oldest } },
+    select: { createdAt: true, address: true, user: { select: { email: true } } }
+  });
+  const lastOrderAt = new Map();
+  const remember = (key, date) => {
+    if (key && (!lastOrderAt.has(key) || lastOrderAt.get(key) < date)) lastOrderAt.set(key, date);
+  };
+  for (const order of laterOrders) {
+    const address = parseAddress(order.address);
+    remember(`email:${String(order.user?.email || address.email || '').toLowerCase()}`, order.createdAt);
+    remember(`phone:${String(address.mobileNumber || '').replace(/\D/g, '').slice(-10)}`, order.createdAt);
+  }
+
+  const productIds = new Set();
+  for (const checkout of checkouts) {
+    for (const item of Array.isArray(checkout.items) ? checkout.items : []) productIds.add(Number(item.id));
+  }
+  const products = await prisma.product.findMany({
+    where: { id: { in: [...productIds].filter(Number.isInteger) } },
+    select: { id: true, name: true, price: true, slug: true }
+  });
+  const productById = new Map(products.map((p) => [p.id, p]));
+
+  const byCustomer = new Map();
+  for (const checkout of checkouts) {
+    const address = parseAddress(checkout.address);
+    const email = String(address.email || '').toLowerCase();
+    const phone = String(address.mobileNumber || '').replace(/\D/g, '').slice(-10);
+    const boughtLater = [`email:${email}`, `phone:${phone}`]
+      .some((key) => lastOrderAt.has(key) && lastOrderAt.get(key) > checkout.createdAt);
+    if (boughtLater) continue;
+
+    const customerKey = email || phone || checkout.id;
+    const existing = byCustomer.get(customerKey);
+    if (existing) {
+      existing.attempts += 1; // checkouts are newest first, so the first one seen is kept
+      continue;
+    }
+
+    // Cart value at today's prices (the checkout record keeps the cart, not the amount)
+    const items = (Array.isArray(checkout.items) ? checkout.items : []).map((item) => {
+      const product = productById.get(Number(item.id));
+      const unitPrice = product ? Math.round(getUnitPrice(product.price, item.weight)) : null;
+      return {
+        productId: Number(item.id),
+        name: product?.name || 'Deleted product',
+        slug: product?.slug || null,
+        weight: item.weight,
+        quantity: item.quantity,
+        unitPrice
+      };
+    });
+    const subtotal = items.reduce((sum, item) => sum + (item.unitPrice || 0) * item.quantity, 0);
+    const coupon = COUPONS[checkout.couponCode];
+    const discount = coupon ? Math.min(coupon.discount, subtotal) : 0;
+    const shipping = subtotal > 0 && subtotal < FREE_SHIPPING_THRESHOLD ? SHIPPING_CHARGE : 0;
+
+    const { clientIp, ...shippingAddress } = address;
+    byCustomer.set(customerKey, {
+      id: checkout.id,
+      provider: checkout.provider,
+      createdAt: checkout.createdAt,
+      registered: Boolean(checkout.userId),
+      address: shippingAddress,
+      items,
+      couponCode: checkout.couponCode,
+      cartValue: Math.round(Math.max(0, subtotal - discount) + shipping),
+      attempts: 1
+    });
+  }
+
+  return [...byCustomer.values()];
+}
+
+router.get('/admin/abandoned-checkouts', verifyToken, async (req, res) => {
+  try {
+    const adminUser = await prisma.user.findUnique({
+      where: { id: req.user.id }
+    });
+
+    if (!adminUser || adminUser.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Access denied: Admins only' });
+    }
+
+    res.json(await listAbandonedCheckouts());
+  } catch (error) {
+    console.error('Fetch abandoned checkouts error:', error);
+    res.status(500).json({ error: 'Failed to fetch abandoned checkouts' });
+  }
+});
+
+// ==========================================
 // SEND CUSTOM MESSAGE TO ORDER RECIPIENT
 // ==========================================
 router.post('/admin/orders/:id/send-message', verifyToken, async (req, res) => {
@@ -908,6 +1017,61 @@ router.put('/admin/orders/:id/status', verifyToken, async (req, res) => {
   } catch (error) {
     console.error('Update order status error:', error);
     res.status(500).json({ error: 'Failed to update order status' });
+  }
+});
+
+// ==========================================
+// DELETE ORDER (ADMIN ONLY), e.g. to clean up test orders.
+// ?restoreStock=true puts the order's items back into stock. This never refunds the payment;
+// refunds are issued from the Razorpay / Stripe dashboard.
+// ==========================================
+router.delete('/admin/orders/:id', verifyToken, async (req, res) => {
+  try {
+    const adminUser = await prisma.user.findUnique({
+      where: { id: req.user.id }
+    });
+
+    if (!adminUser || adminUser.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Access denied: Admins only' });
+    }
+
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: 'Invalid order ID' });
+    }
+    const restoreStock = req.query.restoreStock === 'true';
+
+    const deleted = await prisma.$transaction(async (tx) => {
+      const order = await tx.order.findUnique({ where: { id }, include: { items: true } });
+      if (!order) return null;
+
+      if (restoreStock) {
+        for (const item of order.items) {
+          if (!item.productId) continue; // product was deleted since
+          // Return what was actually taken: an oversold order only took the stock that was left
+          const taken = item.initialStock !== null && item.finalStock !== null
+            ? item.initialStock - item.finalStock
+            : (WEIGHT_OPTIONS[item.weight]?.kg ?? 0) * item.quantity;
+          if (taken > 0) {
+            await tx.$executeRaw`UPDATE "Product" SET "stock" = ROUND(("stock" + ${taken})::numeric, 3)::float8 WHERE "id" = ${item.productId}`;
+          }
+        }
+      }
+
+      await tx.orderItem.deleteMany({ where: { orderId: id } });
+      await tx.order.delete({ where: { id } }); // order messages are deleted with it (cascade)
+      return order;
+    }, TX_OPTIONS);
+
+    if (!deleted) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    console.log(`Admin ${adminUser.email} deleted order #${id}${restoreStock ? ' and restored its stock' : ''}`);
+    res.json({ success: true, restoredStock: restoreStock });
+  } catch (error) {
+    console.error('Delete order error:', error);
+    res.status(500).json({ error: 'Failed to delete order' });
   }
 });
 
