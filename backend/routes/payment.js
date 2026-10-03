@@ -8,8 +8,8 @@ import { sendOrderConfirmation, sendCustomAdminMessage, sendShippingUpdate } fro
 import { plainPersonName } from '../utils/personName.js';
 import { CARRIERS, DEFAULT_CARRIER, carrierFor, trackingInfo } from '../utils/carriers.js';
 import { normalizeIndianMobile } from '../utils/phone.js';
-import { renderInvoicePdf, invoiceFileName } from '../utils/invoice.js';
-import { renderShippingLabelPdf, labelFileName } from '../utils/shippingLabel.js';
+import { renderInvoicePdf, renderInvoicesPdf, invoiceFileName } from '../utils/invoice.js';
+import { renderShippingLabelPdf, renderShippingLabelsPdf, labelFileName } from '../utils/shippingLabel.js';
 import { verifyToken, optionalAuth, getRequestUser } from './auth.js';
 import { RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, STRIPE_SECRET_KEY, FRONTEND_URL, RAZORPAY_WEBHOOK_SECRET, STRIPE_WEBHOOK_SECRET } from '../config.js';
 import { priceCart, CheckoutError, WEIGHT_OPTIONS, COUPONS, FREE_SHIPPING_THRESHOLD, SHIPPING_CHARGE, getUnitPrice } from '../utils/pricing.js';
@@ -1129,6 +1129,94 @@ router.get('/admin/orders/:id/invoice', verifyToken, async (req, res) => {
   } catch (error) {
     console.error('Invoice download error:', error);
     res.status(500).json({ error: 'Failed to create invoice' });
+  }
+});
+
+// ==========================================
+// BULK ACTIONS ON SELECTED ORDERS (ADMIN ONLY)
+// Body: { ids: [10021, 10022, ...] } (up to 100). Kept under /admin/bulk/ so "bulk" is never read
+// as an order ID by the /admin/orders/:id routes.
+//   POST /admin/bulk/orders/invoices -> one PDF, an invoice per page
+//   POST /admin/bulk/orders/labels   -> one PDF, a shipping label per page
+//   PUT  /admin/bulk/orders/status   -> { ids, status }; "Shipped" only moves PAID / Processing orders
+// ==========================================
+const MAX_BULK_ORDERS = 100;
+
+async function requireAdminUser(req, res) {
+  const adminUser = await prisma.user.findUnique({ where: { id: req.user.id } });
+  if (!adminUser || adminUser.role !== 'ADMIN') {
+    res.status(403).json({ error: 'Access denied: Admins only' });
+    return null;
+  }
+  return adminUser;
+}
+
+// Validated, de-duplicated order IDs from the request body (in the order given), or null
+function bulkOrderIds(body) {
+  const ids = Array.isArray(body?.ids) ? [...new Set(body.ids.map(Number))] : [];
+  if (ids.length === 0 || ids.length > MAX_BULK_ORDERS || !ids.every((id) => Number.isInteger(id) && id > 0)) return null;
+  return ids;
+}
+
+// The orders for the IDs, in the same order (missing ones left out)
+async function ordersByIds(ids) {
+  const orders = await prisma.order.findMany({ where: { id: { in: ids } }, include: ORDER_INCLUDE });
+  const byId = new Map(orders.map((order) => [order.id, order]));
+  return ids.map((id) => byId.get(id)).filter(Boolean);
+}
+
+for (const [path, render, fileName] of [
+  ['invoices', (orders) => renderInvoicesPdf(orders, { includeBuyerDetails: true }), 'Invoices'],
+  ['labels', renderShippingLabelsPdf, 'Shipping-Labels']
+]) {
+  router.post(`/admin/bulk/orders/${path}`, verifyToken, async (req, res) => {
+    try {
+      if (!(await requireAdminUser(req, res))) return;
+      const ids = bulkOrderIds(req.body);
+      if (!ids) {
+        return res.status(400).json({ error: `Select between 1 and ${MAX_BULK_ORDERS} orders.` });
+      }
+      const orders = await ordersByIds(ids);
+      if (orders.length === 0) {
+        return res.status(404).json({ error: 'None of the selected orders were found.' });
+      }
+      const pdf = await render(orders);
+      res.set('Content-Type', 'application/pdf');
+      res.set('Content-Disposition', `attachment; filename="${fileName}-${orders.length}-orders.pdf"`);
+      res.send(pdf);
+    } catch (error) {
+      console.error(`Bulk ${path} error:`, error);
+      res.status(500).json({ error: `Failed to create ${path === 'labels' ? 'shipping labels' : 'invoices'}` });
+    }
+  });
+}
+
+const ORDER_STATUSES = ['PAID', 'Processing', 'Shipped', 'Delivered', 'On Hold', 'Cancelled', 'Pending Payment', 'Refunded', 'Failed'];
+
+router.put('/admin/bulk/orders/status', verifyToken, async (req, res) => {
+  try {
+    if (!(await requireAdminUser(req, res))) return;
+    const ids = bulkOrderIds(req.body);
+    if (!ids) {
+      return res.status(400).json({ error: `Select between 1 and ${MAX_BULK_ORDERS} orders.` });
+    }
+    const { status } = req.body;
+    if (!ORDER_STATUSES.includes(status)) {
+      return res.status(400).json({ error: 'Invalid status value' });
+    }
+
+    // Shipping only makes sense for paid orders that haven't gone out yet
+    const where = { id: { in: ids }, ...(status === 'Shipped' && { status: { in: ['PAID', 'Processing'] } }) };
+    const toUpdate = await prisma.order.findMany({ where, select: { id: true } });
+    const updatedIds = toUpdate.map((order) => order.id);
+    if (updatedIds.length > 0) {
+      await prisma.order.updateMany({ where: { id: { in: updatedIds } }, data: { status } });
+    }
+
+    res.json({ success: true, status, updatedIds, skippedIds: ids.filter((id) => !updatedIds.includes(id)) });
+  } catch (error) {
+    console.error('Bulk status error:', error);
+    res.status(500).json({ error: 'Failed to update orders' });
   }
 });
 

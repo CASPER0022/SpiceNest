@@ -139,6 +139,16 @@ export function invoiceData(order) {
   };
 }
 
+// Collects a PDFDocument into a Buffer once doc.end() is called
+export function pdfBuffer(doc) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    doc.on('data', (chunk) => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+  });
+}
+
 /**
  * Renders the invoice as a PDF and resolves with its bytes.
  * @param {object} order - Order with items (and item.product)
@@ -146,160 +156,168 @@ export function invoiceData(order) {
  * @param {boolean} [opts.includeBuyerDetails=true] - buyer name, address and phone. Left out of
  *        invoices emailed to guests (unverified addresses), like the confirmation email itself.
  */
-export function renderInvoicePdf(order, { includeBuyerDetails = true } = {}) {
+export function renderInvoicePdf(order, opts) {
+  return renderInvoicesPdf([order], opts);
+}
+
+// Several invoices in one PDF, one per page (for printing in bulk from the dashboard)
+export function renderInvoicesPdf(orders, { includeBuyerDetails = true } = {}) {
+  const title = orders.length === 1 ? `Invoice ${invoiceNumber(orders[0])}` : `Invoices (${orders.length} orders)`;
+  const doc = new PDFDocument({ size: 'A4', margin: 40, autoFirstPage: false, info: { Title: title, Author: SELLER.name } });
+  const done = pdfBuffer(doc);
+  doc.registerFont('regular', FONT_REGULAR);
+  doc.registerFont('bold', FONT_BOLD);
+  for (const order of orders) {
+    doc.addPage();
+    drawInvoice(doc, order, { includeBuyerDetails });
+  }
+  doc.end();
+  return done;
+}
+
+// Draws one invoice starting on the current page
+function drawInvoice(doc, order, { includeBuyerDetails }) {
   const data = invoiceData(order);
+  const GREEN = '#065f46';
+  const GREY = '#6b7280';
+  const left = 40;
+  const right = doc.page.width - 40;
+  const width = right - left;
 
-  return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ size: 'A4', margin: 40, info: { Title: `Invoice ${data.number}`, Author: SELLER.name } });
-    const chunks = [];
-    doc.on('data', (chunk) => chunks.push(chunk));
-    doc.on('end', () => resolve(Buffer.concat(chunks)));
-    doc.on('error', reject);
+  // ---- Header: seller (left) and invoice details (right)
+  try {
+    doc.image(LOGO, left, 40, { width: 52 });
+  } catch {
+    // Logo is optional
+  }
+  const sellerWidth = 250;
+  doc.font('bold').fontSize(16).fillColor(GREEN).text(SELLER.name, left + 62, 42, { width: sellerWidth });
+  doc.font('regular').fontSize(8.5).fillColor('#374151')
+    .text(SELLER.address, left + 62, 64, { width: sellerWidth })
+    .text(`Phone: ${SELLER.phone}`, { width: sellerWidth })
+    .text(`Email: ${SELLER.email}`, { width: sellerWidth });
+  if (SELLER.gstin) doc.font('bold').text(`GSTIN: ${SELLER.gstin}`, { width: sellerWidth });
+  if (SELLER.fssai) doc.font('bold').text(`FSSAI Reg. No: ${SELLER.fssai}`, { width: sellerWidth });
+  const sellerBottom = doc.y;
 
-    doc.registerFont('regular', FONT_REGULAR);
-    doc.registerFont('bold', FONT_BOLD);
-    const GREEN = '#065f46';
-    const GREY = '#6b7280';
-    const left = 40;
-    const right = doc.page.width - 40;
-    const width = right - left;
+  doc.font('bold').fontSize(15).fillColor('#111827').text('TAX INVOICE', left, 42, { width, align: 'right' });
+  doc.font('regular').fontSize(8.5).fillColor('#374151');
+  const meta = [
+    ['Invoice No', data.number],
+    ['Invoice Date', data.date],
+    ['Order No', `#${data.orderId}`],
+    ...(data.paymentId ? [['Payment ID', data.paymentId]] : [])
+  ];
+  let y = 64;
+  for (const [label, value] of meta) {
+    doc.font('regular').fontSize(8.5).fillColor(GREY).text(label, right - 210, y, { width: 70 });
+    doc.font('bold').fontSize(8.5).fillColor('#111827').text(value, right - 140, y, { width: 140, align: 'right' });
+    y += 12;
+  }
 
-    // ---- Header: seller (left) and invoice details (right)
-    try {
-      doc.image(LOGO, left, 40, { width: 52 });
-    } catch {
-      // Logo is optional
-    }
-    const sellerWidth = 250;
-    doc.font('bold').fontSize(16).fillColor(GREEN).text(SELLER.name, left + 62, 42, { width: sellerWidth });
+  y = Math.max(sellerBottom, y, 100) + 12;
+  doc.moveTo(left, y).lineTo(right, y).lineWidth(0.8).strokeColor('#d1d5db').stroke();
+  y += 10;
+
+  // ---- Bill to / place of supply
+  const placeOfSupply = data.state ? `${data.state} (${data.stateCode})` : (data.buyer.state || 'Not specified');
+  doc.font('bold').fontSize(9).fillColor(GREY).text('BILL TO / SHIP TO', left, y);
+  doc.font('bold').fontSize(9).fillColor(GREY).text('PLACE OF SUPPLY', left + width / 2, y);
+  y += 13;
+  doc.font('bold').fontSize(9.5).fillColor('#111827').text(placeOfSupply, left + width / 2, y);
+  doc.font('regular').fontSize(8.5).fillColor('#374151')
+    .text(data.isHomeState ? 'Intra-state supply (CGST + SGST)' : 'Inter-state supply (IGST)', left + width / 2, y + 13);
+  if (includeBuyerDetails) {
+    const b = data.buyer;
+    doc.font('bold').fontSize(9.5).fillColor('#111827').text(b.fullName || 'Customer', left, y, { width: width / 2 - 10 });
     doc.font('regular').fontSize(8.5).fillColor('#374151')
-      .text(SELLER.address, left + 62, 64, { width: sellerWidth })
-      .text(`Phone: ${SELLER.phone}`, { width: sellerWidth })
-      .text(`Email: ${SELLER.email}`, { width: sellerWidth });
-    if (SELLER.gstin) doc.font('bold').text(`GSTIN: ${SELLER.gstin}`, { width: sellerWidth });
-    if (SELLER.fssai) doc.font('bold').text(`FSSAI Reg. No: ${SELLER.fssai}`, { width: sellerWidth });
-    const sellerBottom = doc.y;
+      .text([b.houseNo, b.area, b.landmark].filter(Boolean).join(', '), { width: width / 2 - 10 })
+      .text([b.city, b.state, b.pincode].filter(Boolean).join(', '), { width: width / 2 - 10 });
+    if (b.mobileNumber) doc.text(`Phone: ${b.mobileNumber}`, { width: width / 2 - 10 });
+  } else {
+    // Guests: name only if it is a plain personal name, never the typed address
+    const guestName = plainPersonName(data.buyer.fullName);
+    doc.font(guestName ? 'bold' : 'regular').fontSize(guestName ? 9.5 : 9).fillColor(guestName ? '#111827' : '#374151')
+      .text(guestName || 'Customer (online order)', left, y, { width: width / 2 - 10 });
+  }
+  y = Math.max(doc.y, y + 30) + 14;
 
-    doc.font('bold').fontSize(15).fillColor('#111827').text('TAX INVOICE', left, 42, { width, align: 'right' });
-    doc.font('regular').fontSize(8.5).fillColor('#374151');
-    const meta = [
-      ['Invoice No', data.number],
-      ['Invoice Date', data.date],
-      ['Order No', `#${data.orderId}`],
-      ...(data.paymentId ? [['Payment ID', data.paymentId]] : [])
-    ];
-    let y = 64;
-    for (const [label, value] of meta) {
-      doc.font('regular').fontSize(8.5).fillColor(GREY).text(label, right - 210, y, { width: 70 });
-      doc.font('bold').fontSize(8.5).fillColor('#111827').text(value, right - 140, y, { width: 140, align: 'right' });
-      y += 12;
+  // ---- Items table
+  const cols = [
+    { key: 'no', label: '#', width: 22, align: 'left' },
+    { key: 'description', label: 'Description', width: 175, align: 'left' },
+    { key: 'hsn', label: 'HSN/SAC', width: 52, align: 'left' },
+    { key: 'quantity', label: 'Qty', width: 34, align: 'right' },
+    { key: 'rate', label: 'Rate (incl. GST)', width: 82, align: 'right' },
+    { key: 'taxable', label: 'Taxable Value', width: 75, align: 'right' },
+    { key: 'amount', label: 'Amount', width: width - 440, align: 'right' }
+  ];
+  const drawRow = (values, rowY, { bold = false, color = '#111827' } = {}) => {
+    let x = left;
+    let height = 0;
+    for (const col of cols) {
+      doc.font(bold ? 'bold' : 'regular').fontSize(8.5).fillColor(color)
+        .text(values[col.key] ?? '', x + 4, rowY, { width: col.width - 8, align: col.align });
+      height = Math.max(height, doc.heightOfString(String(values[col.key] ?? ''), { width: col.width - 8 }));
+      x += col.width;
     }
+    return rowY + height + 8;
+  };
 
-    y = Math.max(sellerBottom, y, 100) + 12;
-    doc.moveTo(left, y).lineTo(right, y).lineWidth(0.8).strokeColor('#d1d5db').stroke();
-    y += 10;
-
-    // ---- Bill to / place of supply
-    const placeOfSupply = data.state ? `${data.state} (${data.stateCode})` : (data.buyer.state || 'Not specified');
-    doc.font('bold').fontSize(9).fillColor(GREY).text('BILL TO / SHIP TO', left, y);
-    doc.font('bold').fontSize(9).fillColor(GREY).text('PLACE OF SUPPLY', left + width / 2, y);
-    y += 13;
-    doc.font('bold').fontSize(9.5).fillColor('#111827').text(placeOfSupply, left + width / 2, y);
-    doc.font('regular').fontSize(8.5).fillColor('#374151')
-      .text(data.isHomeState ? 'Intra-state supply (CGST + SGST)' : 'Inter-state supply (IGST)', left + width / 2, y + 13);
-    if (includeBuyerDetails) {
-      const b = data.buyer;
-      doc.font('bold').fontSize(9.5).fillColor('#111827').text(b.fullName || 'Customer', left, y, { width: width / 2 - 10 });
-      doc.font('regular').fontSize(8.5).fillColor('#374151')
-        .text([b.houseNo, b.area, b.landmark].filter(Boolean).join(', '), { width: width / 2 - 10 })
-        .text([b.city, b.state, b.pincode].filter(Boolean).join(', '), { width: width / 2 - 10 });
-      if (b.mobileNumber) doc.text(`Phone: ${b.mobileNumber}`, { width: width / 2 - 10 });
-    } else {
-      // Guests: name only if it is a plain personal name, never the typed address
-      const guestName = plainPersonName(data.buyer.fullName);
-      doc.font(guestName ? 'bold' : 'regular').fontSize(guestName ? 9.5 : 9).fillColor(guestName ? '#111827' : '#374151')
-        .text(guestName || 'Customer (online order)', left, y, { width: width / 2 - 10 });
+  doc.rect(left, y, width, 20).fill('#ecfdf5');
+  y = drawRow(Object.fromEntries(cols.map((c) => [c.key, c.label])), y + 6, { bold: true, color: GREEN }) - 2;
+  data.lines.forEach((line, i) => {
+    if (y > doc.page.height - 220) {
+      doc.addPage();
+      y = 40;
     }
-    y = Math.max(doc.y, y + 30) + 14;
-
-    // ---- Items table
-    const cols = [
-      { key: 'no', label: '#', width: 22, align: 'left' },
-      { key: 'description', label: 'Description', width: 175, align: 'left' },
-      { key: 'hsn', label: 'HSN/SAC', width: 52, align: 'left' },
-      { key: 'quantity', label: 'Qty', width: 34, align: 'right' },
-      { key: 'rate', label: 'Rate (incl. GST)', width: 82, align: 'right' },
-      { key: 'taxable', label: 'Taxable Value', width: 75, align: 'right' },
-      { key: 'amount', label: 'Amount', width: width - 440, align: 'right' }
-    ];
-    const drawRow = (values, rowY, { bold = false, color = '#111827' } = {}) => {
-      let x = left;
-      let height = 0;
-      for (const col of cols) {
-        doc.font(bold ? 'bold' : 'regular').fontSize(8.5).fillColor(color)
-          .text(values[col.key] ?? '', x + 4, rowY, { width: col.width - 8, align: col.align });
-        height = Math.max(height, doc.heightOfString(String(values[col.key] ?? ''), { width: col.width - 8 }));
-        x += col.width;
-      }
-      return rowY + height + 8;
-    };
-
-    doc.rect(left, y, width, 20).fill('#ecfdf5');
-    y = drawRow(Object.fromEntries(cols.map((c) => [c.key, c.label])), y + 6, { bold: true, color: GREEN }) - 2;
-    data.lines.forEach((line, i) => {
-      if (y > doc.page.height - 220) {
-        doc.addPage();
-        y = 40;
-      }
-      y = drawRow({
-        no: String(i + 1),
-        description: line.description,
-        hsn: line.hsn,
-        quantity: line.quantity ?? '',
-        rate: line.rate !== null ? money(line.rate) : '',
-        taxable: money(line.taxable),
-        amount: money(line.amount)
-      }, y + 4);
-      doc.moveTo(left, y).lineTo(right, y).lineWidth(0.4).strokeColor('#e5e7eb').stroke();
-    });
-
-    // ---- Tax summary (right) and amount in words (left)
-    y += 14;
-    const summaryX = right - 220;
-    const summary = [
-      ['Taxable Value', money(data.tax.taxable)],
-      // Goods at 5%, shipping at 18% (shipping rows only when shipping was charged)
-      ...(data.isHomeState
-        ? [['CGST @ 2.5% (goods)', money(data.tax.goods.cgst)], ['SGST @ 2.5% (goods)', money(data.tax.goods.sgst)]]
-        : [['IGST @ 5% (goods)', money(data.tax.goods.igst)]]),
-      ...(data.tax.shipping.tax === 0 ? [] : data.isHomeState
-        ? [['CGST @ 9% (shipping)', money(data.tax.shipping.cgst)], ['SGST @ 9% (shipping)', money(data.tax.shipping.sgst)]]
-        : [['IGST @ 18% (shipping)', money(data.tax.shipping.igst)]]),
-      ['Total GST', money(data.tax.tax)]
-    ];
-    let sy = y;
-    for (const [label, value] of summary) {
-      doc.font('regular').fontSize(9).fillColor('#374151').text(label, summaryX, sy, { width: 120 });
-      doc.font('regular').text(value, summaryX + 120, sy, { width: 100, align: 'right' });
-      sy += 15;
-    }
-    doc.moveTo(summaryX, sy).lineTo(right, sy).lineWidth(0.8).strokeColor('#111827').stroke();
-    sy += 6;
-    doc.font('bold').fontSize(11).fillColor(GREEN).text('Grand Total', summaryX, sy, { width: 120 });
-    doc.text(money(data.total), summaryX + 100, sy, { width: 120, align: 'right' });
-
-    doc.font('bold').fontSize(8.5).fillColor(GREY).text('AMOUNT IN WORDS', left, y, { width: summaryX - left - 20 });
-    doc.font('regular').fontSize(9).fillColor('#111827').text(amountInWords(data.total), left, y + 12, { width: summaryX - left - 20 });
-    doc.font('regular').fontSize(8).fillColor(GREY)
-      .text('All prices include GST. Tax shown is the GST contained in the amount paid.', left, y + 40, { width: summaryX - left - 20 });
-
-    // ---- Footer
-    const footerY = Math.max(sy + 50, doc.y + 30);
-    doc.moveTo(left, footerY).lineTo(right, footerY).lineWidth(0.4).strokeColor('#e5e7eb').stroke();
-    doc.font('bold').fontSize(9.5).fillColor(GREEN).text('Thanks for choosing Idukki Origins!', left, footerY + 10, { width, align: 'center' });
-    doc.font('regular').fontSize(7.5).fillColor(GREY)
-      .text('This is a computer-generated invoice and does not require a signature.', left, footerY + 26, { width, align: 'center' });
-
-    doc.end();
+    y = drawRow({
+      no: String(i + 1),
+      description: line.description,
+      hsn: line.hsn,
+      quantity: line.quantity ?? '',
+      rate: line.rate !== null ? money(line.rate) : '',
+      taxable: money(line.taxable),
+      amount: money(line.amount)
+    }, y + 4);
+    doc.moveTo(left, y).lineTo(right, y).lineWidth(0.4).strokeColor('#e5e7eb').stroke();
   });
+
+  // ---- Tax summary (right) and amount in words (left)
+  y += 14;
+  const summaryX = right - 220;
+  const summary = [
+    ['Taxable Value', money(data.tax.taxable)],
+    // Goods at 5%, shipping at 18% (shipping rows only when shipping was charged)
+    ...(data.isHomeState
+      ? [['CGST @ 2.5% (goods)', money(data.tax.goods.cgst)], ['SGST @ 2.5% (goods)', money(data.tax.goods.sgst)]]
+      : [['IGST @ 5% (goods)', money(data.tax.goods.igst)]]),
+    ...(data.tax.shipping.tax === 0 ? [] : data.isHomeState
+      ? [['CGST @ 9% (shipping)', money(data.tax.shipping.cgst)], ['SGST @ 9% (shipping)', money(data.tax.shipping.sgst)]]
+      : [['IGST @ 18% (shipping)', money(data.tax.shipping.igst)]]),
+    ['Total GST', money(data.tax.tax)]
+  ];
+  let sy = y;
+  for (const [label, value] of summary) {
+    doc.font('regular').fontSize(9).fillColor('#374151').text(label, summaryX, sy, { width: 120 });
+    doc.font('regular').text(value, summaryX + 120, sy, { width: 100, align: 'right' });
+    sy += 15;
+  }
+  doc.moveTo(summaryX, sy).lineTo(right, sy).lineWidth(0.8).strokeColor('#111827').stroke();
+  sy += 6;
+  doc.font('bold').fontSize(11).fillColor(GREEN).text('Grand Total', summaryX, sy, { width: 120 });
+  doc.text(money(data.total), summaryX + 100, sy, { width: 120, align: 'right' });
+
+  doc.font('bold').fontSize(8.5).fillColor(GREY).text('AMOUNT IN WORDS', left, y, { width: summaryX - left - 20 });
+  doc.font('regular').fontSize(9).fillColor('#111827').text(amountInWords(data.total), left, y + 12, { width: summaryX - left - 20 });
+  doc.font('regular').fontSize(8).fillColor(GREY)
+    .text('All prices include GST. Tax shown is the GST contained in the amount paid.', left, y + 40, { width: summaryX - left - 20 });
+
+  // ---- Footer
+  const footerY = Math.max(sy + 50, doc.y + 30);
+  doc.moveTo(left, footerY).lineTo(right, footerY).lineWidth(0.4).strokeColor('#e5e7eb').stroke();
+  doc.font('bold').fontSize(9.5).fillColor(GREEN).text('Thanks for choosing Idukki Origins!', left, footerY + 10, { width, align: 'center' });
+  doc.font('regular').fontSize(7.5).fillColor(GREY)
+    .text('This is a computer-generated invoice and does not require a signature.', left, footerY + 26, { width, align: 'center' });
+
 }
