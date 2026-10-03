@@ -122,7 +122,9 @@ app.use(cors({
     // Disallowed origins get no CORS headers, so the browser blocks the response
     return callback(null, isAllowedOrigin(origin));
   },
-  credentials: true
+  credentials: true,
+  // Lets the dashboard read the file name of downloaded invoices
+  exposedHeaders: ['Content-Disposition']
 }));
 
 // Parses JSON bodies (capped at 50kb; the largest legitimate body is an admin product edit).

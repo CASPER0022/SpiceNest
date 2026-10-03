@@ -2,8 +2,8 @@
 // GST TAX INVOICE (PDF)
 // Built from a recorded order. Prices include 5% GST, so the tax matches the monthly GST report:
 // total paid x 5/105, split CGST + SGST for Kerala and IGST for other states (see utils/tax.js).
-// Seller details come from environment variables so they can be changed without a code change:
-//   SELLER_GSTIN, SELLER_LEGAL_NAME, SELLER_ADDRESS, SELLER_PHONE, SELLER_EMAIL
+// Seller details can be overridden with environment variables without a code change:
+//   SELLER_GSTIN, SELLER_FSSAI, SELLER_LEGAL_NAME, SELLER_ADDRESS, SELLER_PHONE, SELLER_EMAIL
 // ==========================================
 import PDFDocument from 'pdfkit';
 import path from 'path';
@@ -21,7 +21,9 @@ const SELLER = {
   address: process.env.SELLER_ADDRESS || 'Kanjikuzhy, Idukki, Kerala - 685606',
   phone: process.env.SELLER_PHONE || '+91 8921663449, +91 9645425742',
   email: process.env.SELLER_EMAIL || 'info.idukkiorigins@gmail.com',
-  gstin: (process.env.SELLER_GSTIN || '').trim(),
+  gstin: (process.env.SELLER_GSTIN || '32AGFPJ8946D1ZH').trim(),
+  // FSSAI requires the registration number on invoices of food businesses
+  fssai: (process.env.SELLER_FSSAI || '21326177000702').trim(),
   state: HOME_STATE
 };
 
@@ -176,6 +178,7 @@ export function renderInvoicePdf(order, { includeBuyerDetails = true } = {}) {
       .text(`Phone: ${SELLER.phone}`, { width: sellerWidth })
       .text(`Email: ${SELLER.email}`, { width: sellerWidth });
     if (SELLER.gstin) doc.font('bold').text(`GSTIN: ${SELLER.gstin}`, { width: sellerWidth });
+    if (SELLER.fssai) doc.font('bold').text(`FSSAI Reg. No: ${SELLER.fssai}`, { width: sellerWidth });
     const sellerBottom = doc.y;
 
     doc.font('bold').fontSize(15).fillColor('#111827').text('TAX INVOICE', left, 42, { width, align: 'right' });

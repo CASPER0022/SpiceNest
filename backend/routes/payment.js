@@ -5,6 +5,7 @@ import crypto from 'crypto';
 import pkg from '@prisma/client';
 import prisma from '../db.js';
 import { sendOrderConfirmation, sendCustomAdminMessage } from '../utils/emailService.js';
+import { renderInvoicePdf, invoiceFileName } from '../utils/invoice.js';
 import { verifyToken, optionalAuth, getRequestUser } from './auth.js';
 import { RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, STRIPE_SECRET_KEY, FRONTEND_URL, RAZORPAY_WEBHOOK_SECRET, STRIPE_WEBHOOK_SECRET } from '../config.js';
 import { priceCart, CheckoutError, WEIGHT_OPTIONS, COUPONS, FREE_SHIPPING_THRESHOLD, SHIPPING_CHARGE, getUnitPrice } from '../utils/pricing.js';
@@ -295,8 +296,19 @@ function sendConfirmationInBackground(order) {
     if (!recipient) return;
 
     const trackingUrl = `${FRONTEND_URL}/track-order?id=${order.id}&token=${order.trackingToken}`;
-    console.log(`📧 Sending confirmation for order ${order.id}`);
-    await sendOrderConfirmation(recipient, order, trackingUrl, { includeBuyerDetails: Boolean(order.userId) });
+    const includeBuyerDetails = Boolean(order.userId);
+
+    // GST invoice as a PDF attachment (same rule for buyer details as the email itself).
+    // If it cannot be built, the confirmation still goes out without it.
+    let invoice = null;
+    try {
+      invoice = { name: invoiceFileName(order), content: await renderInvoicePdf(order, { includeBuyerDetails }) };
+    } catch (err) {
+      console.error(`Invoice for order ${order.id} could not be created:`, err);
+    }
+
+    console.log(`📧 Sending confirmation for order ${order.id}${invoice ? ' with invoice' : ''}`);
+    await sendOrderConfirmation(recipient, order, trackingUrl, { includeBuyerDetails, invoice });
   })().catch((e) => console.error('Background email task failed:', e));
 }
 
@@ -1072,6 +1084,39 @@ router.delete('/admin/orders/:id', verifyToken, async (req, res) => {
   } catch (error) {
     console.error('Delete order error:', error);
     res.status(500).json({ error: 'Failed to delete order' });
+  }
+});
+
+// ==========================================
+// DOWNLOAD INVOICE (ADMIN ONLY): the GST invoice PDF for an order, with full buyer details
+// ==========================================
+router.get('/admin/orders/:id/invoice', verifyToken, async (req, res) => {
+  try {
+    const adminUser = await prisma.user.findUnique({
+      where: { id: req.user.id }
+    });
+
+    if (!adminUser || adminUser.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Access denied: Admins only' });
+    }
+
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: 'Invalid order ID' });
+    }
+
+    const order = await prisma.order.findUnique({ where: { id }, include: ORDER_INCLUDE });
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    const pdf = await renderInvoicePdf(order, { includeBuyerDetails: true });
+    res.set('Content-Type', 'application/pdf');
+    res.set('Content-Disposition', `attachment; filename="${invoiceFileName(order)}"`);
+    res.send(pdf);
+  } catch (error) {
+    console.error('Invoice download error:', error);
+    res.status(500).json({ error: 'Failed to create invoice' });
   }
 });
 

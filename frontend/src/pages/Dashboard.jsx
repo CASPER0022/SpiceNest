@@ -89,6 +89,7 @@ export default function Dashboard() {
   const [orderToDelete, setOrderToDelete] = useState(null);
   const [restoreStockOnDelete, setRestoreStockOnDelete] = useState(true);
   const [deletingOrder, setDeletingOrder] = useState(false);
+  const [downloadingInvoiceId, setDownloadingInvoiceId] = useState(null);
   const [selectedCustomerEmail, setSelectedCustomerEmail] = useState(null);
   const [selectedProductAnalyticsId, setSelectedProductAnalyticsId] = useState(null);
   const [adminMessage, setAdminMessage] = useState('');
@@ -233,6 +234,36 @@ export default function Dashboard() {
     } catch (err) {
       console.error(err);
       toast.error(err.message || 'Error updating order status');
+    }
+  };
+
+  // GST invoice PDF for one order (the server builds it)
+  const handleDownloadInvoice = async (orderId) => {
+    setDownloadingInvoiceId(orderId);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/api/payment/admin/orders/${orderId}/invoice`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to download invoice');
+      }
+      const disposition = res.headers.get('Content-Disposition') || '';
+      const fileName = disposition.match(/filename="([^"]+)"/)?.[1] || `Invoice-${orderId}.pdf`;
+      const url = URL.createObjectURL(await res.blob());
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || 'Error downloading invoice');
+    } finally {
+      setDownloadingInvoiceId(null);
     }
   };
 
@@ -2637,6 +2668,15 @@ export default function Dashboard() {
                               className="inline-flex items-center font-black uppercase tracking-wider text-emerald-600 hover:text-emerald-700 bg-emerald-50/50 border border-emerald-100/50 px-3 py-1.5 rounded-lg transition-colors gap-1"
                             >
                               Details
+                            </button>
+                            <button
+                              onClick={() => handleDownloadInvoice(order.id)}
+                              disabled={downloadingInvoiceId === order.id}
+                              title={`Download invoice for order #${order.id}`}
+                              aria-label={`Download invoice for order #${order.id}`}
+                              className="inline-flex items-center font-black uppercase tracking-wider text-gray-600 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 border border-gray-200/70 px-3 py-1.5 rounded-lg transition-colors gap-1 disabled:opacity-50"
+                            >
+                              <Download size={12} /> {downloadingInvoiceId === order.id ? '...' : 'Invoice'}
                             </button>
                             <button
                               onClick={() => {

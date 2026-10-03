@@ -23,8 +23,9 @@ const addr = (address, field) => escapeHtml(address && address[field] ? address[
  * @param {object} [opts]
  * @param {boolean} [opts.includeBuyerDetails=false] - include the buyer's name and shipping address.
  *        Only for verified recipients: for guests every buyer-typed value is left out.
+ * @param {{ name: string, content: Buffer }} [opts.invoice] - PDF invoice to attach
  */
-export async function sendOrderConfirmation(to, order, trackingUrl, { includeBuyerDetails = false } = {}) {
+export async function sendOrderConfirmation(to, order, trackingUrl, { includeBuyerDetails = false, invoice = null } = {}) {
   try {
     if (!process.env.BREVO_API_KEY) {
       console.error('❌ BREVO_API_KEY is missing');
@@ -95,6 +96,8 @@ ${includeBuyerDetails ? `
             </p>
           </div>` : `
           <p style="margin-top: 30px; color: #666;">Your full delivery details are available through the tracking link above.</p>`}
+${invoice ? `
+          <p style="margin-top: 20px; color: #666;">Your GST invoice is attached to this email (${escapeHtml(invoice.name)}).</p>` : ''}
 
           <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;">
           <p style="font-size: 12px; color: #999; text-align: center;">
@@ -109,7 +112,8 @@ ${includeBuyerDetails ? `
       htmlContent: htmlContent,
       sender: { name: "Idukki Origins", email: SENDER_EMAIL },
       to: [{ email: to, name: includeBuyerDetails && address.fullName ? address.fullName : "Valued Customer" }],
-      replyTo: { email: SUPPORT_EMAIL, name: "Idukki Origins Support" }
+      replyTo: { email: SUPPORT_EMAIL, name: "Idukki Origins Support" },
+      ...(invoice && { attachment: [{ name: invoice.name, content: invoice.content.toString('base64') }] })
     });
 
     console.log('✅ Email sent via Brevo:', response.data?.messageId || response.messageId || 'Success');
