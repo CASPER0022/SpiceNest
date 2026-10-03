@@ -217,6 +217,9 @@ export default function Dashboard() {
   const [downloadingPdf, setDownloadingPdf] = useState(null); // e.g. "10020-invoice"
   // Courier tracking number pop-up: { id, customerName, status, carrier, value, markShipped, notifyCustomer }
   const [trackingEdit, setTrackingEdit] = useState(null);
+  // Order Registry bulk actions: ticked order IDs, and the action in progress ('invoices' | 'labels' | 'ship')
+  const [selectedOrderIds, setSelectedOrderIds] = useState(() => new Set());
+  const [bulkAction, setBulkAction] = useState(null);
   const [savingTracking, setSavingTracking] = useState(false);
   const [selectedCustomerEmail, setSelectedCustomerEmail] = useState(null);
   const [selectedProductAnalyticsId, setSelectedProductAnalyticsId] = useState(null);
@@ -574,6 +577,89 @@ export default function Dashboard() {
   const filteredRegistryOrders = statusFilter === 'All'
     ? searchedRegistryOrders
     : searchedRegistryOrders.filter(order => order.status === statusFilter);
+
+  // Bulk actions only ever apply to ticked orders that are visible with the current filters
+  const selectedVisibleIds = filteredRegistryOrders.filter(order => selectedOrderIds.has(order.id)).map(order => order.id);
+  const allVisibleSelected = filteredRegistryOrders.length > 0 && selectedVisibleIds.length === filteredRegistryOrders.length;
+  const toggleOrderSelected = (orderId) => {
+    setSelectedOrderIds(prev => {
+      const next = new Set(prev);
+      if (next.has(orderId)) next.delete(orderId);
+      else next.add(orderId);
+      return next;
+    });
+  };
+  const toggleAllVisibleSelected = () => {
+    setSelectedOrderIds(allVisibleSelected ? new Set() : new Set(filteredRegistryOrders.map(order => order.id)));
+  };
+
+  // One PDF for all ticked orders ('invoices' or 'labels'), opened in a new tab for printing
+  const handleBulkPdf = async (type) => {
+    const ids = selectedVisibleIds;
+    if (ids.length === 0) return;
+    // Open the tab now, while still handling the click, so pop-up blockers allow it
+    const printTab = window.open('', '_blank');
+    setBulkAction(type);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/api/payment/admin/bulk/orders/${type}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ ids })
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Failed to create ${type === 'labels' ? 'shipping labels' : 'invoices'}`);
+      }
+      const url = URL.createObjectURL(await res.blob());
+      if (printTab) {
+        printTab.location.href = url;
+      } else {
+        // Pop-ups blocked: download the PDF instead
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${type === 'labels' ? 'Shipping-Labels' : 'Invoices'}-${ids.length}-orders.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60 * 1000);
+      toast.success(`${type === 'labels' ? 'Shipping labels' : 'Invoices'} ready for ${ids.length} order${ids.length === 1 ? '' : 's'}`);
+    } catch (err) {
+      printTab?.close();
+      console.error(err);
+      toast.error(err.message);
+    } finally {
+      setBulkAction(null);
+    }
+  };
+
+  const handleBulkShip = async () => {
+    const ids = selectedVisibleIds;
+    if (ids.length === 0) return;
+    setBulkAction('ship');
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/api/payment/admin/bulk/orders/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ ids, status: 'Shipped' })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Failed to update orders');
+
+      const updated = new Set(data.updatedIds);
+      setOrders(prev => prev.map(order => updated.has(order.id) ? { ...order, status: 'Shipped' } : order));
+      setSelectedOrderIds(new Set());
+      const skipped = data.skippedIds.length;
+      toast.success(`${updated.size} order${updated.size === 1 ? '' : 's'} marked as Shipped${skipped ? ` (${skipped} skipped: not PAID or Processing)` : ''}`);
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message);
+    } finally {
+      setBulkAction(null);
+    }
+  };
 
   const toggleOrderExpand = (orderId) => {
     setExpandedOrders(prev => ({
@@ -2751,11 +2837,60 @@ export default function Dashboard() {
             </div>
           )}
 
+          {/* Bulk actions for the ticked orders */}
+          {!isAbandonedView && selectedVisibleIds.length > 0 && (
+            <div className="sticky top-24 z-20 bg-gray-900 text-white rounded-2xl px-4 py-3 shadow-xl flex flex-wrap items-center gap-3 animate-fadeIn" role="toolbar" aria-label="Bulk actions">
+              <span className="text-sm font-bold mr-auto">
+                {selectedVisibleIds.length} order{selectedVisibleIds.length === 1 ? '' : 's'} selected
+              </span>
+              <button
+                onClick={() => handleBulkPdf('invoices')}
+                disabled={bulkAction !== null}
+                className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider bg-white/10 hover:bg-white/20 px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
+              >
+                <Download size={12} /> {bulkAction === 'invoices' ? 'Preparing...' : 'Print invoices'}
+              </button>
+              <button
+                onClick={() => handleBulkPdf('labels')}
+                disabled={bulkAction !== null}
+                className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider bg-white/10 hover:bg-white/20 px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
+              >
+                <Download size={12} /> {bulkAction === 'labels' ? 'Preparing...' : 'Print labels'}
+              </button>
+              <button
+                onClick={handleBulkShip}
+                disabled={bulkAction !== null}
+                title="PAID and Processing orders become Shipped; other orders are left as they are"
+                className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider bg-emerald-600 hover:bg-emerald-500 px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
+              >
+                <Package size={12} /> {bulkAction === 'ship' ? 'Updating...' : 'Mark as Shipped'}
+              </button>
+              <button
+                onClick={() => setSelectedOrderIds(new Set())}
+                disabled={bulkAction !== null}
+                className="text-[10px] font-black uppercase tracking-wider text-gray-300 hover:text-white px-2 py-2 transition-colors disabled:opacity-50"
+              >
+                Clear
+              </button>
+            </div>
+          )}
+
           <div className={`bg-white rounded-3xl border border-gray-150/70 shadow-sm overflow-hidden ${isAbandonedView ? 'hidden' : ''}`}>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-100">
                 <thead className="bg-gray-50/50">
                   <tr>
+                    <th scope="col" className="pl-6 pr-2 py-4 w-10">
+                      <input
+                        type="checkbox"
+                        checked={allVisibleSelected}
+                        ref={(el) => { if (el) el.indeterminate = selectedVisibleIds.length > 0 && !allVisibleSelected; }}
+                        onChange={toggleAllVisibleSelected}
+                        disabled={filteredRegistryOrders.length === 0}
+                        aria-label="Select all orders shown"
+                        className="w-4 h-4 accent-emerald-600 cursor-pointer"
+                      />
+                    </th>
                     <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Order ID</th>
                     <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Customer Details</th>
                     <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Date Mapped</th>
@@ -2769,7 +2904,7 @@ export default function Dashboard() {
                 <tbody className="bg-white divide-y divide-gray-50">
                   {filteredRegistryOrders.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-6 py-16 text-center">
+                      <td colSpan={8} className="px-6 py-16 text-center">
                         <div className="flex flex-col items-center justify-center space-y-3">
                           <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
                             <Search size={22} />
@@ -2795,8 +2930,17 @@ export default function Dashboard() {
 
                   return (
                     <Fragment key={order.id}>
-                      <tr className="group hover:bg-gray-50/50 transition-colors">
-                        <td 
+                      <tr className={`group transition-colors ${selectedOrderIds.has(order.id) ? 'bg-emerald-50/40' : 'hover:bg-gray-50/50'}`}>
+                        <td className="pl-6 pr-2 py-5 w-10">
+                          <input
+                            type="checkbox"
+                            checked={selectedOrderIds.has(order.id)}
+                            onChange={() => toggleOrderSelected(order.id)}
+                            aria-label={`Select order #${order.id}`}
+                            className="w-4 h-4 accent-emerald-600 cursor-pointer"
+                          />
+                        </td>
+                        <td
                           onClick={() => setSelectedOrderId(order.id)}
                           className="px-6 py-5 whitespace-nowrap text-sm font-bold text-gray-800 cursor-pointer hover:text-emerald-600 transition-colors"
                         >
