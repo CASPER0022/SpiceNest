@@ -12,14 +12,14 @@ async function main() {
     update: {
       name: 'Reji',
       rating: 4.9,
-      about: 'Reji is a passionate and experienced beekeeper from the high altitudes of Idukki, Kerala. He specializes in harvesting pure, raw, and organic forest honey using traditional, sustainable apiculture methods that preserve all the natural enzymes, antioxidants, and medicinal benefits.',
+      about: 'Reji is a passionate and experienced beekeeper from the high altitudes of Idukki, Kerala. He specializes in harvesting pure, raw forest honey using traditional, sustainable apiculture methods that preserve all the natural enzymes, antioxidants, and medicinal benefits.',
       image: '/images/farmers/reji/reji.jpeg',
     },
     create: {
       id: 4,
       name: 'Reji',
       rating: 4.9,
-      about: 'Reji is a passionate and experienced beekeeper from the high altitudes of Idukki, Kerala. He specializes in harvesting pure, raw, and organic forest honey using traditional, sustainable apiculture methods that preserve all the natural enzymes, antioxidants, and medicinal benefits.',
+      about: 'Reji is a passionate and experienced beekeeper from the high altitudes of Idukki, Kerala. He specializes in harvesting pure, raw forest honey using traditional, sustainable apiculture methods that preserve all the natural enzymes, antioxidants, and medicinal benefits.',
       image: '/images/farmers/reji/reji.jpeg',
     }
   });

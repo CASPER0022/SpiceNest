@@ -10,13 +10,14 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { matchState, orderTax, STATE_CODES, HOME_STATE } from './tax.js';
 import { FREE_SHIPPING_THRESHOLD, SHIPPING_CHARGE } from './pricing.js';
+import { plainPersonName } from './personName.js';
 
 const ASSETS = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'assets');
-const FONT_REGULAR = path.join(ASSETS, 'fonts', 'NotoSans-Regular.ttf'); // has the ₹ glyph
-const FONT_BOLD = path.join(ASSETS, 'fonts', 'NotoSans-Bold.ttf');
-const LOGO = path.join(ASSETS, 'logo.jpg');
+export const FONT_REGULAR = path.join(ASSETS, 'fonts', 'NotoSans-Regular.ttf'); // has the ₹ glyph
+export const FONT_BOLD = path.join(ASSETS, 'fonts', 'NotoSans-Bold.ttf');
+export const LOGO = path.join(ASSETS, 'logo.jpg');
 
-const SELLER = {
+export const SELLER = {
   name: process.env.SELLER_LEGAL_NAME || 'Idukki Origins',
   address: process.env.SELLER_ADDRESS || 'Kanjikuzhy, Idukki, Kerala - 685606',
   phone: process.env.SELLER_PHONE || '+91 8921663449, +91 9645425742',
@@ -216,7 +217,10 @@ export function renderInvoicePdf(order, { includeBuyerDetails = true } = {}) {
         .text([b.city, b.state, b.pincode].filter(Boolean).join(', '), { width: width / 2 - 10 });
       if (b.mobileNumber) doc.text(`Phone: ${b.mobileNumber}`, { width: width / 2 - 10 });
     } else {
-      doc.font('regular').fontSize(9).fillColor('#374151').text('Customer (online order)', left, y, { width: width / 2 - 10 });
+      // Guests: name only if it is a plain personal name, never the typed address
+      const guestName = plainPersonName(data.buyer.fullName);
+      doc.font(guestName ? 'bold' : 'regular').fontSize(guestName ? 9.5 : 9).fillColor(guestName ? '#111827' : '#374151')
+        .text(guestName || 'Customer (online order)', left, y, { width: width / 2 - 10 });
     }
     y = Math.max(doc.y, y + 30) + 14;
 

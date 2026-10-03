@@ -6,6 +6,7 @@ import pkg from '@prisma/client';
 import prisma from '../db.js';
 import { sendOrderConfirmation, sendCustomAdminMessage } from '../utils/emailService.js';
 import { renderInvoicePdf, invoiceFileName } from '../utils/invoice.js';
+import { renderShippingLabelPdf, labelFileName } from '../utils/shippingLabel.js';
 import { verifyToken, optionalAuth, getRequestUser } from './auth.js';
 import { RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, STRIPE_SECRET_KEY, FRONTEND_URL, RAZORPAY_WEBHOOK_SECRET, STRIPE_WEBHOOK_SECRET } from '../config.js';
 import { priceCart, CheckoutError, WEIGHT_OPTIONS, COUPONS, FREE_SHIPPING_THRESHOLD, SHIPPING_CHARGE, getUnitPrice } from '../utils/pricing.js';
@@ -1117,6 +1118,39 @@ router.get('/admin/orders/:id/invoice', verifyToken, async (req, res) => {
   } catch (error) {
     console.error('Invoice download error:', error);
     res.status(500).json({ error: 'Failed to create invoice' });
+  }
+});
+
+// ==========================================
+// DOWNLOAD SHIPPING LABEL (ADMIN ONLY): 4 x 6 inch PDF with the TO / FROM addresses and order ID
+// ==========================================
+router.get('/admin/orders/:id/label', verifyToken, async (req, res) => {
+  try {
+    const adminUser = await prisma.user.findUnique({
+      where: { id: req.user.id }
+    });
+
+    if (!adminUser || adminUser.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Access denied: Admins only' });
+    }
+
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: 'Invalid order ID' });
+    }
+
+    const order = await prisma.order.findUnique({ where: { id }, include: ORDER_INCLUDE });
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    const pdf = await renderShippingLabelPdf(order);
+    res.set('Content-Type', 'application/pdf');
+    res.set('Content-Disposition', `attachment; filename="${labelFileName(order)}"`);
+    res.send(pdf);
+  } catch (error) {
+    console.error('Shipping label error:', error);
+    res.status(500).json({ error: 'Failed to create shipping label' });
   }
 });
 

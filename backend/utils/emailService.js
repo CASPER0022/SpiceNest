@@ -1,5 +1,6 @@
 import { BrevoClient } from '@getbrevo/brevo';
 import dotenv from 'dotenv';
+import { plainPersonName } from './personName.js';
 
 dotenv.config();
 
@@ -42,7 +43,9 @@ export async function sendOrderConfirmation(to, order, trackingUrl, { includeBuy
     } catch (e) {
       console.error('Failed to parse order address:', e);
     }
-    const safeName = includeBuyerDetails ? escapeHtml(address.fullName || 'Valued Customer') : 'Valued Customer';
+    // Guests: their name only if it is a plain personal name (see personName.js)
+    const buyerName = includeBuyerDetails ? (address.fullName || '') : plainPersonName(address.fullName);
+    const safeName = escapeHtml(buyerName || 'Valued Customer');
 
     const itemsHtml = order.items.map(item => `
       <tr>
@@ -111,7 +114,7 @@ ${invoice ? `
       subject: `Order Confirmed! Order ID: #${order.id}`,
       htmlContent: htmlContent,
       sender: { name: "Idukki Origins", email: SENDER_EMAIL },
-      to: [{ email: to, name: includeBuyerDetails && address.fullName ? address.fullName : "Valued Customer" }],
+      to: [{ email: to, name: buyerName || "Valued Customer" }],
       replyTo: { email: SUPPORT_EMAIL, name: "Idukki Origins Support" },
       ...(invoice && { attachment: [{ name: invoice.name, content: invoice.content.toString('base64') }] })
     });

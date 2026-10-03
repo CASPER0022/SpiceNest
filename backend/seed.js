@@ -17,13 +17,13 @@ async function main() {
     update: {
       name: 'Raju John',
       rating: 4.9,
-      about: 'A passionate 3rd-generation spice farmer from the lush hills of Kerala, Raju John is dedicated to sustainable and organic farming practices. His black pepper vines are cultivated under the natural canopy of the rainforest, ensuring the boldest flavors and highest quality.',
+      about: 'A passionate 3rd-generation spice farmer from the lush hills of Kerala, Raju John is dedicated to sustainable, traditional farming practices. His black pepper vines are cultivated under the natural canopy of the rainforest, ensuring the boldest flavors and highest quality.',
       image: '/images/farmers/raju/raju.jpeg',
     },
     create: {
       name: 'Raju John',
       rating: 4.9,
-      about: 'A passionate 3rd-generation spice farmer from the lush hills of Kerala, Raju John is dedicated to sustainable and organic farming practices. His black pepper vines are cultivated under the natural canopy of the rainforest, ensuring the boldest flavors and highest quality.',
+      about: 'A passionate 3rd-generation spice farmer from the lush hills of Kerala, Raju John is dedicated to sustainable, traditional farming practices. His black pepper vines are cultivated under the natural canopy of the rainforest, ensuring the boldest flavors and highest quality.',
       image: '/images/farmers/raju/raju.jpeg',
     }
   });
@@ -36,13 +36,13 @@ async function main() {
     update: {
       name: 'John',
       rating: 4.8,
-      about: 'A dedicated organic farmer from Idukki, Kerala, specializing in cultivating the highest grade of aromatic cloves. John focuses on chemical-free sun-drying to retain essential oils.',
+      about: 'A dedicated farmer from Idukki, Kerala, specializing in cultivating the highest grade of aromatic cloves. John focuses on natural sun-drying to retain essential oils.',
       image: '/images/farmers/John/john.jpeg',
     },
     create: {
       name: 'John',
       rating: 4.8,
-      about: 'A dedicated organic farmer from Idukki, Kerala, specializing in cultivating the highest grade of aromatic cloves. John focuses on chemical-free sun-drying to retain essential oils.',
+      about: 'A dedicated farmer from Idukki, Kerala, specializing in cultivating the highest grade of aromatic cloves. John focuses on natural sun-drying to retain essential oils.',
       image: '/images/farmers/John/john.jpeg',
     }
   });
@@ -55,14 +55,14 @@ async function main() {
     update: {
       name: 'Bibin',
       rating: 4.9,
-      about: 'A traditional organic farmer from Idukki, Kerala, Bibin specializes in preparing pure, sun-dried, stone-ground spice powders. By avoiding high-heat grinding, his techniques preserve the rich natural oils, bright colors, and intense flavors of chilli and coriander.',
+      about: 'A traditional farmer from Idukki, Kerala, Bibin specializes in preparing pure, sun-dried, stone-ground spice powders. By avoiding high-heat grinding, his techniques preserve the rich natural oils, bright colors, and intense flavors of chilli and coriander.',
       image: '/images/farmers/bibin/bibin.jpeg',
     },
     create: {
       id: 3,
       name: 'Bibin',
       rating: 4.9,
-      about: 'A traditional organic farmer from Idukki, Kerala, Bibin specializes in preparing pure, sun-dried, stone-ground spice powders. By avoiding high-heat grinding, his techniques preserve the rich natural oils, bright colors, and intense flavors of chilli and coriander.',
+      about: 'A traditional farmer from Idukki, Kerala, Bibin specializes in preparing pure, sun-dried, stone-ground spice powders. By avoiding high-heat grinding, his techniques preserve the rich natural oils, bright colors, and intense flavors of chilli and coriander.',
       image: '/images/farmers/bibin/bibin.jpeg',
     }
   });
@@ -75,14 +75,14 @@ async function main() {
     update: {
       name: 'Reji',
       rating: 4.9,
-      about: 'Reji is a passionate and experienced beekeeper from the high altitudes of Idukki, Kerala. He specializes in harvesting pure, raw, and organic forest honey using traditional, sustainable apiculture methods that preserve all the natural enzymes, antioxidants, and medicinal benefits.',
+      about: 'Reji is a passionate and experienced beekeeper from the high altitudes of Idukki, Kerala. He specializes in harvesting pure, raw forest honey using traditional, sustainable apiculture methods that preserve all the natural enzymes, antioxidants, and medicinal benefits.',
       image: '/images/farmers/reji/reji.jpeg',
     },
     create: {
       id: 4,
       name: 'Reji',
       rating: 4.9,
-      about: 'Reji is a passionate and experienced beekeeper from the high altitudes of Idukki, Kerala. He specializes in harvesting pure, raw, and organic forest honey using traditional, sustainable apiculture methods that preserve all the natural enzymes, antioxidants, and medicinal benefits.',
+      about: 'Reji is a passionate and experienced beekeeper from the high altitudes of Idukki, Kerala. He specializes in harvesting pure, raw forest honey using traditional, sustainable apiculture methods that preserve all the natural enzymes, antioxidants, and medicinal benefits.',
       image: '/images/farmers/reji/reji.jpeg',
     }
   });
@@ -164,7 +164,7 @@ async function main() {
       price: 150.00, 
       category: 'Powders', 
       images: ['/images/chilli powder/chilli powder.jpg'], 
-      description: 'Sourced from the sun-drenched organic farms of Bibin in Idukki, Kerala, our premium Chilli Powder is ground from carefully selected, hand-picked ripe red chillies. Processed traditionally in small batches to preserve its natural pungent heat and brilliant crimson color, it contains absolutely no added artificial colors or preservatives. Perfect for adding a fiery punch and vibrant red shade to your traditional curries, stews, and marinades.', 
+      description: 'Sourced from the sun-drenched farms of Bibin in Idukki, Kerala, our premium Chilli Powder is ground from carefully selected, hand-picked ripe red chillies. Processed traditionally in small batches to preserve its natural pungent heat and brilliant crimson color, it contains absolutely no added artificial colors or preservatives. Perfect for adding a fiery punch and vibrant red shade to your traditional curries, stews, and marinades.', 
       farmerId: bibin.id,
       stock: 10.0
     },
@@ -173,7 +173,7 @@ async function main() {
       price: 120.00, 
       category: 'Powders', 
       images: ['/images/coriander powder/coriander powder.jpg'], 
-      description: 'Handcrafted from slow-dried, premium coriander seeds grown on Bibin’s organic spice estate, this Coriander Powder has a refreshing, warm, citrusy, and mildly sweet aroma. Ground at low temperatures to ensure the delicate volatile oils are locked in, our coriander powder offers unmatched freshness and depth of flavor. A staple spice to bring structural balance, rich aroma, and wholesome texture to any curry, lentil soup, or vegetable side dish.', 
+      description: 'Handcrafted from slow-dried, premium coriander seeds grown on Bibin’s spice estate, this Coriander Powder has a refreshing, warm, citrusy, and mildly sweet aroma. Ground at low temperatures to ensure the delicate volatile oils are locked in, our coriander powder offers unmatched freshness and depth of flavor. A staple spice to bring structural balance, rich aroma, and wholesome texture to any curry, lentil soup, or vegetable side dish.', 
       farmerId: bibin.id,
       stock: 10.0
     },

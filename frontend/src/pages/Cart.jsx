@@ -23,7 +23,7 @@ const loadRazorpayScript = () => {
 
 const AVAILABLE_COUPONS = [
   { code: 'STARTER', discount: 70, firstOrderOnly: true, description: '₹70 off on your first premium spice purchase! (Log in to use)' },
-  { code: 'SPICE50', discount: 50, description: '₹50 off on our organic Western Ghats spices!' }
+  { code: 'SPICE50', discount: 50, description: '₹50 off on our farm-fresh Western Ghats spices!' }
 ];
 
 // Derives the checkout form from the user's saved address, and whether it still needs editing
