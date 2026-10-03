@@ -307,21 +307,24 @@ export default function Cart() {
               {cartItems.map((item) => {
                 const itemId = item.cartItemId || item.id;
                 return (
-                <li key={itemId} className="p-6 flex flex-col sm:flex-row sm:items-center">
-                  <img src={item.images ? item.images[0] : item.image} alt={item.name} className="w-20 h-20 object-cover rounded-xl mb-4 sm:mb-0 shadow-sm" />
-                  <div className="sm:ml-6 flex-grow mb-4 sm:mb-0">
-                    <h3 className="text-lg font-bold text-gray-900">{item.name} <span className="text-sm text-gray-500 font-normal">({item.weight || '100g'})</span></h3>
-                    <p className="text-emerald-600 font-bold">₹{Math.round(item.price)}</p>
-                  </div>
-                  <div className="flex items-center space-x-4">
-                    <div className="flex items-center border rounded-lg overflow-hidden">
-                      <button onClick={() => updateQuantity(itemId, item.quantity - 1)} className="p-2 bg-gray-50 hover:bg-gray-100 text-gray-600 transition-colors"><Minus size={16} /></button>
-                      <span className="px-4 font-bold text-gray-900">{item.quantity}</span>
-                      <button onClick={() => updateQuantity(itemId, item.quantity + 1)} className="p-2 bg-gray-50 hover:bg-gray-100 text-gray-600 transition-colors"><Plus size={16} /></button>
+                <li key={itemId} className="p-4 sm:p-6 flex items-center gap-4 sm:gap-6">
+                  <img src={item.images ? item.images[0] : item.image} alt={item.name} className="w-20 h-20 object-cover rounded-xl shadow-sm shrink-0" />
+                  {/* Beside the photo: name and price, then quantity (one row from the sm breakpoint) */}
+                  <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base sm:text-lg font-bold text-gray-900 leading-snug">{item.name} <span className="text-sm text-gray-500 font-normal">({item.weight || '100g'})</span></h3>
+                      <p className="text-emerald-600 font-bold">₹{Math.round(item.price)}</p>
                     </div>
-                    <button onClick={() => removeFromCart(itemId)} className="text-red-500 hover:text-red-600 p-2 transition-colors bg-red-50 rounded-lg">
-                      <Trash2 size={20} />
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center border rounded-lg overflow-hidden">
+                        <button onClick={() => updateQuantity(itemId, item.quantity - 1)} aria-label={`Decrease ${item.name} quantity`} className="p-1.5 sm:p-2 bg-gray-50 hover:bg-gray-100 text-gray-600 transition-colors"><Minus size={16} /></button>
+                        <span className="px-3 sm:px-4 font-bold text-gray-900">{item.quantity}</span>
+                        <button onClick={() => updateQuantity(itemId, item.quantity + 1)} aria-label={`Increase ${item.name} quantity`} className="p-1.5 sm:p-2 bg-gray-50 hover:bg-gray-100 text-gray-600 transition-colors"><Plus size={16} /></button>
+                      </div>
+                      <button onClick={() => removeFromCart(itemId)} aria-label={`Remove ${item.name}`} className="text-red-500 hover:text-red-600 p-1.5 sm:p-2 transition-colors bg-red-50 rounded-lg">
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
                   </div>
                 </li>
               )})}
