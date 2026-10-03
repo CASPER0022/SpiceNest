@@ -5,7 +5,7 @@ export default function Reviews() {
       <div className="prose prose-emerald max-w-none text-gray-600 leading-relaxed space-y-6">
         <p className="text-lg font-bold text-emerald-800">What Our Sourced Patrons Say ⭐</p>
         <p>[Placeholder Text: You can update this section in the Reviews.jsx page component later.]</p>
-        <p>We pride ourselves on offering absolute premium-quality organic spices that deliver authentic Indian flavors. Read reviews left by our registered customers on our individual products and farmer profile pages!</p>
+        <p>We pride ourselves on offering absolute premium-quality, farm-fresh spices that deliver authentic Indian flavors. Read reviews left by our registered customers on our individual products and farmer profile pages!</p>
       </div>
     </div>
   );

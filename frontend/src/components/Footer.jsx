@@ -23,7 +23,7 @@ export default function Footer() {
               </div>
             </div>
             <p className="text-gray-400 text-sm leading-relaxed">
-              Premium organic spices from the lush farms of Idukki, Kerala. Every spice is handpicked and processed with care to bring nature's best to your kitchen.
+              Premium, farm-fresh spices from the lush hills of Idukki, Kerala. Every spice is handpicked and processed with care to bring nature's best to your kitchen.
             </p>
             {/* Social Links */}
             <div className="flex space-x-3 pt-2">
@@ -109,7 +109,7 @@ export default function Footer() {
           <div className="flex flex-col sm:flex-row items-center justify-center space-y-2 sm:space-y-0 sm:space-x-4 text-[13px]">
             <span>© {new Date().getFullYear()} Idukki Origins. All rights reserved.</span>
             <span className="hidden sm:inline text-gray-700">|</span>
-            <span>Certified Spice Estate</span>
+            <span>FSSAI Reg. No. 21326177000702</span>
           </div>
           <div className="flex items-center justify-center space-x-1.5 pt-2 text-[14px]">
             <span className="text-gray-400">Designed & Developed by</span>

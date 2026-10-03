@@ -132,7 +132,7 @@ export default function Farmers() {
                     ))}
                     {(!farmer.products || farmer.products.length === 0) && (
                       <span className="text-[10px] font-bold bg-gray-50 text-gray-500 px-2 py-0.5 rounded-full">
-                        Organic Spices
+                        Farm-fresh Spices
                       </span>
                     )}
                   </div>

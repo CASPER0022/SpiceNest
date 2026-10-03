@@ -341,7 +341,7 @@ export default function ProductDetails() {
               {product.category}
             </span>
             <span className="px-3 py-1 text-emerald-600 text-[10px] font-bold rounded-full uppercase tracking-wider bg-emerald-50/50">
-              Organic
+              Farm Fresh
             </span>
             {product.stock !== undefined && (
               product.stock >= 0.1 ? (
@@ -546,7 +546,7 @@ export default function ProductDetails() {
             <div className="flex items-center justify-between p-4 bg-gray-50/80 rounded-xl border border-gray-100/50">
               <div className="flex items-center text-sm text-gray-700 font-semibold">
                 <Leaf size={18} className="text-emerald-600 mr-3 shrink-0" />
-                <span>Certified organic product</span>
+                <span>FSSAI registered food business</span>
               </div>
               <span className="text-gray-400 text-xs">→</span>
             </div>

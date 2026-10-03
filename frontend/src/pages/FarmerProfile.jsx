@@ -208,11 +208,11 @@ export default function FarmerProfile() {
               <ul className="space-y-3 text-sm text-gray-700">
                 <li className="flex items-start">
                   <span className="text-emerald-500 mr-2">✓</span>
-                  100% Organic Farming Practices
+                  Traditional Farming Practices
                 </li>
                 <li className="flex items-start">
                   <span className="text-emerald-500 mr-2">✓</span>
-                  Fair Trade Certified
+                  Fair Prices Paid Directly
                 </li>
                 <li className="flex items-start">
                   <span className="text-emerald-500 mr-2">✓</span>
@@ -255,7 +255,7 @@ export default function FarmerProfile() {
               Harvest & Farm Gallery
             </h2>
             <p className="text-gray-500 font-semibold mb-8 text-sm max-w-2xl leading-relaxed">
-              Take a virtual tour of {farmer.name}'s lush natural farming estates in Idukki, Kerala, where our premium spices are grown using 100% organic and sustainable traditions.
+              Take a virtual tour of {farmer.name}'s lush natural farming estates in Idukki, Kerala, where our premium spices are grown using traditional, sustainable methods.
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -269,7 +269,7 @@ export default function FarmerProfile() {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-90 transition-opacity" />
                 <div className="absolute bottom-6 left-6 right-6 text-white">
                   <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-600 text-emerald-50 px-2.5 py-1 rounded-full mb-2 inline-block">
-                    Organic Estates
+                    Idukki Estates
                   </span>
                   <h4 className="text-lg font-bold">Rainforest Spice Canopy</h4>
                   <p className="text-xs text-gray-200/90 font-medium mt-1">

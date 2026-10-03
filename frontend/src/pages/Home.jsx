@@ -13,7 +13,7 @@ const IMAGES = [
 ];
 
 const FEATURES = [
-  "Own Organic Farms",
+  "Direct from Idukki Farms",
   "Trusted by many",
   "Free Delivery Rs 500+",
   "4.90 / 5 Rating"
@@ -37,7 +37,7 @@ export default function Home() {
       shopText: "Shop Spices",
     },
     {
-      title: "Organic Powders",
+      title: "Spice Powders",
       subtitle: "Freshly Ground",
       price: "₹ 150 / 100g",
       img: "/images/chilli powder/chilli powder.jpg",
