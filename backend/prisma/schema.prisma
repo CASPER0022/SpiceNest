@@ -79,6 +79,8 @@ model Order {
   stripeSessionId   String?        @unique
   razorpayOrderId   String?        @unique
   razorpayPaymentId String?        @unique
+  // India Post article number (e.g. EM123456789IN), entered by an admin when the parcel is booked
+  trackingNumber  String?
   // Random secret emailed to the customer; lets them track the order without guessing IDs.
   trackingToken   String?        @unique
   items           OrderItem[]

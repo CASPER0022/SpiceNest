@@ -4,7 +4,8 @@ import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import pkg from '@prisma/client';
 import prisma from '../db.js';
-import { sendOrderConfirmation, sendCustomAdminMessage } from '../utils/emailService.js';
+import { sendOrderConfirmation, sendCustomAdminMessage, sendShippingUpdate } from '../utils/emailService.js';
+import { plainPersonName } from '../utils/personName.js';
 import { renderInvoicePdf, invoiceFileName } from '../utils/invoice.js';
 import { renderShippingLabelPdf, labelFileName } from '../utils/shippingLabel.js';
 import { verifyToken, optionalAuth, getRequestUser } from './auth.js';
@@ -285,15 +286,18 @@ const isUniqueViolation = (err) => err instanceof Prisma.PrismaClientKnownReques
 // (verified). Guests get it at the unverified checkout email they typed, so their version contains
 // NO buyer-supplied text (no name, no address): only our product names, amounts and the tracking
 // link. That way nobody can use checkout to send their own words from our address.
+// Where order emails go: the account email for logged-in buyers, the checkout email for guests
+async function orderRecipient(order) {
+  if (order.userId) {
+    const user = await prisma.user.findUnique({ where: { id: order.userId }, select: { email: true } });
+    return user?.email || null;
+  }
+  return parseAddress(order.address).email || null;
+}
+
 function sendConfirmationInBackground(order) {
   (async () => {
-    let recipient = null;
-    if (order.userId) {
-      const user = await prisma.user.findUnique({ where: { id: order.userId }, select: { email: true } });
-      recipient = user?.email || null;
-    } else {
-      recipient = parseAddress(order.address).email || null;
-    }
+    const recipient = await orderRecipient(order);
     if (!recipient) return;
 
     const trackingUrl = `${FRONTEND_URL}/track-order?id=${order.id}&token=${order.trackingToken}`;
@@ -1122,6 +1126,67 @@ router.get('/admin/orders/:id/invoice', verifyToken, async (req, res) => {
 });
 
 // ==========================================
+// SAVE INDIA POST TRACKING NUMBER (ADMIN ONLY)
+// Body: { trackingNumber, markShipped = true, notifyCustomer = true }. An empty number clears it.
+// With markShipped, a PAID / Processing order becomes "Shipped". With notifyCustomer, the customer
+// is emailed the tracking number (same recipient and name rules as the order confirmation).
+// ==========================================
+const TRACKING_NUMBER_REGEX = /^[A-Z0-9-]{6,30}$/;
+
+router.put('/admin/orders/:id/tracking', verifyToken, async (req, res) => {
+  try {
+    const adminUser = await prisma.user.findUnique({
+      where: { id: req.user.id }
+    });
+
+    if (!adminUser || adminUser.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Access denied: Admins only' });
+    }
+
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: 'Invalid order ID' });
+    }
+
+    // Typed with spaces or in lower case: "em 1234 5678 9in" -> "EM123456789IN"
+    const trackingNumber = String(req.body.trackingNumber || '').toUpperCase().replace(/\s+/g, '');
+    if (trackingNumber && !TRACKING_NUMBER_REGEX.test(trackingNumber)) {
+      return res.status(400).json({ error: 'Tracking number should be 6-30 letters or digits, e.g. EM123456789IN.' });
+    }
+    const markShipped = req.body.markShipped !== false;
+    const notifyCustomer = req.body.notifyCustomer !== false;
+
+    const existing = await prisma.order.findUnique({ where: { id }, include: ORDER_INCLUDE });
+    if (!existing) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    const data = { trackingNumber: trackingNumber || null };
+    if (trackingNumber && markShipped && ['PAID', 'Processing'].includes(existing.status)) {
+      data.status = 'Shipped';
+    }
+    const order = await prisma.order.update({ where: { id }, data, include: ORDER_INCLUDE });
+
+    let emailed = false;
+    if (trackingNumber && notifyCustomer) {
+      const recipient = await orderRecipient(order);
+      if (recipient) {
+        const address = parseAddress(order.address);
+        // Guests' typed names are only used when they are a plain personal name
+        const name = order.userId ? (address.fullName || '') : plainPersonName(address.fullName);
+        const trackingUrl = order.trackingToken ? `${FRONTEND_URL}/track-order?id=${order.id}&token=${order.trackingToken}` : '';
+        emailed = await sendShippingUpdate(recipient, name, order, trackingNumber, trackingUrl);
+      }
+    }
+
+    res.json({ success: true, order: { id: order.id, status: order.status, trackingNumber: order.trackingNumber }, emailed });
+  } catch (error) {
+    console.error('Save tracking number error:', error);
+    res.status(500).json({ error: 'Failed to save tracking number' });
+  }
+});
+
+// ==========================================
 // DOWNLOAD SHIPPING LABEL (ADMIN ONLY): 4 x 6 inch PDF with the TO / FROM addresses and order ID
 // ==========================================
 router.get('/admin/orders/:id/label', verifyToken, async (req, res) => {
@@ -1229,6 +1294,9 @@ function toTrackingView(order, address, fullAccess) {
     createdAt: order.createdAt,
     updatedAt: order.updatedAt,
     limited: !fullAccess,
+    // India Post article number: shown with order ID + email too (it reveals parcel movement only,
+    // not the street address)
+    trackingNumber: order.trackingNumber || null,
     items: order.items.map((item) => ({
       id: item.id,
       productName: item.productName || item.product?.name || 'Product',

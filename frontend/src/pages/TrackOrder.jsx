@@ -314,6 +314,25 @@ export default function TrackOrder() {
       {/* Order Tracking Display */}
       {order && !loading && (
         <div id="tracking-details-section" className="space-y-8 animate-fadeIn">
+          {/* India Post article number (shown for order ID + email lookups and secret links) */}
+          {order.trackingNumber && (
+            <div className="bg-emerald-50 border border-emerald-100 rounded-3xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700 mb-1">Shipped via India Post</p>
+                <p className="font-mono text-xl font-bold text-gray-900 tracking-wider break-all">{order.trackingNumber}</p>
+                <p className="text-xs text-gray-500 mt-1">On the India Post website, open "Track Consignment" and enter this number.</p>
+              </div>
+              <a
+                href="https://www.indiapost.gov.in"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shrink-0 inline-flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-5 py-3 rounded-xl transition-colors"
+              >
+                Track on India Post
+              </a>
+            </div>
+          )}
+
           {/* Timeline Tracking Flow */}
           <div className="bg-white shadow-xl rounded-3xl border border-gray-150 p-6 md:p-8">
             <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-8">Shipping Milestones</h3>

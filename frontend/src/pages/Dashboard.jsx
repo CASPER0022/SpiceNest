@@ -9,6 +9,51 @@ import {
 import toast from 'react-hot-toast';
 import TaxReport from '../components/TaxReport';
 
+// Date periods shared by Sales Analytics and the Order Registry
+const DATE_PERIODS = ['Today', 'Last 7 days', 'This month', 'Last month', 'Year', 'Custom'];
+
+// 'YYYY-MM-DD' from a date input -> local midnight of that day
+const parseDateInput = (value) => {
+  const [y, m, d] = String(value).split('-').map(Number);
+  return new Date(y, m - 1, d);
+};
+
+// { from, to } for a period, in the browser's local time; `to` is exclusive and null means "now".
+// Returns null for a Custom period without a start date (nothing selected yet).
+const periodRange = (period, customStart, customEnd) => {
+  const now = new Date();
+  switch (period) {
+    case 'Today':
+      return { from: new Date(now.getFullYear(), now.getMonth(), now.getDate()), to: null };
+    case 'Last 7 days': {
+      const from = new Date(now);
+      from.setDate(now.getDate() - 7);
+      return { from, to: null };
+    }
+    case 'This month':
+      return { from: new Date(now.getFullYear(), now.getMonth(), 1), to: null };
+    case 'Last month':
+      // Up to the first moment of this month, so orders on the last day of last month are included
+      return { from: new Date(now.getFullYear(), now.getMonth() - 1, 1), to: new Date(now.getFullYear(), now.getMonth(), 1) };
+    case 'Year':
+      return { from: new Date(now.getFullYear(), 0, 1), to: null };
+    case 'Custom': {
+      if (!customStart) return null;
+      const to = customEnd ? parseDateInput(customEnd) : new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      to.setDate(to.getDate() + 1); // include the whole end day
+      return { from: parseDateInput(customStart), to };
+    }
+    default: // 'All time'
+      return { from: null, to: null };
+  }
+};
+
+const inPeriod = (date, range) => {
+  if (!range) return false;
+  const time = new Date(date);
+  return (!range.from || time >= range.from) && (!range.to || time < range.to);
+};
+
 // Order Registry filter for checkouts that were never paid (they are not orders)
 const ABANDONED_FILTER = 'Abandoned Checkout';
 
@@ -90,6 +135,9 @@ export default function Dashboard() {
   const [restoreStockOnDelete, setRestoreStockOnDelete] = useState(true);
   const [deletingOrder, setDeletingOrder] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(null); // e.g. "10020-invoice"
+  // India Post tracking number pop-up: { id, customerName, status, value, markShipped, notifyCustomer }
+  const [trackingEdit, setTrackingEdit] = useState(null);
+  const [savingTracking, setSavingTracking] = useState(false);
   const [selectedCustomerEmail, setSelectedCustomerEmail] = useState(null);
   const [selectedProductAnalyticsId, setSelectedProductAnalyticsId] = useState(null);
   const [adminMessage, setAdminMessage] = useState('');
@@ -98,6 +146,10 @@ export default function Dashboard() {
   const [statusFilter, setStatusFilter] = useState('All'); // Order Registry: 'All', one order status, or ABANDONED_FILTER
   // Customers who filled in their details and opened the payment window but never paid
   const [abandonedCheckouts, setAbandonedCheckouts] = useState([]);
+  // Order Registry date filter ('All time' or one of DATE_PERIODS)
+  const [registryPeriod, setRegistryPeriod] = useState('All time');
+  const [registryStartDate, setRegistryStartDate] = useState('');
+  const [registryEndDate, setRegistryEndDate] = useState('');
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [editAddressForm, setEditAddressForm] = useState(null);
   const [updatingAddress, setUpdatingAddress] = useState(false);
@@ -268,6 +320,37 @@ export default function Dashboard() {
     }
   };
 
+  const handleSaveTracking = async () => {
+    if (!trackingEdit) return;
+    const { id, value, markShipped, notifyCustomer } = trackingEdit;
+    setSavingTracking(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/api/payment/admin/orders/${id}/tracking`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ trackingNumber: value, markShipped, notifyCustomer })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Failed to save tracking number');
+
+      setOrders(prevOrders => prevOrders.map(o => o.id === id
+        ? { ...o, status: data.order.status, trackingNumber: data.order.trackingNumber }
+        : o));
+      setTrackingEdit(null);
+      if (!data.order.trackingNumber) {
+        toast.success(`Tracking number removed from order #${id}`);
+      } else {
+        toast.success(`Tracking saved for order #${id}${data.emailed ? ' and customer emailed' : ''}`);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || 'Error saving tracking number');
+    } finally {
+      setSavingTracking(false);
+    }
+  };
+
   const handleDeleteOrder = async () => {
     if (!orderToDelete) return;
     const orderId = orderToDelete.id;
@@ -365,54 +448,8 @@ export default function Dashboard() {
   // Date filtering logic based on period selector
   useEffect(() => {
     if (orders.length === 0) return;
-
-    const now = new Date();
-    let cutoff = new Date();
-
-    if (timeFilter === 'Today') {
-      cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    } else if (timeFilter === 'Last 7 days') {
-      cutoff.setDate(now.getDate() - 7);
-    } else if (timeFilter === 'This month') {
-      // Start of current month
-      cutoff = new Date(now.getFullYear(), now.getMonth(), 1);
-    } else if (timeFilter === 'Last month') {
-      // Start of last month to end of last month
-      const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
-      
-      const filtered = orders.filter(order => {
-        const orderDate = new Date(order.createdAt);
-        return orderDate >= startOfLastMonth && orderDate <= endOfLastMonth;
-      });
-      setFilteredOrders(filtered);
-      return;
-    } else if (timeFilter === 'Year') {
-      cutoff = new Date(now.getFullYear(), 0, 1);
-    } else if (timeFilter === 'Custom') {
-      if (!customStartDate) {
-        setFilteredOrders([]);
-        return;
-      }
-      const start = new Date(customStartDate);
-      start.setHours(0, 0, 0, 0);
-
-      const end = customEndDate ? new Date(customEndDate) : new Date();
-      end.setHours(23, 59, 59, 999);
-
-      const filtered = orders.filter(order => {
-        const orderDate = new Date(order.createdAt);
-        return orderDate >= start && orderDate <= end;
-      });
-      setFilteredOrders(filtered);
-      return;
-    }
-
-    const filtered = orders.filter(order => {
-      return new Date(order.createdAt) >= cutoff;
-    });
-
-    setFilteredOrders(filtered);
+    const range = periodRange(timeFilter, customStartDate, customEndDate);
+    setFilteredOrders(orders.filter(order => inPeriod(order.createdAt, range)));
   }, [orders, timeFilter, customStartDate, customEndDate]);
 
   // Scroll to top automatically when navigating to any detail page or returning back
@@ -420,7 +457,10 @@ export default function Dashboard() {
     window.scrollTo(0, 0);
   }, [selectedOrderId, selectedCustomerEmail, selectedProductAnalyticsId, editingProductId]);
 
+  // Date filter first, then search, then the status buttons
+  const registryRange = periodRange(registryPeriod, registryStartDate, registryEndDate);
   const searchedRegistryOrders = orders.filter(order => {
+    if (!inPeriod(order.createdAt, registryRange)) return false;
     if (!searchQuery.trim()) return true;
     
     const query = searchQuery.toLowerCase().trim();
@@ -441,6 +481,7 @@ export default function Dashboard() {
   }, {});
   const isAbandonedView = statusFilter === ABANDONED_FILTER;
   const filteredAbandonedCheckouts = abandonedCheckouts.filter(checkout => {
+    if (!inPeriod(checkout.createdAt, registryRange)) return false;
     const query = searchQuery.toLowerCase().trim();
     if (!query) return true;
     const a = checkout.address || {};
@@ -2033,7 +2074,7 @@ export default function Dashboard() {
           <div className="bg-white/80 p-4 rounded-2xl border border-gray-100 flex flex-wrap items-center justify-between gap-4 shadow-sm">
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex flex-wrap gap-2">
-                {['Today', 'Last 7 days', 'This month', 'Last month', 'Year', 'Custom'].map(filter => (
+                {DATE_PERIODS.map(filter => (
                   <button
                     key={filter}
                     onClick={() => setTimeFilter(filter)}
@@ -2421,6 +2462,56 @@ export default function Dashboard() {
             )}
           </div>
 
+          {/* Date filter (same periods as Sales Analytics, plus All time) */}
+          <div className="bg-white/80 p-4 rounded-2xl border border-gray-100 flex flex-wrap items-center justify-between gap-4 shadow-sm">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex flex-wrap gap-2">
+                {['All time', ...DATE_PERIODS].map(period => (
+                  <button
+                    key={period}
+                    onClick={() => setRegistryPeriod(period)}
+                    aria-pressed={registryPeriod === period}
+                    className={`text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl transition-all border ${
+                      registryPeriod === period
+                        ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm'
+                        : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
+                    }`}
+                  >
+                    {period}
+                  </button>
+                ))}
+              </div>
+
+              {registryPeriod === 'Custom' && (
+                <div className="flex items-center gap-3 bg-gray-50 p-1.5 rounded-xl border border-gray-200 animate-fadeIn">
+                  <div className="flex items-center gap-1.5 px-2">
+                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider">From</span>
+                    <input
+                      type="date"
+                      value={registryStartDate}
+                      onChange={(e) => setRegistryStartDate(e.target.value)}
+                      className="text-xs font-bold text-gray-700 bg-white border border-gray-200 px-2 py-1 rounded-lg focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1.5 px-2">
+                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider">To</span>
+                    <input
+                      type="date"
+                      value={registryEndDate}
+                      onChange={(e) => setRegistryEndDate(e.target.value)}
+                      className="text-xs font-bold text-gray-700 bg-white border border-gray-200 px-2 py-1 rounded-lg focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="text-xs font-semibold text-emerald-800 bg-emerald-50/70 border border-emerald-100/50 px-4 py-2 rounded-xl">
+              {registryPeriod === 'Custom' && !registryStartDate
+                ? 'Choose a From date'
+                : `Showing: ${registryPeriod} (${isAbandonedView ? `${filteredAbandonedCheckouts.length} abandoned checkouts` : `${filteredRegistryOrders.length} orders`})`}
+            </div>
+          </div>
+
           {/* Status filter: show only the orders with one status */}
           <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter orders by status">
             {['All', ...orderStatuses]
@@ -2575,7 +2666,8 @@ export default function Dashboard() {
                     <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Paid</th>
                     <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Payment Status</th>
                     <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Shipment Tracking</th>
-                    <th scope="col" className="px-6 py-4 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest">Actions</th>
+                    {/* Pinned to the right so the actions stay visible when the table scrolls */}
+                    <th scope="col" className="sticky right-0 z-10 bg-gray-50 shadow-[-10px_0_12px_-10px_rgba(0,0,0,0.15)] px-4 py-4 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-50">
@@ -2607,7 +2699,7 @@ export default function Dashboard() {
 
                   return (
                     <Fragment key={order.id}>
-                      <tr className="hover:bg-gray-50/50 transition-colors">
+                      <tr className="group hover:bg-gray-50/50 transition-colors">
                         <td 
                           onClick={() => setSelectedOrderId(order.id)}
                           className="px-6 py-5 whitespace-nowrap text-sm font-bold text-gray-800 cursor-pointer hover:text-emerald-600 transition-colors"
@@ -2659,14 +2751,30 @@ export default function Dashboard() {
                           </div>
                         </td>
                         <td className="px-6 py-5 whitespace-nowrap">
-                          {/* Standard Shipment Tracking placeholder as requested */}
-                          <span className="text-sm font-bold text-gray-400">-</span>
+                          {/* India Post article number */}
+                          {order.trackingNumber ? (
+                            <button
+                              onClick={() => setTrackingEdit({ id: order.id, customerName, status: order.status, value: order.trackingNumber, markShipped: false, notifyCustomer: false })}
+                              title="Edit tracking number"
+                              className="flex flex-col items-start text-left group/tracking"
+                            >
+                              <span className="text-[9px] font-black uppercase tracking-wider text-gray-400">India Post</span>
+                              <span className="font-mono text-xs font-bold text-gray-800 group-hover/tracking:text-emerald-600">{order.trackingNumber}</span>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => setTrackingEdit({ id: order.id, customerName, status: order.status, value: '', markShipped: true, notifyCustomer: true })}
+                              className="text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 px-2.5 py-1.5 rounded-lg transition-colors"
+                            >
+                              + Add tracking
+                            </button>
+                          )}
                         </td>
-                        <td className="px-6 py-5 whitespace-nowrap text-right text-xs">
-                          <div className="inline-flex items-center gap-2">
+                        <td className="sticky right-0 z-10 bg-white group-hover:bg-gray-50 transition-colors shadow-[-10px_0_12px_-10px_rgba(0,0,0,0.15)] px-4 py-5 whitespace-nowrap text-right text-xs">
+                          <div className="inline-flex items-center gap-1.5">
                             <button 
                               onClick={() => setSelectedOrderId(order.id)}
-                              className="inline-flex items-center font-black uppercase tracking-wider text-emerald-600 hover:text-emerald-700 bg-emerald-50/50 border border-emerald-100/50 px-3 py-1.5 rounded-lg transition-colors gap-1"
+                              className="inline-flex items-center font-black uppercase tracking-wider text-emerald-600 hover:text-emerald-700 bg-emerald-50/50 border border-emerald-100/50 px-2.5 py-1.5 rounded-lg transition-colors gap-1"
                             >
                               Details
                             </button>
@@ -2677,7 +2785,7 @@ export default function Dashboard() {
                                 disabled={downloadingPdf === `${order.id}-${type}`}
                                 title={`Download ${type === 'invoice' ? 'invoice' : 'shipping label'} for order #${order.id}`}
                                 aria-label={`Download ${type === 'invoice' ? 'invoice' : 'shipping label'} for order #${order.id}`}
-                                className="inline-flex items-center font-black uppercase tracking-wider text-gray-600 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 border border-gray-200/70 px-3 py-1.5 rounded-lg transition-colors gap-1 disabled:opacity-50"
+                                className="inline-flex items-center font-black uppercase tracking-wider text-gray-600 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 border border-gray-200/70 px-2.5 py-1.5 rounded-lg transition-colors gap-1 disabled:opacity-50"
                               >
                                 <Download size={12} /> {downloadingPdf === `${order.id}-${type}` ? '...' : text}
                               </button>
@@ -2703,6 +2811,82 @@ export default function Dashboard() {
               </tbody>
             </table>
           </div>
+
+          {/* India Post tracking number */}
+          {trackingEdit && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+              onClick={() => !savingTracking && setTrackingEdit(null)}
+            >
+              <form
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="tracking-title"
+                className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 sm:p-8"
+                onClick={(e) => e.stopPropagation()}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleSaveTracking();
+                }}
+              >
+                <h3 id="tracking-title" className="text-lg font-black text-gray-900 mb-1">India Post tracking · Order #{trackingEdit.id}</h3>
+                <p className="text-sm text-gray-500 mb-5">{trackingEdit.customerName}</p>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2" htmlFor="tracking-number">
+                  Article / tracking number
+                </label>
+                <input
+                  id="tracking-number"
+                  type="text"
+                  autoFocus
+                  value={trackingEdit.value}
+                  onChange={(e) => setTrackingEdit(t => ({ ...t, value: e.target.value.toUpperCase() }))}
+                  placeholder="e.g. EM123456789IN"
+                  className="w-full font-mono text-base tracking-wider p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none mb-4"
+                />
+                <label className="flex items-center gap-3 text-sm text-gray-700 mb-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={trackingEdit.markShipped}
+                    onChange={(e) => setTrackingEdit(t => ({ ...t, markShipped: e.target.checked }))}
+                    disabled={!['PAID', 'Processing'].includes(trackingEdit.status)}
+                    className="w-4 h-4 accent-emerald-600"
+                  />
+                  <span>
+                    Mark order as <strong>Shipped</strong>
+                    {!['PAID', 'Processing'].includes(trackingEdit.status) && (
+                      <span className="text-xs text-gray-400"> (currently {trackingEdit.status})</span>
+                    )}
+                  </span>
+                </label>
+                <label className="flex items-center gap-3 text-sm text-gray-700 mb-6 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={trackingEdit.notifyCustomer}
+                    onChange={(e) => setTrackingEdit(t => ({ ...t, notifyCustomer: e.target.checked }))}
+                    className="w-4 h-4 accent-emerald-600"
+                  />
+                  <span>Email the tracking number to the customer</span>
+                </label>
+                <div className="flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setTrackingEdit(null)}
+                    disabled={savingTracking}
+                    className="px-4 py-2 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingTracking}
+                    className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                  >
+                    {savingTracking ? 'Saving...' : trackingEdit.value.trim() ? 'Save tracking' : 'Remove tracking'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
 
           {/* Delete order confirmation */}
           {orderToDelete && (

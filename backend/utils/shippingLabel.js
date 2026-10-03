@@ -1,18 +1,34 @@
 // ==========================================
-// SHIPPING LABEL (PDF, 4 x 6 inch: the standard courier / thermal label size, also prints on A4)
-// TO address (with a large PIN code), FROM address and the order ID (also as a Code 128 barcode).
+// SHIPPING LABEL for India Post (PDF, 4 x 6 inch; also prints on A4 with "fit to page")
+// Laid out the way India Post handles parcels:
+//   - a clear box at the top for the Speed Post / Registered Parcel barcode sticker and postage,
+//     so the counter's sticker never covers the address
+//   - delivery address in the middle with the PIN code in 6 boxes (sorting is done by PIN)
+//   - sender block "If undelivered, return to" with its own PIN boxes
+//   - our order ID barcode kept small and labelled, away from India Post's sticker
 // ==========================================
 import PDFDocument from 'pdfkit';
 import bwipjs from 'bwip-js';
-import { FONT_REGULAR, FONT_BOLD, LOGO, SELLER } from './invoice.js';
+import { FONT_REGULAR, FONT_BOLD, SELLER } from './invoice.js';
+import { WEIGHT_OPTIONS } from './pricing.js';
 
 const LABEL_SIZE = [288, 432]; // 4 x 6 inch in points
 
 export const labelFileName = (order) => `Shipping-Label-${order.id}.pdf`;
 
+// Total weight of the spices in the parcel, e.g. "350 g" or "1.25 kg" (packaging not included)
+function netWeight(items) {
+  const grams = Math.round((items || []).reduce((sum, item) => sum + (WEIGHT_OPTIONS[item.weight]?.kg || 0) * 1000 * item.quantity, 0));
+  if (!grams) return '';
+  return grams >= 1000 ? `${grams / 1000} kg` : `${grams} g`;
+}
+
+const SELLER_PIN = (SELLER.address.match(/\b(\d{6})\b/) || [])[1] || '';
+const SELLER_ADDRESS_WITHOUT_PIN = SELLER.address.replace(/\s*-?\s*\b\d{6}\b\s*$/, '');
+
 export async function renderShippingLabelPdf(order) {
-  // Code 128 barcode of the order ID, for courier scanners
-  const barcode = await bwipjs.toBuffer({ bcid: 'code128', text: String(order.id), scale: 3, height: 12, includetext: false });
+  // Code 128 barcode of our order ID (small, for our own reference)
+  const barcode = await bwipjs.toBuffer({ bcid: 'code128', text: String(order.id), scale: 2, height: 8, includetext: false });
 
   let to = {};
   try {
@@ -30,66 +46,87 @@ export async function renderShippingLabelPdf(order) {
 
     doc.registerFont('regular', FONT_REGULAR);
     doc.registerFont('bold', FONT_BOLD);
+    doc.fillColor('#000').strokeColor('#000');
     const left = 14;
     const width = LABEL_SIZE[0] - 28;
-    const bottom = LABEL_SIZE[1] - 14;
-    const line = (y, weight = 1) => doc.moveTo(left, y).lineTo(left + width, y).lineWidth(weight).strokeColor('#000').stroke();
+    const right = left + width;
+    const line = (y, weight = 1) => doc.moveTo(left, y).lineTo(right, y).lineWidth(weight).stroke();
+
+    // PIN code in 6 boxes, India Post style
+    const pinBoxes = (pin, x, y, size) => {
+      const digits = String(pin || '').replace(/\D/g, '').slice(0, 6).padEnd(6, ' ');
+      for (let i = 0; i < 6; i++) {
+        doc.rect(x + i * size, y, size, size).lineWidth(1).stroke();
+        doc.font('bold').fontSize(size * 0.62).text(digits[i], x + i * size, y + size * 0.12, { width: size, align: 'center', lineBreak: false });
+      }
+      return y + size;
+    };
 
     // Outer border (cut line)
-    doc.rect(left - 6, 8, width + 12, LABEL_SIZE[1] - 16).lineWidth(1.5).strokeColor('#000').stroke();
+    doc.rect(left - 6, 8, width + 12, LABEL_SIZE[1] - 16).lineWidth(1.5).stroke();
 
-    // ---- Order ID and date
-    doc.font('bold').fontSize(9).fillColor('#000').text('ORDER ID', left, 16);
-    doc.font('bold').fontSize(24).text(`#${order.id}`, left, 26);
-    const date = new Date(order.createdAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric' });
-    doc.font('regular').fontSize(8).text(`Date: ${date}`, left, 20, { width, align: 'right' });
-    doc.font('bold').fontSize(9).text('PREPAID', left, 32, { width, align: 'right' });
-    doc.font('regular').fontSize(7).text('Do not collect cash', left, 44, { width, align: 'right' });
-    doc.image(barcode, left, 64, { fit: [width, 34], align: 'center' });
-    doc.font('regular').fontSize(7).text(String(order.id), left, 99, { width, align: 'center', characterSpacing: 2 });
-    let y = 110;
-    line(y, 1.5);
+    // ---- Reserved space for India Post's article barcode sticker and postage
+    doc.save().dash(3, { space: 3 }).rect(left, 16, width, 62).lineWidth(0.8).stroke().restore();
+    doc.font('regular').fontSize(7).fillColor('#555')
+      .text('Space for India Post barcode sticker / postage', left, 18, { width, align: 'center' });
+    doc.font('bold').fontSize(9).fillColor('#000')
+      .text('SPEED POST  /  REGD. PARCEL', left, 64, { width, align: 'center' });
 
-    // ---- TO (the largest block: what the courier reads)
-    y += 8;
-    doc.font('bold').fontSize(9).text('TO', left, y);
-    y += 13;
-    doc.font('bold').fontSize(15).text(to.fullName || 'Customer', left, y, { width });
-    doc.font('regular').fontSize(11);
+    // ---- TO
+    let y = 88;
+    doc.font('bold').fontSize(10).text('TO,', left, y);
+    y += 14;
+    doc.font('bold').fontSize(14).text(to.fullName || 'Customer', left, y, { width });
+    doc.font('regular').fontSize(10.5);
     const toLines = [
       [to.houseNo, to.area].filter(Boolean).join(', '),
-      to.landmark ? `Landmark: ${to.landmark}` : '',
+      // Customers often type the landmark as "Near ..." already
+      to.landmark ? (/^near\b/i.test(to.landmark.trim()) ? to.landmark.trim() : `Near ${to.landmark.trim()}`) : '',
       [to.city, to.state].filter(Boolean).join(', ')
     ].filter(Boolean);
     for (const text of toLines) doc.text(text, left, doc.y + 1, { width });
-    doc.font('bold').fontSize(20).text(`PIN ${to.pincode || '—'}`, left, doc.y + 4, { width });
-    if (to.mobileNumber) doc.font('bold').fontSize(12).text(`Phone: ${to.mobileNumber}`, left, doc.y + 2, { width });
-    y = doc.y + 10;
+    if (to.mobileNumber) doc.font('bold').fontSize(11).text(`Mob: ${to.mobileNumber}`, left, doc.y + 2, { width });
+    y = doc.y + 6;
+    doc.font('bold').fontSize(10).text('PIN', left, y + 9);
+    y = pinBoxes(to.pincode, left + 28, y, 28) + 8;
     line(y, 1.5);
 
-    // ---- Contents
+    // ---- Contents, weight, payment
     y += 6;
     const items = (order.items || [])
       .map((item) => `${item.productName || item.product?.name || 'Item'} ${item.weight} x${item.quantity}`)
       .join(', ');
-    doc.font('bold').fontSize(8).text('CONTENTS', left, y);
-    doc.font('regular').fontSize(8).text(items || '-', left, y + 11, { width, height: 34, ellipsis: true });
-    y = Math.min(doc.y, y + 46) + 6;
+    doc.font('bold').fontSize(7.5).text('CONTENTS: ', left, y, { continued: true })
+      .font('regular').text(`Spices – ${items || '-'}`, { width, height: 22, ellipsis: true });
+    y = Math.min(doc.y, y + 24) + 2;
+    const weight = netWeight(order.items);
+    doc.font('bold').fontSize(8)
+      .text(`${weight ? `Net wt: ${weight}   ` : ''}PREPAID – NOT COD, do not collect cash`, left, y, { width });
+    y = doc.y + 5;
     line(y);
 
-    // ---- FROM (bottom of the label)
-    const fromTop = Math.max(y + 6, bottom - 92);
-    doc.font('bold').fontSize(9).text('FROM', left, fromTop);
-    try {
-      doc.image(LOGO, left + width - 40, fromTop, { width: 40 });
-    } catch {
-      // Logo is optional
+    // ---- FROM (return address) with our order reference
+    y += 6;
+    const fromWidth = width - 92;
+    doc.font('bold').fontSize(8).text('FROM (If undelivered, please return to):', left, y, { width });
+    y += 12;
+    doc.font('bold').fontSize(10).text(SELLER.name, left, y, { width: fromWidth });
+    doc.font('regular').fontSize(8)
+      .text(SELLER_ADDRESS_WITHOUT_PIN, left, doc.y, { width: fromWidth })
+      .text(`Mob: ${SELLER.phone}`, { width: fromWidth });
+    if (SELLER_PIN) {
+      const pinY = doc.y + 3;
+      doc.font('bold').fontSize(8).text('PIN', left, pinY + 4);
+      pinBoxes(SELLER_PIN, left + 20, pinY, 16);
     }
-    doc.font('bold').fontSize(11).text(SELLER.name, left, fromTop + 13, { width: width - 48 });
-    doc.font('regular').fontSize(8.5)
-      .text(SELLER.address, left, doc.y + 1, { width: width - 48 })
-      .text(`Phone: ${SELLER.phone}`, { width: width - 48 });
-    if (SELLER.fssai) doc.fontSize(7).text(`FSSAI Reg. No: ${SELLER.fssai}`, { width: width - 48 });
+
+    // Order reference (bottom right)
+    const refX = right - 86;
+    doc.font('bold').fontSize(7).text('ORDER ID', refX, y, { width: 86, align: 'center' });
+    doc.font('bold').fontSize(14).text(`#${order.id}`, refX, y + 9, { width: 86, align: 'center' });
+    doc.image(barcode, refX + 3, y + 30, { fit: [80, 24], align: 'center' });
+    const date = new Date(order.createdAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric' });
+    doc.font('regular').fontSize(6.5).text(date, refX, y + 57, { width: 86, align: 'center' });
 
     doc.end();
   });

@@ -351,3 +351,80 @@ export async function sendCustomAdminMessage(to, name, order, messageContent) {
   }
 }
 
+
+/**
+ * Tells the customer their parcel has been booked with India Post, with the article number.
+ * @param {string} to - recipient (verified account email, or the guest's checkout email)
+ * @param {string} name - greeting name ('' for the generic greeting)
+ * @param {object} order - Order with items
+ * @param {string} trackingNumber - India Post article number, e.g. EM123456789IN
+ * @param {string} [trackingUrl] - secret order tracking link on our site
+ */
+export async function sendShippingUpdate(to, name, order, trackingNumber, trackingUrl) {
+  try {
+    if (!process.env.BREVO_API_KEY) {
+      console.error('❌ BREVO_API_KEY is missing');
+      return false;
+    }
+
+    const client = new BrevoClient({ apiKey: process.env.BREVO_API_KEY });
+    const safeName = escapeHtml(name || 'Valued Customer');
+    const safeNumber = escapeHtml(trackingNumber);
+
+    const itemsHtml = order.items.map(item => `
+      <tr>
+        <td style="padding: 8px 10px; border-bottom: 1px solid #eee;">${escapeHtml(item.productName || item.product?.name || 'Product')} (${escapeHtml(item.weight)})</td>
+        <td style="padding: 8px 10px; border-bottom: 1px solid #eee; text-align: right;">× ${escapeHtml(item.quantity)}</td>
+      </tr>
+    `).join('');
+
+    const htmlContent = `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
+          <h1 style="color: #059669; text-align: center;">Your order is on its way! 📦</h1>
+          <p>Hi ${safeName},</p>
+          <p>Good news! Your order <strong>#${order.id}</strong> has been packed and handed over to <strong>India Post</strong>.</p>
+
+          <div style="background: #ecfdf5; border: 1px solid #a7f3d0; padding: 20px; border-radius: 10px; margin: 25px 0; text-align: center;">
+            <p style="margin: 0; font-size: 12px; color: #047857; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">India Post Article / Tracking Number</p>
+            <p style="margin: 8px 0 14px 0; font-size: 24px; font-weight: bold; letter-spacing: 2px; color: #111827;">${safeNumber}</p>
+            <a href="https://www.indiapost.gov.in" style="background: #059669; color: #fff; text-decoration: none; padding: 10px 22px; border-radius: 8px; font-weight: bold; display: inline-block;">Track on India Post</a>
+            <p style="margin: 12px 0 0 0; font-size: 12px; color: #6b7280;">On the India Post website, open "Track Consignment" and enter the number above. Tracking usually starts within 24 hours of booking.</p>
+          </div>
+
+          <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <thead>
+              <tr style="background: #f3f4f6;">
+                <th style="padding: 8px 10px; text-align: left;">Item</th>
+                <th style="padding: 8px 10px; text-align: right;">Qty</th>
+              </tr>
+            </thead>
+            <tbody>${itemsHtml}</tbody>
+          </table>
+${trackingUrl ? `
+          <p style="text-align: center; margin: 25px 0;">
+            <a href="${escapeHtml(trackingUrl)}" style="color: #059669; font-weight: bold;">View your order status</a>
+          </p>` : ''}
+
+          <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="font-size: 12px; color: #999; text-align: center;">
+            Thanks for choosing Idukki Origins!<br>
+            Questions? Just reply to this email.
+          </p>
+        </div>
+    `;
+
+    const response = await client.transactionalEmails.sendTransacEmail({
+      subject: `Shipped! Your Idukki Origins order #${order.id} is on its way`,
+      htmlContent,
+      sender: { name: "Idukki Origins", email: SENDER_EMAIL },
+      to: [{ email: to, name: name || "Valued Customer" }],
+      replyTo: { email: SUPPORT_EMAIL, name: "Idukki Origins Support" }
+    });
+
+    console.log('✅ Shipping update email sent via Brevo:', response.data?.messageId || response.messageId || 'Success');
+    return true;
+  } catch (error) {
+    console.error('❌ Failed to send shipping update email via Brevo:', error.response?.body || error);
+    return false;
+  }
+}
