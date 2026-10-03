@@ -1,10 +1,41 @@
+import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { User, Mail, MapPin, LogOut, Package, Heart, Bell, Settings, Shield, CreditCard } from 'lucide-react';
+import { User, Mail, MapPin, LogOut, Package, Heart, Bell } from 'lucide-react';
+import toast from 'react-hot-toast';
+import AddressForm from '../components/AddressForm';
+import { addressError } from '../utils/address';
+import { matchIndianState } from '../utils/indianStates';
+import { normalizeIndianMobile } from '../utils/phone';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const EMPTY_ADDRESS = { fullName: '', mobileNumber: '', email: '', pincode: '', houseNo: '', area: '', landmark: '', city: '', state: '' };
+
+// The saved address as form fields (older saves may be plain text or use other state spellings)
+function savedAddressFields(user) {
+  let saved = {};
+  try {
+    const parsed = typeof user.address === 'string' ? JSON.parse(user.address) : user.address;
+    if (parsed && typeof parsed === 'object') saved = parsed;
+  } catch {
+    saved = user.address ? { houseNo: String(user.address) } : {};
+  }
+  return {
+    ...EMPTY_ADDRESS,
+    fullName: user.name || '',
+    email: user.email || '',
+    ...saved,
+    mobileNumber: normalizeIndianMobile(saved.mobileNumber) || '',
+    state: matchIndianState(saved.state)
+  };
+}
 
 export default function Profile() {
-  const { user, loading: authLoading, logout } = useAuth();
+  const { user, loading: authLoading, logout, updateAddress } = useAuth();
   const navigate = useNavigate();
+  // Address being edited in the Shipping Details card (null when not editing)
+  const [addressDraft, setAddressDraft] = useState(null);
+  const [savingAddress, setSavingAddress] = useState(false);
 
   if (authLoading) {
     return (
@@ -27,36 +58,62 @@ export default function Profile() {
     navigate('/');
   };
 
-  const formatAddress = (address) => {
-    if (!address) return 'No address set yet';
+  // Saved address as display lines: name / house, area / landmark / city, state - PIN / phone
+  const addressLines = (address) => {
+    if (!address) return [];
     try {
-      const addr = typeof address === 'string' ? JSON.parse(address) : address;
-      if (typeof addr === 'object' && addr !== null) {
+      const a = typeof address === 'string' ? JSON.parse(address) : address;
+      if (a && typeof a === 'object') {
         return [
-          addr.fullName,
-          addr.mobileNumber,
-          addr.pincode,
-          addr.state,
-          'India'
-        ].filter(Boolean).join(', ');
+          a.fullName,
+          [a.houseNo, a.area].filter(Boolean).join(', '),
+          a.landmark ? `Near ${a.landmark}` : '',
+          [a.city, [a.state, a.pincode].filter(Boolean).join(' - '), 'India'].filter(Boolean).join(', '),
+          a.mobileNumber ? `Phone: ${a.mobileNumber}` : ''
+        ].filter(Boolean);
       }
-    } catch (e) {
-      return address;
+    } catch {
+      // Older saves were plain text
     }
-    return address;
+    return [String(address)];
+  };
+
+  const handleSaveAddress = async () => {
+    const problem = addressError(addressDraft);
+    if (problem) {
+      toast.error(problem);
+      return;
+    }
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast.error('Your session has expired. Please log in again.');
+      navigate('/login');
+      return;
+    }
+    setSavingAddress(true);
+    try {
+      const addressString = JSON.stringify({ ...addressDraft, mobileNumber: normalizeIndianMobile(addressDraft.mobileNumber) });
+      const res = await fetch(`${API_URL}/api/auth/update-address`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ address: addressString })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Failed to save address');
+      updateAddress(addressString);
+      setAddressDraft(null);
+      toast.success('Shipping address saved');
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSavingAddress(false);
+    }
   };
 
   const quickActions = [
     { icon: Package, label: 'My Orders', desc: 'Track & manage orders', color: 'text-blue-600', bg: 'bg-blue-50', path: '/orders' },
     { icon: Heart, label: 'Wishlist', desc: 'Items you loved', color: 'text-red-600', bg: 'bg-red-50', path: '/wishlist' },
     { icon: Bell, label: 'Notifications', desc: 'Updates & offers', color: 'text-amber-600', bg: 'bg-amber-50' },
-  ];
-
-  const settingsItems = [
-    { icon: User, label: 'Edit Profile' },
-    { icon: CreditCard, label: 'Payment Methods' },
-    { icon: Shield, label: 'Security & Privacy' },
-    { icon: Settings, label: 'App Settings' },
   ];
 
   return (
@@ -78,18 +135,6 @@ export default function Profile() {
               <p className="text-gray-500 text-sm flex items-center justify-center lg:justify-start">
                 <Mail size={14} className="mr-2 opacity-60" /> {user.email}
               </p>
-            </div>
-
-            <div className="mt-8 pt-8 border-t border-gray-50 space-y-2">
-               {settingsItems.map((item, i) => (
-                 <button key={i} className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors text-gray-600 group">
-                   <div className="flex items-center">
-                     <item.icon size={18} className="mr-3 opacity-60 group-hover:text-emerald-600 group-hover:opacity-100 transition-all" />
-                     <span className="text-sm font-bold uppercase tracking-widest text-[11px]">{item.label}</span>
-                   </div>
-                   <span className="text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity">→</span>
-                 </button>
-               ))}
             </div>
           </div>
 
@@ -125,9 +170,38 @@ export default function Profile() {
             <div className="p-8">
               <div className="flex items-center justify-between mb-8">
                 <h3 className="text-sm font-black text-gray-900 uppercase tracking-[0.2em]">Shipping Details</h3>
-                <button className="text-[10px] font-black text-emerald-600 uppercase border border-emerald-100 px-3 py-1.5 rounded-lg hover:bg-emerald-50 transition-colors">Change</button>
+                {addressDraft === null && (
+                  <button
+                    onClick={() => setAddressDraft(savedAddressFields(user))}
+                    className="text-[10px] font-black text-emerald-600 uppercase border border-emerald-100 px-3 py-1.5 rounded-lg hover:bg-emerald-50 transition-colors"
+                  >
+                    {user.address ? 'Change' : 'Add address'}
+                  </button>
+                )}
               </div>
-              
+
+              {addressDraft !== null ? (
+                /* Edit the saved address (used to pre-fill checkout) */
+                <div className="max-w-xl">
+                  <AddressForm value={addressDraft} onChange={setAddressDraft} />
+                  <div className="flex justify-end gap-3 mt-5">
+                    <button
+                      onClick={() => setAddressDraft(null)}
+                      disabled={savingAddress}
+                      className="px-4 py-2 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSaveAddress}
+                      disabled={savingAddress}
+                      className="px-5 py-2 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                    >
+                      {savingAddress ? 'Saving...' : 'Save address'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-6">
                    <div className="flex items-start">
@@ -136,9 +210,13 @@ export default function Profile() {
                      </div>
                      <div>
                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Primary Address</p>
-                       <p className="text-sm text-gray-700 font-bold leading-relaxed max-w-xs">
-                         {formatAddress(user.address)}
-                       </p>
+                       {addressLines(user.address).length > 0 ? (
+                         <div className="text-sm text-gray-700 font-bold leading-relaxed max-w-xs">
+                           {addressLines(user.address).map((line, i) => <p key={i}>{line}</p>)}
+                         </div>
+                       ) : (
+                         <p className="text-sm text-gray-400 font-bold">No address saved yet</p>
+                       )}
                      </div>
                    </div>
                 </div>
@@ -149,6 +227,7 @@ export default function Profile() {
                    <p className="text-xs text-emerald-600 mt-1 font-medium italic opacity-70">Idukki Origins Premium Member</p>
                 </div>
               </div>
+              )}
             </div>
           </div>
 
