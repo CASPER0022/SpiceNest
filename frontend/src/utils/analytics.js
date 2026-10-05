@@ -1,12 +1,13 @@
-// Google Analytics 4 + Meta Pixel. Each one only loads when its ID is set (Vercel env vars):
+// Google Analytics 4 + Meta Pixel. Each one only loads when it has an ID (Vercel env vars):
 //   VITE_GA_MEASUREMENT_ID = "G-XXXXXXXXXX"
-//   VITE_META_PIXEL_ID     = "123456789012345"
+//   VITE_META_PIXEL_ID     = "123456789012345" (defaults to the Idukki Origins pixel below)
 // The official snippets are inline <script>s, which our Content-Security-Policy blocks, so the
 // same bootstrap code lives here instead. Both tools track SPA route changes on their own
 // (GA4 enhanced measurement / Meta's history listener), so only shop events are sent manually.
 
 const GA_ID = import.meta.env.VITE_GA_MEASUREMENT_ID?.trim();
-const PIXEL_ID = import.meta.env.VITE_META_PIXEL_ID?.trim();
+// The pixel ID is public (it is in every page that loads the pixel), so it can live in the code
+const PIXEL_ID = import.meta.env.VITE_META_PIXEL_ID?.trim() || '1433957032260246';
 const CURRENCY = 'INR';
 
 function loadScript(src) {
