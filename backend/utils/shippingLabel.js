@@ -10,18 +10,10 @@
 import PDFDocument from 'pdfkit';
 import bwipjs from 'bwip-js';
 import { FONT_REGULAR, FONT_BOLD, SELLER, pdfBuffer } from './invoice.js';
-import { WEIGHT_OPTIONS } from './pricing.js';
 
 const LABEL_SIZE = [288, 432]; // 4 x 6 inch in points
 
 export const labelFileName = (order) => `Shipping-Label-${order.id}.pdf`;
-
-// Total weight of the spices in the parcel, e.g. "350 g" or "1.25 kg" (packaging not included)
-function netWeight(items) {
-  const grams = Math.round((items || []).reduce((sum, item) => sum + (WEIGHT_OPTIONS[item.weight]?.kg || 0) * 1000 * item.quantity, 0));
-  if (!grams) return '';
-  return grams >= 1000 ? `${grams / 1000} kg` : `${grams} g`;
-}
 
 export function renderShippingLabelPdf(order) {
   return renderShippingLabelsPdf([order]);
