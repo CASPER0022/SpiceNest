@@ -2893,7 +2893,9 @@ export default function Dashboard() {
                       />
                     </th>
                     <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Order ID</th>
-                    <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Customer Details</th>
+                    <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Customer</th>
+                    <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Contact</th>
+                    <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Address</th>
                     <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Date Mapped</th>
                     <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Paid</th>
                     <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Payment Status</th>
@@ -2905,7 +2907,7 @@ export default function Dashboard() {
                 <tbody className="bg-white divide-y divide-gray-50">
                   {filteredRegistryOrders.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-6 py-16 text-center">
+                      <td colSpan={10} className="px-6 py-16 text-center">
                         <div className="flex flex-col items-center justify-center space-y-3">
                           <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
                             <Search size={22} />
@@ -2928,6 +2930,11 @@ export default function Dashboard() {
                       // Guest checkouts have no account; use the name and email from the shipping address
                       const customerName = order.user?.name || address?.fullName || 'Guest';
                       const customerEmail = order.user?.email || address?.email;
+                      // WhatsApp chat with the customer, opening with a greeting about this order
+                      const phoneDigits = normalizeIndianMobile(address?.mobileNumber);
+                      const whatsappUrl = phoneDigits
+                        ? `https://wa.me/91${phoneDigits}?text=${encodeURIComponent(`Hi ${customerName}, this is Idukki Origins about your order #${order.id}. `)}`
+                        : '';
 
                   return (
                     <Fragment key={order.id}>
@@ -2957,10 +2964,37 @@ export default function Dashboard() {
                             </div>
                             <div className="flex flex-col">
                               <span className="text-sm font-bold text-gray-800 hover:text-emerald-600 transition-colors">{customerName}</span>
-                              <span className="text-[10px] text-gray-400 font-semibold">{customerEmail}</span>
+                              <span className="text-[10px] text-gray-400 font-semibold">{order.userId ? 'Registered customer' : 'Guest'}</span>
                             </div>
                           </div>
                         </td>
+                        {/* Contact: call, WhatsApp, email (same as Abandoned Checkout) */}
+                        <td className="px-6 py-5 text-xs whitespace-nowrap">
+                          {address?.mobileNumber && (
+                            <div className="flex items-center gap-2 font-bold text-gray-800">
+                              <Phone size={12} className="text-gray-400" />
+                              <a href={`tel:${phoneDigits ? `+91${phoneDigits}` : address.mobileNumber}`} className="hover:text-emerald-600">{phoneDigits || address.mobileNumber}</a>
+                              {whatsappUrl && (
+                                <a
+                                  href={whatsappUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title={`Chat with ${customerName} on WhatsApp`}
+                                  className="text-[9px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full hover:bg-emerald-100"
+                                >
+                                  WhatsApp
+                                </a>
+                              )}
+                            </div>
+                          )}
+                          {customerEmail && (
+                            <div className="flex items-center gap-2 text-gray-500 mt-1">
+                              <Mail size={12} className="text-gray-400" />
+                              <a href={`mailto:${customerEmail}`} className="hover:text-emerald-600">{customerEmail}</a>
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-5 text-xs text-gray-600 min-w-[14rem] max-w-xs">{formatAbandonedAddress(address) || '-'}</td>
                         <td className="px-6 py-5 whitespace-nowrap text-sm font-medium text-gray-600">
                           {new Date(order.createdAt).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })}
                         </td>
