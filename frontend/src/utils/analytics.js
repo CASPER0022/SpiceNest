@@ -65,22 +65,28 @@ const toItem = ({ id, name, price, quantity = 1, weight }) => ({
   quantity
 });
 
+// Meta catalog IDs, as in the product feed (backend/routes/feed.js): every weight is its own item
+// "1-250g", grouped under the product ID "1". Matching IDs let Meta tie events to catalog items.
+const catalogId = (item) => `${item.item_id}-${item.item_variant || '100g'}`;
+const catalogContents = (items) => items.map((i) => ({ id: catalogId(i), quantity: i.quantity, item_price: i.price }));
+
 export function trackViewItem(product) {
   const item = toItem(product);
   ga('view_item', { currency: CURRENCY, value: item.price, items: [item] });
-  pixel('ViewContent', { content_ids: [item.item_id], content_name: item.item_name, content_type: 'product', value: item.price, currency: CURRENCY });
+  // The product page shows every weight, so this is the product group (item_group_id in the feed)
+  pixel('ViewContent', { content_ids: [item.item_id], content_name: item.item_name, content_type: 'product_group', value: item.price, currency: CURRENCY });
 }
 
 export function trackAddToCart(product, weight, price) {
   const item = toItem({ ...product, weight, price });
   ga('add_to_cart', { currency: CURRENCY, value: item.price, items: [item] });
-  pixel('AddToCart', { content_ids: [item.item_id], content_name: item.item_name, content_type: 'product', value: item.price, currency: CURRENCY });
+  pixel('AddToCart', { content_ids: [catalogId(item)], contents: catalogContents([item]), content_name: item.item_name, content_type: 'product', value: item.price, currency: CURRENCY });
 }
 
 export function trackBeginCheckout(cartItems, value) {
   const items = cartItems.map(toItem);
   ga('begin_checkout', { currency: CURRENCY, value, items });
-  pixel('InitiateCheckout', { content_ids: items.map((i) => i.item_id), num_items: items.reduce((n, i) => n + i.quantity, 0), value, currency: CURRENCY });
+  pixel('InitiateCheckout', { content_ids: items.map(catalogId), contents: catalogContents(items), content_type: 'product', num_items: items.reduce((n, i) => n + i.quantity, 0), value, currency: CURRENCY });
 }
 
 // Sent once per order, even if the success page is reloaded.
@@ -100,5 +106,5 @@ export function trackPurchase(order) {
   const value = Number(order.totalAmount) || 0;
   ga('purchase', { transaction_id: String(order.id), currency: CURRENCY, value, items });
   // eventID lets Meta de-duplicate if a server-side Conversions API is added later
-  pixel('Purchase', { content_ids: items.map((i) => i.item_id), content_type: 'product', num_items: items.reduce((n, i) => n + i.quantity, 0), value, currency: CURRENCY }, { eventID: `order_${order.id}` });
+  pixel('Purchase', { content_ids: items.map(catalogId), contents: catalogContents(items), content_type: 'product', num_items: items.reduce((n, i) => n + i.quantity, 0), value, currency: CURRENCY }, { eventID: `order_${order.id}` });
 }
