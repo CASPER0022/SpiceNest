@@ -121,6 +121,8 @@ function buildXml(items) {
     + `    <title>${xml(BRAND)}</title>\n`
     + `    <link>${xml(SITE_URL)}</link>\n`
     + `    <description>${xml(`${BRAND} product feed`)}</description>\n`
+    // When this file was built (it is rebuilt from the live catalog whenever it is fetched)
+    + `    <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>\n`
     + entries.join('')
     + '  </channel>\n'
     + '</rss>\n';
@@ -162,10 +164,11 @@ function serveFeed(format, contentType, build) {
     try {
       let entry = cache.get(format);
       if (!entry || entry.expires < Date.now()) {
-        entry = { body: build(await loadFeedItems()), expires: Date.now() + FEED_CACHE_MS };
+        entry = { body: build(await loadFeedItems()), builtAt: new Date(), expires: Date.now() + FEED_CACHE_MS };
         cache.set(format, entry);
       }
       res.set('Content-Type', contentType);
+      res.set('Last-Modified', entry.builtAt.toUTCString());
       res.set('Cache-Control', `public, max-age=${FEED_CACHE_MS / 1000}`);
       res.send(entry.body);
     } catch (error) {
