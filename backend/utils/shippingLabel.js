@@ -97,20 +97,8 @@ function drawLabel(doc, order, barcode) {
   y = doc.y + 6;
   doc.font('bold').fontSize(10).text('PIN', left, y + 9);
   y = pinBoxes(to.pincode, left + 28, y, 28) + 8;
+  // What is in the parcel is deliberately not printed (customer privacy)
   line(y, 1.5);
-
-  // ---- Contents and weight
-  y += 6;
-  const items = (order.items || [])
-    .map((item) => `${item.productName || item.product?.name || 'Item'} ${item.weight} x${item.quantity}`)
-    .join(', ');
-  doc.font('bold').fontSize(7.5).text('CONTENTS: ', left, y, { continued: true })
-    .font('regular').text(`Spices – ${items || '-'}`, { width, height: 22, ellipsis: true });
-  y = Math.min(doc.y, y + 24) + 2;
-  const weight = netWeight(order.items);
-  if (weight) doc.font('bold').fontSize(8).text(`Net wt: ${weight}`, left, y, { width });
-  y = (weight ? doc.y : y) + 5;
-  line(y);
 
   // ---- FROM (return address) with our order reference
   y += 6;
