@@ -319,6 +319,25 @@ export default function Orders() {
                 ))}
               </div>
 
+              {/* Courier and tracking number (same as the Track Order page) */}
+              {order.trackingNumber && (
+                <div className="px-6 md:px-8 py-5 bg-emerald-50 border-b border-emerald-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700 mb-1">Shipped via {order.carrier?.name || 'India Post'}</p>
+                    <p className="font-mono text-lg font-bold text-gray-900 tracking-wider break-all">{order.trackingNumber}</p>
+                    <p className="text-xs text-gray-500 mt-1">{order.carrier?.help || 'On the courier website, enter this number to track your parcel.'}</p>
+                  </div>
+                  <a
+                    href={order.carrier?.url || 'https://www.indiapost.gov.in'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-5 py-3 rounded-xl transition-colors"
+                  >
+                    Track on {order.carrier?.name || 'India Post'} <ExternalLink size={14} />
+                  </a>
+                </div>
+              )}
+
               {/* Dynamic Fulfillment Progress Tracker */}
               <div className="px-6 md:px-8 py-6 bg-gray-50/30 border-b border-gray-100">
                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-4">Shipment Progress</span>
