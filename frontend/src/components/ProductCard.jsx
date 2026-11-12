@@ -103,13 +103,13 @@ export default function ProductCard({ product }) {
       )}
 
       {/* Product Image Area */}
-      <div className="relative h-48 overflow-hidden bg-gray-200 shrink-0">
+      <div className="relative h-64 overflow-hidden bg-stone-50 shrink-0">
         <img 
           src={(product.images && product.images[0]) || '/images/placeholder.jpg'} 
           alt={product.name}
           loading="lazy"
           decoding="async"
-          className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${isOutOfStock ? 'filter grayscale brightness-75' : ''}`} 
+          className={`w-full h-full object-contain group-hover:scale-105 transition-transform duration-300 ${isOutOfStock ? 'filter grayscale brightness-75' : ''}`} 
         />
         {isOutOfStock && (
           <div className="absolute inset-0 bg-black/40 backdrop-blur-[1.5px] flex items-center justify-center z-10">

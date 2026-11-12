@@ -305,11 +305,11 @@ export default function ProductDetails() {
         
         {/* Left Column: Image */}
         <div className="space-y-4">
-          <div className="aspect-w-4 aspect-h-3 bg-gray-100 rounded-3xl overflow-hidden shadow-lg border border-gray-100 relative group">
+          <div className="aspect-square bg-stone-50 rounded-3xl overflow-hidden shadow-lg border border-gray-100 relative group">
             <img 
               src={activeImage || (product.images && product.images[0]) || '/images/placeholder.jpg'} 
               alt={product.name} 
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
             />
           </div>
           {/* Thumbnails */}
@@ -325,7 +325,7 @@ export default function ProductDetails() {
                    alt={`${product.name} ${i + 1}`}
                    loading="lazy"
                    decoding="async"
-                   className="w-full h-full object-cover"
+                   className="w-full h-full object-contain"
                    onError={(e) => {
                      // Fallback to the first image if there's an error
                      if (i > 0 && product.images) e.target.src = product.images[0];
