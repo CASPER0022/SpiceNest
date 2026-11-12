@@ -23,8 +23,6 @@ const router = express.Router();
 // ==========================================
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const TRACKING_TOKEN_REGEX = /^[a-f0-9]{48}$/;
-// Unpaid checkouts are kept this long: the admin dashboard lists them as abandoned checkouts
-const PENDING_CHECKOUT_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 // How long stock is held for an unpaid checkout. The Razorpay modal closes itself after 25 minutes
 // (Cart.jsx); Stripe's minimum session lifetime is 30 minutes.
 const RAZORPAY_RESERVATION_MS = 30 * 60 * 1000;
@@ -172,11 +170,7 @@ async function reserveCheckout({ id, provider, req, address, priced, reservedUnt
       }
     });
   }, TX_OPTIONS);
-
-  // Opportunistic cleanup of old checkouts that were never paid (their stock is already released)
-  prisma.pendingCheckout
-    .deleteMany({ where: { reserved: false, createdAt: { lt: new Date(Date.now() - PENDING_CHECKOUT_TTL_MS) } } })
-    .catch((err) => console.error('Pending checkout cleanup failed:', err));
+  // Unpaid checkouts are kept until an admin deletes them (Abandoned Checkout in the dashboard)
 }
 
 // Returns the stock of every unpaid checkout whose reservation has expired. Each release locks the
@@ -875,6 +869,7 @@ export async function listAbandonedCheckouts() {
     const existing = byCustomer.get(customerKey);
     if (existing) {
       existing.attempts += 1; // checkouts are newest first, so the first one seen is kept
+      existing.checkoutIds.push(checkout.id);
       continue;
     }
 
@@ -906,7 +901,8 @@ export async function listAbandonedCheckouts() {
       items,
       couponCode: checkout.couponCode,
       cartValue: Math.round(Math.max(0, subtotal - discount) + shipping),
-      attempts: 1
+      attempts: 1,
+      checkoutIds: [checkout.id] // every merged attempt, so deleting the row removes them all
     });
   }
 
@@ -927,6 +923,33 @@ router.get('/admin/abandoned-checkouts', verifyToken, async (req, res) => {
   } catch (error) {
     console.error('Fetch abandoned checkouts error:', error);
     res.status(500).json({ error: 'Failed to fetch abandoned checkouts' });
+  }
+});
+
+// Deletes abandoned checkouts (all merged attempts of one customer). Only checkouts whose
+// payment window is over are deleted, so a checkout that can still be paid is never touched.
+router.post('/admin/abandoned-checkouts/delete', verifyToken, async (req, res) => {
+  try {
+    const adminUser = await prisma.user.findUnique({
+      where: { id: req.user.id }
+    });
+
+    if (!adminUser || adminUser.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Access denied: Admins only' });
+    }
+
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids : [];
+    if (ids.length === 0 || ids.length > 1000 || !ids.every((id) => typeof id === 'string' && id.length > 0 && id.length <= 255)) {
+      return res.status(400).json({ error: 'Invalid checkout ids' });
+    }
+
+    const { count } = await prisma.pendingCheckout.deleteMany({
+      where: { id: { in: ids }, reserved: false }
+    });
+    res.json({ deleted: count });
+  } catch (error) {
+    console.error('Delete abandoned checkouts error:', error);
+    res.status(500).json({ error: 'Failed to delete abandoned checkouts' });
   }
 });
 
