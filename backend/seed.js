@@ -154,7 +154,7 @@ async function main() {
       name: 'Cloves', 
       price: 290.00, 
       category: 'Whole Spices', 
-      images: ['/images/cloves/cloves-pouch.jpg', '/images/cloves/cloves1.jpg', '/images/cloves/cloves2.jpg', '/images/cloves/cloves3.jpg'], 
+      images: ['/images/cloves/cloves-pouch.jpg', '/images/cloves/cloves1.jpg', '/images/cloves/cloves2.jpg'], 
       description: "Directly harvested from John's spice estate in Kerala, our premium cloves are rich in essential oils and loaded with aromatic warmth. Traditionally hand-harvested and dried in natural sunlight, each clove offers an intensely sweet and spicy flavor perfect for baking, slow-roasted meats, and traditional masalas.", 
       farmerId: john.id,
       stock: 10.0
