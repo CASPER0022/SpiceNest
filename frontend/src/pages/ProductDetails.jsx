@@ -322,7 +322,9 @@ export default function ProductDetails() {
               >
                  <img 
                    src={img} 
-                   alt={`${product.name} ${i + 1}`} 
+                   alt={`${product.name} ${i + 1}`}
+                   loading="lazy"
+                   decoding="async"
                    className="w-full h-full object-cover"
                    onError={(e) => {
                      // Fallback to the first image if there's an error

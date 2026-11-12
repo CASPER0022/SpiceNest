@@ -106,7 +106,9 @@ export default function ProductCard({ product }) {
       <div className="relative h-48 overflow-hidden bg-gray-200 shrink-0">
         <img 
           src={(product.images && product.images[0]) || '/images/placeholder.jpg'} 
-          alt={product.name} 
+          alt={product.name}
+          loading="lazy"
+          decoding="async"
           className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${isOutOfStock ? 'filter grayscale brightness-75' : ''}`} 
         />
         {isOutOfStock && (
