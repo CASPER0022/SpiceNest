@@ -765,8 +765,9 @@ router.get('/my-orders', verifyToken, async (req, res) => {
         }
       }
     });
-    
-    res.json(orders);
+
+    // Courier name and tracking link, same as the Track Order page
+    res.json(orders.map((order) => ({ ...order, carrier: trackingInfo(order) })));
   } catch (error) {
     console.error('Fetch orders error:', error);
     res.status(500).json({ error: 'Failed to fetch your orders' });
