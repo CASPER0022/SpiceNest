@@ -439,6 +439,29 @@ export default function Dashboard() {
     }
   };
 
+  // Deletes one abandoned-checkout row (every merged attempt of that customer)
+  const handleDeleteAbandonedCheckout = async (checkout) => {
+    const name = checkout.address?.fullName || 'this customer';
+    if (!window.confirm(`Delete the abandoned checkout of ${name}? This cannot be undone.`)) return;
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/api/payment/admin/abandoned-checkouts/delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ ids: checkout.checkoutIds || [checkout.id] })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to delete abandoned checkout');
+      }
+      setAbandonedCheckouts(prev => prev.filter(c => c.id !== checkout.id));
+      toast.success(`Abandoned checkout of ${name} deleted`);
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || 'Error deleting abandoned checkout');
+    }
+  };
+
   const handleDeleteOrder = async () => {
     if (!orderToDelete) return;
     const orderId = orderToDelete.id;
@@ -2739,7 +2762,7 @@ export default function Dashboard() {
             <div className="bg-white rounded-3xl border border-gray-150/70 shadow-sm overflow-hidden">
               <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-gray-50">
                 <p className="text-xs text-gray-500 font-medium max-w-xl">
-                  Customers who entered their details and opened the payment window but did not pay. Customers who bought later are left out, and repeat attempts are merged. Kept for 90 days.
+                  Customers who entered their details and opened the payment window but did not pay. Customers who bought later are left out, and repeat attempts are merged.
                 </p>
                 <button
                   onClick={() => exportAbandonedCsv(filteredAbandonedCheckouts)}
@@ -2759,12 +2782,13 @@ export default function Dashboard() {
                       <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Cart</th>
                       <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Cart Value</th>
                       <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Stopped At Payment</th>
+                      <th scope="col" className="px-6 py-4 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-50">
                     {filteredAbandonedCheckouts.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-6 py-16 text-center text-sm font-bold text-gray-500">
+                        <td colSpan={7} className="px-6 py-16 text-center text-sm font-bold text-gray-500">
                           {searchQuery.trim() ? 'No abandoned checkouts match your search.' : 'No abandoned checkouts right now.'}
                         </td>
                       </tr>
@@ -2828,6 +2852,16 @@ export default function Dashboard() {
                             <span className="block text-[10px] text-gray-400">
                               {new Date(checkout.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                             </span>
+                          </td>
+                          <td className="px-6 py-5 whitespace-nowrap text-right">
+                            <button
+                              onClick={() => handleDeleteAbandonedCheckout(checkout)}
+                              title={`Delete abandoned checkout of ${a.fullName || 'customer'}`}
+                              aria-label={`Delete abandoned checkout of ${a.fullName || 'customer'}`}
+                              className="inline-flex items-center text-red-500 hover:text-red-700 bg-red-50/50 hover:bg-red-50 border border-red-100/50 p-1.5 rounded-lg transition-colors"
+                            >
+                              <Trash2 size={14} />
+                            </button>
                           </td>
                         </tr>
                       );
