@@ -109,7 +109,7 @@ async function main() {
       name: 'Black Pepper', 
       price: 175.00, 
       category: 'Whole Spices', 
-      images: ['/images/pepper/pepper-1.jpg', '/images/pepper/pepper-2.jpg', '/images/pepper/pepper-3.jpg'], 
+      images: ['/images/pepper/pepper-pouch.jpg', '/images/pepper/pepper-1.jpg', '/images/pepper/pepper-2.jpg', '/images/pepper/pepper-3.jpg'], 
       description: 'Freshly sourced from the spice farms of Idukki, our black pepper is packed with bold aroma and natural flavour. Carefully harvested and traditionally processed by local farmers, each batch brings the authentic taste of Kerala straight to your kitchen. Pure, fresh, and full of richness — made for everyday cooking with real farm-grown quality.', 
       farmerId: raju.id,
       stock: 10.0
@@ -118,7 +118,7 @@ async function main() {
       name: 'Cardamom', 
       price: 350.00, 
       category: 'Whole Spices', 
-      images: ['/images/cardamom/cardamom1.jpg', '/images/cardamom/cardamom2.jpg'], 
+      images: ['/images/cardamom/cardamom-pouch.jpg', '/images/cardamom/cardamom1.jpg', '/images/cardamom/cardamom2.jpg'], 
       description: 'Freshly handpicked from the high altitudes of Idukki, Kerala, our premium green cardamom pods boast a vibrant green color, full-bodied pods, and an intense, sweet-spicy aroma. Traditionally dried to lock in maximum volatile oils, these green pods are perfect for tea, traditional sweets, and exotic culinary dishes.', 
       farmerId: raju.id,
       stock: 10.0
@@ -136,7 +136,7 @@ async function main() {
       name: 'Nutmeg', 
       price: 220.00, 
       category: 'Whole Spices', 
-      images: ['/images/nutmeg/nutmeg.jpg', '/images/nutmeg/nutmeg2.jpg'], 
+      images: ['/images/nutmeg/nutmeg-pouch.jpg', '/images/nutmeg/nutmeg.jpg', '/images/nutmeg/nutmeg2.jpg'], 
       description: 'Sourced directly from the rich midlands of Kerala, our premium whole nutmegs are highly aromatic, warm, and sweet. Handpicked at full maturity when the outer fruit splits open, each kernel is carefully extracted and sun-dried to ensure maximum freshness and high essential oil content. Ideal for grating fresh into both sweet and savory dishes, baking, and traditional spice blends.', 
       farmerId: raju.id,
       stock: 10.0
@@ -145,7 +145,7 @@ async function main() {
       name: 'Nutmeg Flower', 
       price: 290.00, 
       category: 'Whole Spices', 
-      images: ['/images/nutmegflower/nutmegflower.jpg', '/images/nutmegflower/nutmegflower2.jpg'], 
+      images: ['/images/nutmegflower/nutmegflower-pouch.jpg', '/images/nutmegflower/nutmegflower.jpg', '/images/nutmegflower/nutmegflower2.jpg'], 
       description: 'Also known as Mace (Javitri), the nutmeg flower is the beautiful, lacy crimson outer webbing that wraps around the nutmeg shell. Hand-peeled carefully to keep the delicate blades intact and sun-dried until it turns a warm golden-orange, our premium nutmeg flower offers a highly refined, sweeter, and more delicate warmth than nutmeg itself. Highly prized in biryanis, slow-cooked curries, stews, and fine baking.', 
       farmerId: raju.id,
       stock: 10.0
@@ -154,7 +154,7 @@ async function main() {
       name: 'Cloves', 
       price: 290.00, 
       category: 'Whole Spices', 
-      images: ['/images/cloves/cloves1.jpg', '/images/cloves/cloves2.jpg'], 
+      images: ['/images/cloves/cloves-pouch.jpg', '/images/cloves/cloves1.jpg', '/images/cloves/cloves2.jpg', '/images/cloves/cloves3.jpg'], 
       description: "Directly harvested from John's spice estate in Kerala, our premium cloves are rich in essential oils and loaded with aromatic warmth. Traditionally hand-harvested and dried in natural sunlight, each clove offers an intensely sweet and spicy flavor perfect for baking, slow-roasted meats, and traditional masalas.", 
       farmerId: john.id,
       stock: 10.0
