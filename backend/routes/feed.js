@@ -72,6 +72,8 @@ async function loadFeedItems() {
         shipping: (salePrice ?? price) >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_CHARGE,
         weight,
         shippingWeight: `${option.kg * 1000} g`,
+        // Lets Google show a comparable price per 100 g across pack sizes
+        unitPricingMeasure: `${option.kg * 1000}g`,
         category: product.category,
         googleCategory: GOOGLE_CATEGORIES[product.category] || null
       });
@@ -104,6 +106,8 @@ function buildXml(items) {
     out += tag('g:condition', 'new');
     out += tag('g:identifier_exists', 'no');
     out += tag('g:size', item.weight);
+    out += tag('g:unit_pricing_measure', item.unitPricingMeasure);
+    out += tag('g:unit_pricing_base_measure', '100g');
     out += tag('g:product_type', item.category);
     out += tag('g:google_product_category', item.googleCategory);
     out += tag('g:shipping_weight', item.shippingWeight);
@@ -129,7 +133,7 @@ function buildXml(items) {
 }
 
 function buildCsv(items) {
-  const columns = ['id', 'item_group_id', 'title', 'description', 'availability', 'condition', 'price', 'sale_price', 'link', 'image_link', 'additional_image_link', 'brand', 'size', 'product_type', 'google_product_category', 'shipping_weight', 'shipping'];
+  const columns = ['id', 'item_group_id', 'title', 'description', 'availability', 'condition', 'price', 'sale_price', 'link', 'image_link', 'additional_image_link', 'brand', 'size', 'unit_pricing_measure', 'unit_pricing_base_measure', 'product_type', 'google_product_category', 'shipping_weight', 'shipping'];
   const cell = (value) => {
     const text = value === null || value === undefined ? '' : String(value);
     return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
@@ -148,6 +152,8 @@ function buildCsv(items) {
     item.additionalImages.join(','),
     BRAND,
     item.weight,
+    item.unitPricingMeasure,
+    '100g',
     item.category,
     item.googleCategory,
     item.shippingWeight,
