@@ -4,7 +4,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
-import { trackBeginCheckout } from '../utils/analytics';
+import { trackBeginCheckout, metaBrowserIds } from '../utils/analytics';
 import { INDIAN_STATES, INDIAN_UNION_TERRITORIES, matchIndianState } from '../utils/indianStates';
 import { normalizeIndianMobile, PHONE_ERROR } from '../utils/phone';
 
@@ -188,7 +188,7 @@ export default function Cart() {
       weight: item.weight,
       quantity: item.quantity
     }));
-    trackBeginCheckout(cartItems, Math.max(0, cartTotal - (appliedCoupon ? appliedCoupon.discount : 0)));
+    const metaEventId = trackBeginCheckout(cartItems, Math.max(0, cartTotal - (appliedCoupon ? appliedCoupon.discount : 0)));
     setIsProcessing(true);
     try {
       const isLoaded = await loadRazorpayScript();
@@ -209,7 +209,8 @@ export default function Cart() {
         body: JSON.stringify({
           items: checkoutItems, // Only id/weight/quantity: the server prices everything
           address: JSON.stringify(address), // Use the fresh local state!
-          couponCode: appliedCoupon ? appliedCoupon.code : ''
+          couponCode: appliedCoupon ? appliedCoupon.code : '',
+          meta: metaBrowserIds(metaEventId) // for the server-side Meta events (Conversions API)
         }),
       });
       

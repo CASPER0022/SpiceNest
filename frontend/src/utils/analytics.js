@@ -83,10 +83,33 @@ export function trackAddToCart(product, weight, price) {
   pixel('AddToCart', { content_ids: [catalogId(item)], contents: catalogContents([item]), content_name: item.item_name, content_type: 'product', value: item.price, currency: CURRENCY });
 }
 
+const randomId = () =>
+  (window.crypto?.randomUUID ? window.crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`).replace(/[^A-Za-z0-9-]/g, '');
+
+// Returns the event ID it used, so the server's Conversions API event can share it (deduplication)
 export function trackBeginCheckout(cartItems, value) {
   const items = cartItems.map(toItem);
+  const eventId = `checkout_${randomId()}`;
   ga('begin_checkout', { currency: CURRENCY, value, items });
-  pixel('InitiateCheckout', { content_ids: items.map(catalogId), contents: catalogContents(items), content_type: 'product', num_items: items.reduce((n, i) => n + i.quantity, 0), value, currency: CURRENCY });
+  pixel('InitiateCheckout', { content_ids: items.map(catalogId), contents: catalogContents(items), content_type: 'product', num_items: items.reduce((n, i) => n + i.quantity, 0), value, currency: CURRENCY }, { eventID: eventId });
+  return eventId;
+}
+
+function readCookie(name) {
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : '';
+}
+
+// The Pixel's browser IDs, sent with the checkout so the server's Conversions API events can be
+// matched to this visitor (and to the ad click, via fbclid). The backend is on another domain, so
+// it cannot read these cookies itself.
+export function metaBrowserIds(eventId) {
+  let fbc = readCookie('_fbc');
+  if (!fbc) {
+    const fbclid = new URLSearchParams(window.location.search).get('fbclid');
+    if (fbclid) fbc = `fb.1.${Date.now()}.${fbclid}`;
+  }
+  return { fbp: readCookie('_fbp'), fbc, eventId, url: window.location.href.split('#')[0] };
 }
 
 // Sent once per order, even if the success page is reloaded.
@@ -105,6 +128,6 @@ export function trackPurchase(order) {
   );
   const value = Number(order.totalAmount) || 0;
   ga('purchase', { transaction_id: String(order.id), currency: CURRENCY, value, items });
-  // eventID lets Meta de-duplicate if a server-side Conversions API is added later
+  // The server sends the same Purchase through the Conversions API with this event ID; Meta keeps one
   pixel('Purchase', { content_ids: items.map(catalogId), contents: catalogContents(items), content_type: 'product', num_items: items.reduce((n, i) => n + i.quantity, 0), value, currency: CURRENCY }, { eventID: `order_${order.id}` });
 }
