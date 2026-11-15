@@ -13,11 +13,24 @@
       "destination": "https://spicenest.onrender.com/api/feed/google.xml"
     },
     {
+      "source": "/sitemap.xml",
+      "destination": "https://spicenest.onrender.com/api/feed/sitemap.xml"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
   ],
   "headers": [
+    {
+      "source": "/:page(login|signup|forgot-password|reset-password|verify-email|cart|success|profile|wishlist|orders|dashboard|track-order)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
     {
       "source": "/(.*)",
       "headers": [

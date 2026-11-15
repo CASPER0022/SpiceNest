@@ -1,0 +1,7 @@
+# Account, cart, checkout and admin pages are kept out of search results with a
+# "noindex" header (vercel.json), so they are not blocked here: Google must be able to
+# fetch them to see that header.
+User-agent: *
+Allow: /
+
+Sitemap: https://www.idukkiorigins.com/sitemap.xml
