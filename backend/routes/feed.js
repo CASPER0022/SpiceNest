@@ -183,4 +183,67 @@ router.get('/google.xml', serveXml);
 router.get('/facebook.xml', serveXml);
 router.get('/facebook.csv', serveFeed('facebook-csv', 'text/csv; charset=utf-8', buildCsv));
 
+// ==========================================
+// SITEMAP for search engines, served at idukkiorigins.com/sitemap.xml (vercel.json rewrite).
+// Only public pages: the home page first, then the shop, products and farmers, then info pages.
+// Account, cart, checkout and admin pages are left out (and send noindex, see vercel.json).
+// ==========================================
+const STATIC_PAGES = [
+  ['/', '1.0', 'daily'],
+  ['/shop', '0.9', 'daily'],
+  ['/farmers', '0.7', 'weekly'],
+  ['/about', '0.6', 'monthly'],
+  ['/certifications', '0.5', 'monthly'],
+  ['/reviews', '0.5', 'weekly'],
+  ['/gallery', '0.4', 'monthly'],
+  ['/blog', '0.4', 'weekly'],
+  ['/contact', '0.5', 'monthly'],
+  ['/shipping-policy', '0.3', 'yearly'],
+  ['/cancellation-return', '0.3', 'yearly'],
+  ['/refund-policy', '0.3', 'yearly'],
+  ['/privacy-policy', '0.2', 'yearly'],
+  ['/terms-conditions', '0.2', 'yearly']
+];
+
+async function buildSitemap() {
+  const [products, farmers] = await Promise.all([
+    prisma.product.findMany({
+      where: { isArchived: false, slug: { not: null }, stock: { gte: MIN_PACK_KG } },
+      select: { slug: true, updatedAt: true },
+      orderBy: { id: 'asc' }
+    }),
+    prisma.farmer.findMany({ select: { id: true, updatedAt: true }, orderBy: { id: 'asc' } })
+  ]);
+
+  const url = (path, priority, changefreq, lastmod) =>
+    `  <url>\n    <loc>${xml(encodeURI(`${SITE_URL}${path}`))}</loc>\n` +
+    (lastmod ? `    <lastmod>${lastmod.toISOString().slice(0, 10)}</lastmod>\n` : '') +
+    `    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>\n`;
+
+  let out = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
+  const [home, shop, ...rest] = STATIC_PAGES;
+  out += url(...home);
+  out += url(...shop);
+  for (const p of products) out += url(`/product/${p.slug}`, '0.8', 'weekly', p.updatedAt);
+  for (const f of farmers) out += url(`/farmer/${f.id}`, '0.6', 'monthly', f.updatedAt);
+  for (const page of rest) out += url(...page);
+  return out + '</urlset>\n';
+}
+
+router.get('/sitemap.xml', async (req, res) => {
+  try {
+    let entry = cache.get('sitemap');
+    if (!entry || entry.expires < Date.now()) {
+      entry = { body: await buildSitemap(), builtAt: new Date(), expires: Date.now() + FEED_CACHE_MS };
+      cache.set('sitemap', entry);
+    }
+    res.set('Content-Type', 'application/xml; charset=utf-8');
+    res.set('Cache-Control', `public, max-age=${FEED_CACHE_MS / 1000}`);
+    res.send(entry.body);
+  } catch (error) {
+    console.error('Sitemap error:', error);
+    res.status(500).type('text/plain').send('Failed to build sitemap');
+  }
+});
+
 export default router;
