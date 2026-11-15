@@ -13,6 +13,7 @@ import { orderAmounts } from '../utils/tax.js';
 import { renderShippingLabelPdf, renderShippingLabelsPdf, labelFileName } from '../utils/shippingLabel.js';
 import { verifyToken, optionalAuth, getRequestUser } from './auth.js';
 import { RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, STRIPE_SECRET_KEY, FRONTEND_URL, RAZORPAY_WEBHOOK_SECRET, STRIPE_WEBHOOK_SECRET } from '../config.js';
+import { readMetaBrowser, metaInitiateCheckout, metaPurchase } from '../utils/metaCapi.js';
 import { priceCart, CheckoutError, WEIGHT_OPTIONS, COUPONS, FREE_SHIPPING_THRESHOLD, SHIPPING_CHARGE, getUnitPrice } from '../utils/pricing.js';
 
 const { Prisma } = pkg;
@@ -297,6 +298,15 @@ async function orderRecipient(order) {
   return parseAddress(order.address).email || null;
 }
 
+const SITE_URL = FRONTEND_URL.replace(/\/+$/, '');
+
+// Everything that follows a newly recorded order: the confirmation email and the server-side
+// Purchase event for Meta (deduplicated against the browser Pixel by its order_<id> event ID)
+function onNewOrder(order) {
+  sendConfirmationInBackground(order);
+  metaPurchase(order, SITE_URL);
+}
+
 function sendConfirmationInBackground(order) {
   (async () => {
     const recipient = await orderRecipient(order);
@@ -341,6 +351,9 @@ router.post('/create-razorpay-order', optionalAuth, async (req, res) => {
 
     // The buyer comes from the session token (or is a guest), never from the request body
     const cleanAddress = sanitizeAddress(address, getClientIp(req));
+    // Meta browser IDs (_fbp/_fbc cookies, user agent) are kept with the checkout for the Purchase event
+    const { browser, eventId: metaEventId } = readMetaBrowser(req.body.meta, req);
+    cleanAddress.browser = browser;
 
     // Price the cart entirely on the server (prices, stock, coupon, shipping come from our DB/config)
     const priced = await priceCart(prisma, items, couponCode);
@@ -368,6 +381,7 @@ router.post('/create-razorpay-order', optionalAuth, async (req, res) => {
       priced,
       reservedUntil: new Date(Date.now() + RAZORPAY_RESERVATION_MS)
     });
+    metaInitiateCheckout({ eventId: metaEventId, address: cleanAddress, userId: req.user?.id, priced, siteUrl: SITE_URL });
 
     res.json({
       orderId: order.id,
@@ -393,6 +407,8 @@ router.post('/create-checkout-session', optionalAuth, async (req, res) => {
     const { items, address, couponCode } = req.body;
 
     const cleanAddress = sanitizeAddress(address, getClientIp(req));
+    const { browser, eventId: metaEventId } = readMetaBrowser(req.body.meta, req);
+    cleanAddress.browser = browser;
     const frontendUrl = FRONTEND_URL;
 
     // Price the cart entirely on the server (prices, stock, coupon, shipping come from our DB/config)
@@ -469,6 +485,7 @@ router.post('/create-checkout-session', optionalAuth, async (req, res) => {
       priced,
       reservedUntil: new Date(Date.now() + STRIPE_SESSION_MS + 5 * 60 * 1000)
     });
+    metaInitiateCheckout({ eventId: metaEventId, address: cleanAddress, userId: req.user?.id, priced, siteUrl: SITE_URL });
 
     res.json({ url: session.url });
   } catch (error) {
@@ -628,7 +645,7 @@ router.post('/confirm-razorpay-order', async (req, res) => {
 
     // 3. Send response immediately, then the confirmation email in the background
     res.json({ success: true, order, ...(alreadyRecorded && { message: 'Order already recorded' }) });
-    if (!alreadyRecorded) sendConfirmationInBackground(order);
+    if (!alreadyRecorded) onNewOrder(order);
   } catch (error) {
     if (error instanceof CheckoutError) {
       return res.status(error.status).json({ error: error.message });
@@ -651,7 +668,7 @@ router.get('/confirm-order', async (req, res) => {
   try {
     const { order, alreadyRecorded } = await finalizeStripeSession(session_id);
     res.json({ success: true, order, ...(alreadyRecorded && { message: 'Order already recorded' }) });
-    if (!alreadyRecorded) sendConfirmationInBackground(order);
+    if (!alreadyRecorded) onNewOrder(order);
   } catch (error) {
     if (error instanceof CheckoutError) {
       return res.status(error.status).json({ error: error.message });
@@ -696,7 +713,7 @@ router.post('/razorpay-webhook', async (req, res) => {
     const { order, alreadyRecorded } = await finalizeRazorpayPayment({ razorpayOrderId, razorpayPaymentId });
     if (!alreadyRecorded) {
       console.log(`Razorpay webhook recorded order ${order.id} (${razorpayOrderId})`);
-      sendConfirmationInBackground(order);
+      onNewOrder(order);
     }
     res.json({ received: true });
   } catch (error) {
@@ -733,7 +750,7 @@ router.post('/stripe-webhook', async (req, res) => {
     const { order, alreadyRecorded } = await finalizeStripeSession(session.id, session);
     if (!alreadyRecorded) {
       console.log(`Stripe webhook recorded order ${order.id} (${session.id})`);
-      sendConfirmationInBackground(order);
+      onNewOrder(order);
     }
     res.json({ received: true });
   } catch (error) {
@@ -892,7 +909,7 @@ export async function listAbandonedCheckouts() {
     const discount = coupon ? Math.min(coupon.discount, subtotal) : 0;
     const shipping = subtotal > 0 && subtotal < FREE_SHIPPING_THRESHOLD ? SHIPPING_CHARGE : 0;
 
-    const { clientIp, ...shippingAddress } = address;
+    const { clientIp, browser, ...shippingAddress } = address;
     byCustomer.set(customerKey, {
       id: checkout.id,
       provider: checkout.provider,
