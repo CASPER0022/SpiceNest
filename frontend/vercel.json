@@ -23,6 +23,16 @@
   ],
   "headers": [
     {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "spice-nest-drab.vercel.app" }],
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex"
+        }
+      ]
+    },
+    {
       "source": "/:page(login|signup|forgot-password|reset-password|verify-email|cart|success|profile|wishlist|orders|dashboard|track-order)",
       "headers": [
         {
