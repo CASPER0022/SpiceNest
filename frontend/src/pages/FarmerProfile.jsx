@@ -4,10 +4,12 @@ import { ChevronLeft, Star, MapPin, Award } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
+import usePageMeta from '../utils/usePageMeta';
 
 export default function FarmerProfile() {
   const { id } = useParams();
   const [farmer, setFarmer] = useState(null);
+  usePageMeta(farmer?.name ? `Farmer ${farmer.name}` : 'Our Farmers');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { user } = useAuth();

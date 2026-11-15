@@ -1,4 +1,7 @@
+import usePageMeta from '../utils/usePageMeta';
+
 export default function About() {
+  usePageMeta('About Us');
   return (
     <div className="max-w-4xl mx-auto px-4 py-16">
       <h1 className="text-4xl font-black text-gray-900 tracking-tight mb-8">About Us</h1>

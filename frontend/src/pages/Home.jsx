@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { ArrowRight, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
+import usePageMeta from '../utils/usePageMeta';
 
 const IMAGES = [
   '/images/homepage/homepage-bg1.jpg',
@@ -20,6 +21,7 @@ const FEATURES = [
 ];
 
 export default function Home() {
+  usePageMeta(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(() => Math.floor(Math.random() * IMAGES.length));
   const [scrollY, setScrollY] = useState(0);
   const [featuredProducts, setFeaturedProducts] = useState([]);

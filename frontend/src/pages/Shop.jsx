@@ -1,8 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Search, RotateCcw, SlidersHorizontal, Star, X } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
+import usePageMeta from '../utils/usePageMeta';
 
 export default function Shop() {
+  usePageMeta('Shop Whole Spices', 'Buy farm-direct black pepper, cardamom, cloves, nutmeg and mace from Idukki, Kerala in 100 g to 1 kg packs. Free shipping above ₹500.');
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

@@ -8,6 +8,7 @@ import { useWishlist } from '../context/WishlistContext';
 import toast from 'react-hot-toast';
 import ProductToastIcon from '../components/ProductToastIcon';
 import { trackViewItem } from '../utils/analytics';
+import usePageMeta from '../utils/usePageMeta';
 
 const WEIGHT_OPTIONS = [
   { label: '100g', multiplier: 1.0, kg: 0.1, discountPercent: 0 },
@@ -124,14 +125,11 @@ export default function ProductDetails() {
       });
   }, [slug, API_URL, navigate]);
 
-  // Product name in the browser tab and search results
-  useEffect(() => {
-    if (!product?.name) return;
-    document.title = `${product.name} | Idukki Origins`;
-    return () => {
-      document.title = 'Idukki Origins';
-    };
-  }, [product?.name]);
+  // Product name in the browser tab and search results, with its description
+  usePageMeta(
+    product?.name ? `Buy ${product.name} Online` : 'Shop',
+    product?.description ? String(product.description).replace(/\s+/g, ' ').trim().slice(0, 155) : undefined
+  );
 
   useEffect(() => {
     if (product && product.stock !== undefined) {
