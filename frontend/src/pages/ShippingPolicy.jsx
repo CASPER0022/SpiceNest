@@ -1,7 +1,7 @@
 import usePageMeta from '../utils/usePageMeta';
 
 export default function ShippingPolicy() {
-  usePageMeta('Shipping Policy', 'Idukki Origins ships across India with Delhivery and DTDC. Orders dispatch in 1–2 working days and arrive in 1–10 days. Free shipping above ₹500.');
+  usePageMeta('Shipping Policy', 'Idukki Origins ships across India with Delhivery, DTDC and India Post. Orders dispatch in 1–2 working days and arrive in 1–10 days. Free shipping above ₹500.');
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-16">
@@ -12,7 +12,8 @@ export default function ShippingPolicy() {
           <h2 className="text-xl font-bold text-emerald-800">Where we deliver</h2>
           <p>
             We deliver to <strong>all of India</strong>. Every order is packed by hand in Idukki, Kerala, and sent with our courier partners
-            <strong> Delhivery</strong> and <strong>DTDC</strong>. We choose the courier that serves your PIN code best.
+            <strong> Delhivery</strong>, <strong>DTDC</strong> and <strong>India Post</strong>. We choose the one that serves your PIN code best; India Post reaches
+            even the most remote PIN codes.
           </p>
         </section>
 
