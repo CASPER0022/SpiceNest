@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import ProductToastIcon from '../components/ProductToastIcon';
 import { trackViewItem } from '../utils/analytics';
 import usePageMeta from '../utils/usePageMeta';
+import { productJsonLd, useJsonLd } from '../utils/structuredData';
 
 const WEIGHT_OPTIONS = [
   { label: '100g', multiplier: 1.0, kg: 0.1, discountPercent: 0 },
@@ -130,6 +131,8 @@ export default function ProductDetails() {
     product?.name ? `Buy ${product.name} Online` : 'Shop',
     product?.description ? String(product.description).replace(/\s+/g, ' ').trim().slice(0, 155) : undefined
   );
+  // Price range, stock and ratings for Google (Product structured data)
+  useJsonLd('product-jsonld', productJsonLd(product));
 
   useEffect(() => {
     if (product && product.stock !== undefined) {
