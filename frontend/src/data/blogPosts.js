@@ -13,7 +13,7 @@ export const BLOG_POSTS = [
     readMinutes: 8,
     author: 'Idukki Origins',
     tags: ['History', 'Spice Route', 'Black Pepper', 'Cardamom'],
-    cover: '/images/homepage/blog-cardamom-pepper.jpg',
+    cover: '/images/blog/spice-route-cover.jpg',
     coverAlt: 'Whole black peppercorns and green cardamom pods from Idukki',
     blocks: [
       {
