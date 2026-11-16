@@ -13,8 +13,8 @@ export const BLOG_POSTS = [
     readMinutes: 8,
     author: 'Idukki Origins',
     tags: ['History', 'Spice Route', 'Black Pepper', 'Cardamom'],
-    cover: '/images/homepage/homepage-bg2.jpg',
-    coverAlt: 'Green spice hills of Idukki, Kerala',
+    cover: '/images/homepage/blog-cardamom-pepper.jpg',
+    coverAlt: 'Whole black peppercorns and green cardamom pods from Idukki',
     blocks: [
       {
         type: 'p',
