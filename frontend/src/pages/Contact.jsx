@@ -1,52 +1,17 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   ArrowRight, Building2, Check, ChevronDown, Copy, Mail, MapPin, MessageCircle, Navigation, Package, Phone, Send, Sprout, Tractor, Truck
 } from 'lucide-react';
 import usePageMeta from '../utils/usePageMeta';
+import Reveal from '../components/Reveal';
 
 const WHATSAPP = '918921663449';
 const EMAIL = 'info.idukkiorigins@gmail.com';
 const ADDRESS = 'Kanjikuzhy, Idukki, Kerala - 685606';
 const MAP_QUERY = encodeURIComponent('Kanjikuzhy, Idukki, Kerala 685606');
 
-function useReveal() {
-  const ref = useRef(null);
-  const [shown, setShown] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || typeof IntersectionObserver === 'undefined') {
-      setShown(true);
-      return undefined;
-    }
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setShown(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.15 }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-  return [ref, shown];
-}
-
-function Reveal({ children, className = '', delay = 0 }) {
-  const [ref, shown] = useReveal();
-  return (
-    <div
-      ref={ref}
-      className={`transition-all duration-700 ease-out motion-reduce:transition-none ${shown ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'} ${className}`}
-      style={{ transitionDelay: `${delay}ms` }}
-    >
-      {children}
-    </div>
-  );
-}
 
 const CHANNELS = [
   {
