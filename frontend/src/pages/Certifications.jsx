@@ -277,7 +277,6 @@ export default function Certifications() {
         <Reveal>
           <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
             <div>
-              <p className="text-xs font-black text-emerald-600 uppercase tracking-widest mb-2">In plain words</p>
               <h2 className="text-3xl sm:text-4xl font-black text-gray-900 tracking-tight">What each registration means</h2>
             </div>
             <div className="flex flex-wrap gap-2" role="tablist" aria-label="Registrations">
