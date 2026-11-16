@@ -6,6 +6,7 @@ import usePageMeta from '../utils/usePageMeta';
 import { useJsonLd } from '../utils/structuredData';
 import { formatPostDate, getPost, sortedPosts } from '../data/blogPosts';
 import SpiceRouteExplorer from '../components/blog/SpiceRouteExplorer';
+import { CardamomCalendar, CardamomGrades, CardamomJourney } from '../components/blog/CardamomStory';
 
 const SITE_URL = 'https://www.idukkiorigins.com';
 
@@ -18,13 +19,6 @@ function Rich({ text }) {
   });
 }
 
-const FACTS = [
-  { front: 'Black gold', back: 'Pepper was so valuable that it was traded almost like money, and it is still called “black gold” in Kerala.' },
-  { front: '2,000+ years', back: 'Kerala’s spices have been traded overseas for more than two thousand years, and peppercorns reached Egypt even earlier.' },
-  { front: '3,000 pounds', back: 'The amount of pepper Alaric the Goth reportedly demanded in his ransom for Rome in 408 CE.' },
-  { front: '1 round trip a year', back: 'Ships sailed to India on the summer monsoon and home on the winter winds: one voyage there and back each year.' }
-];
-
 const SPICES = [
   { name: 'Black Pepper', slug: 'black-pepper', image: '/images/pepper/pepper-pouch.jpg', note: 'The spice that started it all. Native to the Western Ghats.' },
   { name: 'Cardamom', slug: 'cardamom', image: '/images/cardamom/cardamom-pouch.jpg', note: 'The “queen of spices”, from the Cardamom Hills of Idukki.' },
@@ -33,34 +27,13 @@ const SPICES = [
   { name: 'Mace', slug: 'nutmeg-flower', image: '/images/nutmegflower/nutmegflower-pouch.jpg', note: 'The red lace around the nutmeg seed, sold as nutmeg flower.' }
 ];
 
-const QUIZ = [
-  {
-    q: 'Which wind did Roman ships use to reach Kerala?',
-    options: ['The trade winds of the Atlantic', 'The monsoon winds', 'The Mistral'],
-    answer: 1,
-    why: 'The summer monsoon carried ships across the Arabian Sea to the Malabar coast; the winter monsoon brought them back.'
-  },
-  {
-    q: 'What was the name of Kerala’s great port in Roman times?',
-    options: ['Muziris', 'Malacca', 'Berenike'],
-    answer: 0,
-    why: 'Muziris, near today’s Kodungallur. Berenike was the Egyptian port where the ships unloaded.'
-  },
-  {
-    q: 'Where did Vasco da Gama land in 1498?',
-    options: ['Kochi', 'Goa', 'Kappad, near Calicut'],
-    answer: 2,
-    why: 'He landed at Kappad beach near Calicut (Kozhikode), opening the sea route from Europe.'
-  }
-];
-
-function FactCards() {
+function FactCards({ items }) {
   const [open, setOpen] = useState(null);
   return (
     <div className="not-prose my-10">
       <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-700 mb-3">Tap a card</p>
       <div className="grid grid-cols-2 gap-3">
-        {FACTS.map((fact, i) => {
+        {items.map((fact, i) => {
           const flipped = open === i;
           return (
             <button
@@ -90,12 +63,13 @@ function FactCards() {
   );
 }
 
-function SpiceCards() {
+function SpiceCards({ only, title = 'The spices of the route, from Idukki' }) {
+  const list = only ? SPICES.filter((spice) => only.includes(spice.slug)) : SPICES;
   return (
     <div className="not-prose my-10">
-      <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-700 mb-3">The spices of the route, from Idukki</p>
+      <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-700 mb-3">{title}</p>
       <div className="flex gap-3 overflow-x-auto pb-2 snap-x">
-        {SPICES.map((spice) => (
+        {list.map((spice) => (
           <Link
             key={spice.slug}
             to={`/product/${spice.slug}`}
@@ -118,7 +92,7 @@ function SpiceCards() {
   );
 }
 
-function Quiz() {
+function Quiz({ title, questions: QUIZ }) {
   const [picked, setPicked] = useState({});
   const answered = Object.keys(picked).length;
   const score = QUIZ.filter((item, i) => picked[i] === item.answer).length;
@@ -128,7 +102,7 @@ function Quiz() {
       <p className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-emerald-300">
         <Sparkles className="w-4 h-4" /> Quick quiz
       </p>
-      <h3 className="mt-2 text-2xl font-black">How well do you know the Spice Route?</h3>
+      <h3 className="mt-2 text-2xl font-black">{title}</h3>
       <div className="mt-6 space-y-6">
         {QUIZ.map((item, qi) => {
           const choice = picked[qi];
@@ -180,13 +154,13 @@ function Quiz() {
   );
 }
 
-function ShopCta() {
+function ShopCta({ title = 'Taste the Spice Route at home', image = '/images/homepage/premium_whole_spices.jpg' }) {
   return (
     <div className="not-prose my-12 rounded-3xl overflow-hidden relative">
-      <img src="/images/homepage/premium_whole_spices.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
+      <img src={image} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
       <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/95 via-emerald-900/85 to-emerald-900/40" />
       <div className="relative p-8 sm:p-10 text-white max-w-lg">
-        <h3 className="text-2xl sm:text-3xl font-black">Taste the Spice Route at home</h3>
+        <h3 className="text-2xl sm:text-3xl font-black">{title}</h3>
         <p className="mt-3 text-emerald-50/90">
           Whole spices from Idukki farmers, packed by hand and shipped across India. Free shipping on orders of ₹500 or more.
         </p>
@@ -223,13 +197,19 @@ function Block({ block }) {
     case 'explorer':
       return <SpiceRouteExplorer />;
     case 'facts':
-      return <FactCards />;
+      return <FactCards items={block.items} />;
     case 'spices':
-      return <SpiceCards />;
+      return <SpiceCards only={block.only} title={block.title} />;
     case 'quiz':
-      return <Quiz />;
+      return <Quiz title={block.title} questions={block.questions} />;
     case 'cta':
-      return <ShopCta />;
+      return <ShopCta title={block.title} image={block.image} />;
+    case 'journey':
+      return <CardamomJourney />;
+    case 'calendar':
+      return <CardamomCalendar />;
+    case 'grades':
+      return <CardamomGrades />;
     default:
       return (
         <p className="text-[17px] sm:text-lg leading-8 text-gray-700">

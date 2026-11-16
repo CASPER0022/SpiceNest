@@ -35,3 +35,12 @@
     background: #059669;
   }
 }
+
+/* Soft fade-up used by interactive blog panels */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [class*="animate-[fadeIn"] { animation: none !important; }
+}
