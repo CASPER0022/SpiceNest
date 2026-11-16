@@ -5,6 +5,132 @@
 
 export const BLOG_POSTS = [
   {
+    slug: 'cardamom-cultivation-from-plant-to-plate',
+    title: 'From Plant to Plate: How Cardamom Is Grown in Idukki',
+    excerpt:
+      'Shade trees, monsoon planting, flowers that creep along the ground, hand-picked pods and slow curing: follow every step of cardamom cultivation in the Cardamom Hills, from the forest garden to your cup of chai.',
+    date: '2026-11-16',
+    readMinutes: 9,
+    author: 'Idukki Origins',
+    tags: ['Cardamom', 'Farming', 'How it’s made'],
+    cover: '/images/homepage/homepage-bg3.jpg',
+    coverAlt: 'Cardamom flower stalks with green pods in an Idukki plantation',
+    blocks: [
+      {
+        type: 'p',
+        text: 'Open a pod of good green cardamom and the smell fills the room: sweet, cool and a little like eucalyptus. It is one of the most expensive spices in the world, and once you see how it is grown, it is easy to understand why. Almost every step, from planting to picking to drying, is done by hand.'
+      },
+      {
+        type: 'p',
+        text: 'Most of India’s cardamom comes from Kerala, and most of Kerala’s from **Idukki**, where the mountains are still called **the Cardamom Hills**. This is how our farmers grow it, season by season.'
+      },
+      { type: 'h2', id: 'meet-the-plant', text: 'Meet the queen of spices' },
+      {
+        type: 'p',
+        text: 'Green cardamom (*Elettaria cardamomum*) is a member of the ginger family, native to the evergreen forests of the Western Ghats. Above ground it looks like a clump of tall, leafy shoots. Below ground is a thick stem called a rhizome, from which new shoots and the flowering stalks grow.'
+      },
+      {
+        type: 'p',
+        text: 'It is often called **the queen of spices**, next to black pepper, the king. In the kitchen it flavours everything from chai and biryani to payasam and Arabic coffee.'
+      },
+      {
+        type: 'facts',
+        items: [
+          { front: 'Queen of spices', back: 'Cardamom is called the queen of spices, with black pepper as the king. Both are native to the forests of Kerala.' },
+          { front: '~120 days', back: 'How long a cardamom pod takes to ripen after its flower opens. Plants flower and fruit at the same time for months.' },
+          { front: '5 : 1', back: 'About five kilos of freshly picked pods dry down to one kilo of the cardamom you buy.' },
+          { front: 'By hand', back: 'Pods on one stalk ripen at different times, so every pod is picked by hand, in rounds every few weeks.' }
+        ]
+      },
+      { type: 'h2', id: 'plant-to-plate', text: 'The journey, step by step' },
+      {
+        type: 'p',
+        text: 'Use the buttons, or tap the steps along the top, to follow cardamom from the forest garden to your table.'
+      },
+      { type: 'journey' },
+      { type: 'h2', id: 'where-it-grows', text: 'Why Idukki is perfect for cardamom' },
+      {
+        type: 'p',
+        text: 'Cardamom is fussy. It needs **altitude** (roughly 600 to 1,500 metres), **cool temperatures**, **heavy rain spread over much of the year** and **shade**. Idukki has all four. Two monsoons bring rain from June to December, the hills stay cool, and farmers grow cardamom under the canopy of tall forest trees, much as it once grew wild.'
+      },
+      {
+        type: 'p',
+        text: 'Growing under trees also keeps the land healthy: the canopy shelters the soil from heavy rain, fallen leaves become mulch and food for the plants, and the gardens stay home to birds and the bees that pollinate the flowers.'
+      },
+      {
+        type: 'image',
+        src: '/images/farmers/raju/farm2.jpg',
+        alt: 'Rows of cardamom plants under shade trees on an Idukki hillside',
+        caption: 'Cardamom grows best in the dappled shade of forest trees on Idukki’s hillsides.'
+      },
+      { type: 'h2', id: 'farm-calendar', text: 'A year on the farm' },
+      {
+        type: 'p',
+        text: 'Cardamom work never really stops. The flowering and harvest seasons overlap, so for half the year farmers are picking ripe pods from the same plants that are still flowering.'
+      },
+      { type: 'calendar' },
+      { type: 'h2', id: 'harvest-and-curing', text: 'Harvest and curing: where quality is made' },
+      {
+        type: 'p',
+        text: 'Two things decide how good your cardamom will be: **when it is picked** and **how it is dried**. Pods must be picked when they are fully mature, with black seeds inside, but before they turn yellow. Pickers go along every row, crouching beside each plant, and come back to the same plants every few weeks.'
+      },
+      {
+        type: 'p',
+        text: 'The same day, the pods go to the **curing house**. There they are dried slowly over gentle heat for a day or more. Rush it with too much heat and the pods turn pale or split; do it well and they keep their deep green colour and their aroma. That green colour is why the trade still calls Kerala’s best cardamom **“Alleppey Green”**, after the old port it was shipped from.'
+      },
+      { type: 'h2', id: 'grading', text: 'Sorting by size' },
+      {
+        type: 'p',
+        text: 'After curing, the pods are cleaned of stalks and sieved by size. Larger pods are usually fuller, with more seeds, and fetch higher prices. See how the grades work:'
+      },
+      { type: 'grades' },
+      { type: 'h2', id: 'to-your-table', text: 'From Idukki to your table' },
+      {
+        type: 'p',
+        text: 'Usually, dried cardamom is sold at auction and then passes from trader to wholesaler to shop, sometimes over months. We keep it simple: we buy **directly from our farmers in Idukki**, pack the whole pods by hand, and send them straight to you anywhere in India. Fresher cardamom, and a fairer price for the people who grew it.'
+      },
+      { type: 'h2', id: 'using-cardamom', text: 'Getting the most from your cardamom' },
+      {
+        type: 'p',
+        text: '**Buy whole pods.** The aroma lives in the oils inside the seeds and fades quickly once ground. Crush a pod lightly just before use, or take out the seeds and grind them fresh.'
+      },
+      {
+        type: 'p',
+        text: '**Store it well.** Keep pods in an airtight jar, away from light, heat and moisture. Stored like this, whole cardamom stays fragrant for many months.'
+      },
+      {
+        type: 'p',
+        text: '**A little goes a long way.** One or two crushed pods are enough for a pot of chai; a few pods flavour a whole pot of biryani or a pan of payasam.'
+      },
+      {
+        type: 'quiz',
+        title: 'How much do you know about cardamom?',
+        questions: [
+          {
+            q: 'Where do cardamom flowers grow?',
+            options: ['At the top of the plant', 'On stalks along the ground, from the base', 'On the underside of the leaves'],
+            answer: 1,
+            why: 'The flowering stalks (panicles) creep out from the base of the clump, close to the ground.'
+          },
+          {
+            q: 'Why is cardamom picked by hand?',
+            options: ['Machines are not allowed', 'The pods ripen at different times', 'The plants are too tall'],
+            answer: 1,
+            why: 'Pods on the same stalk ripen weeks apart, so pickers return every few weeks to take only the ripe ones.'
+          },
+          {
+            q: 'What keeps cured cardamom green?',
+            options: ['Slow drying over gentle heat', 'Drying in strong sun', 'Adding colour'],
+            answer: 0,
+            why: 'Slow, controlled heat in the curing house keeps the green colour and the aroma.'
+          }
+        ]
+      },
+      { type: 'spices', only: ['cardamom', 'black-pepper'], title: 'From our farms in Idukki' },
+      { type: 'cta', title: 'Fresh green cardamom, straight from Idukki', image: '/images/cardamom/cardamom1.jpg' }
+    ]
+  },
+  {
     slug: 'the-spice-route-from-idukki',
     title: 'The Spice Route: How Kerala’s Spices Changed the World',
     excerpt:
@@ -67,7 +193,15 @@ export const BLOG_POSTS = [
         type: 'p',
         text: 'Pliny was complaining that Romans spent fortunes on Eastern luxuries. In 408 CE, when the Goth king Alaric besieged Rome, his ransom demand reportedly included **3,000 pounds of pepper**, alongside gold and silver.'
       },
-      { type: 'facts' },
+      {
+        type: 'facts',
+        items: [
+          { front: 'Black gold', back: 'Pepper was so valuable that it was traded almost like money, and it is still called “black gold” in Kerala.' },
+          { front: '2,000+ years', back: 'Kerala’s spices have been traded overseas for more than two thousand years, and peppercorns reached Egypt even earlier.' },
+          { front: '3,000 pounds', back: 'The amount of pepper Alaric the Goth reportedly demanded in his ransom for Rome in 408 CE.' },
+          { front: '1 round trip a year', back: 'Ships sailed to India on the summer monsoon and home on the winter winds: one voyage there and back each year.' }
+        ]
+      },
       { type: 'h2', id: 'traders-of-the-middle-ages', text: 'Arab merchants, Chinese fleets and Venice' },
       {
         type: 'p',
@@ -100,7 +234,30 @@ export const BLOG_POSTS = [
         type: 'p',
         text: 'At Idukki Origins we keep the route as short as we can. We buy pepper, cardamom, cloves, nutmeg and mace **directly from farmers in Idukki**, pack them by hand, and send them straight to homes across India. The spice is the same one that sailed to Rome; the journey is just a lot shorter now.'
       },
-      { type: 'quiz' },
+      {
+        type: 'quiz',
+        title: 'How well do you know the Spice Route?',
+        questions: [
+          {
+            q: 'Which wind did Roman ships use to reach Kerala?',
+            options: ['The trade winds of the Atlantic', 'The monsoon winds', 'The Mistral'],
+            answer: 1,
+            why: 'The summer monsoon carried ships across the Arabian Sea to the Malabar coast; the winter monsoon brought them back.'
+          },
+          {
+            q: 'What was the name of Kerala’s great port in Roman times?',
+            options: ['Muziris', 'Malacca', 'Berenike'],
+            answer: 0,
+            why: 'Muziris, near today’s Kodungallur. Berenike was the Egyptian port where the ships unloaded.'
+          },
+          {
+            q: 'Where did Vasco da Gama land in 1498?',
+            options: ['Kochi', 'Goa', 'Kappad, near Calicut'],
+            answer: 2,
+            why: 'He landed at Kappad beach near Calicut (Kozhikode), opening the sea route from Europe.'
+          }
+        ]
+      },
       { type: 'cta' }
     ]
   }

@@ -203,6 +203,7 @@ const STATIC_PAGES = [
   ['/reviews', '0.5', 'weekly'],
   ['/gallery', '0.4', 'monthly'],
   ['/blog', '0.5', 'weekly'],
+  ['/blog/cardamom-cultivation-from-plant-to-plate', '0.5', 'monthly'],
   ['/blog/the-spice-route-from-idukki', '0.5', 'monthly'],
   ['/contact', '0.5', 'monthly'],
   ['/shipping-policy', '0.3', 'yearly'],
