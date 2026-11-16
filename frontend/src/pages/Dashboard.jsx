@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import TaxReport from '../components/TaxReport';
+import ReviewManager from '../components/ReviewManager';
 import OrderBreakdown from '../components/OrderBreakdown';
 import { normalizeIndianMobile, PHONE_ERROR } from '../utils/phone';
 
@@ -2274,6 +2275,16 @@ export default function Dashboard() {
           >
             Tax Report
           </button>
+          <button 
+            onClick={() => setActiveTab('reviews')}
+            className={`text-xs font-black uppercase tracking-wider px-5 py-2.5 rounded-full transition-all ${
+              activeTab === 'reviews' 
+                ? 'bg-white text-emerald-700 shadow-md transform scale-105' 
+                : 'text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            Reviews
+          </button>
         </div>
       </div>
 
@@ -3280,6 +3291,9 @@ export default function Dashboard() {
       ) : activeTab === 'tax' ? (
         /* Monthly GST report per state */
         <TaxReport apiUrl={API_URL} />
+      ) : activeTab === 'reviews' ? (
+        /* Customer reviews: search, filter, delete */
+        <ReviewManager apiUrl={API_URL} />
       ) : (
         /* Product Management Tab */
         <div className="space-y-8 animate-fadeIn">
