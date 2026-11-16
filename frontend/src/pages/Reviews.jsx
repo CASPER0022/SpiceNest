@@ -224,7 +224,7 @@ export default function Reviews() {
             Straight from our customers’ kitchens.
           </h1>
           <p className="mt-5 max-w-2xl text-lg sm:text-xl text-emerald-50/90 animate-[fadeIn_1s_ease]">
-            Every review here was written by someone who bought and cooked with our spices. We don’t pay for reviews, and we never write them ourselves.
+            Every review here was written by someone who bought and cooked with our spices.
           </p>
           <div className="mt-8 flex flex-wrap gap-3 animate-[fadeIn_1.2s_ease]">
             <a href="#reviews" className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 font-extrabold text-emerald-800 hover:bg-emerald-50 transition-colors">
