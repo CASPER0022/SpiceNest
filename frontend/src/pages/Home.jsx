@@ -3,6 +3,10 @@ import { useState, useEffect } from 'react';
 import { ArrowRight, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
 import usePageMeta from '../utils/usePageMeta';
+import { formatPostDate, sortedPosts } from '../data/blogPosts';
+
+// Newest blog article, plus up to two more, for the "From the Blog" section
+const [latestPost, ...otherPosts] = sortedPosts().slice(0, 3);
 
 const IMAGES = [
   '/images/homepage/homepage-bg1.jpg',
@@ -437,6 +441,81 @@ export default function Home() {
         ) : (
           <div className="text-center py-10 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
             <p className="text-gray-400 text-sm font-semibold">No featured spices available right now.</p>
+          </div>
+        )}
+      </div>
+
+      {/* From the Blog Section */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16 md:pb-20">
+        <div className="flex justify-between items-end mb-10">
+          <div>
+            <p className="text-xs font-black text-emerald-600 uppercase tracking-widest mb-1.5">Stories from Idukki</p>
+            <h2 className="text-3xl font-black text-gray-900 uppercase tracking-tight">From the Blog</h2>
+          </div>
+          <Link
+            to="/blog"
+            className="shrink-0 whitespace-nowrap text-xs font-black text-emerald-600 hover:text-emerald-700 uppercase tracking-widest flex items-center px-5 py-2.5 bg-emerald-50 rounded-full transition-all hover:scale-105 active:scale-95 shadow-sm cursor-pointer"
+          >
+            All Stories <ArrowRight size={14} className="ml-2" />
+          </Link>
+        </div>
+
+        {latestPost && (
+          <Link
+            to={`/blog/${latestPost.slug}`}
+            className="group grid md:grid-cols-2 overflow-hidden rounded-3xl bg-emerald-950 text-white shadow-sm hover:shadow-xl transition-shadow"
+          >
+            <div className="relative h-56 md:h-auto md:min-h-80 overflow-hidden">
+              <img
+                src={latestPost.cover}
+                alt={latestPost.coverAlt}
+                loading="lazy"
+                decoding="async"
+                className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+              />
+              <span className="absolute top-4 left-4 rounded-full bg-amber-400 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-amber-950">
+                New story
+              </span>
+            </div>
+            <div className="p-6 sm:p-10 flex flex-col justify-center">
+              <div className="flex flex-wrap gap-2">
+                {latestPost.tags.slice(0, 3).map((tag) => (
+                  <span key={tag} className="rounded-full bg-white/10 border border-white/15 px-3 py-1 text-xs font-bold text-emerald-100">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+              <h3 className="mt-4 text-2xl sm:text-3xl font-black tracking-tight group-hover:text-emerald-200 transition-colors">
+                {latestPost.title}
+              </h3>
+              <p className="mt-3 text-emerald-50/80 leading-relaxed line-clamp-3">{latestPost.excerpt}</p>
+              <p className="mt-4 flex items-center gap-4 text-xs font-semibold text-emerald-100/70">
+                <span>{formatPostDate(latestPost.date)}</span>
+                <span>{latestPost.readMinutes} min read</span>
+              </p>
+              <span className="mt-6 inline-flex w-fit items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-extrabold text-emerald-800">
+                Read the story <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+              </span>
+            </div>
+          </Link>
+        )}
+
+        {otherPosts.length > 0 && (
+          <div className="mt-6 grid gap-6 sm:grid-cols-2">
+            {otherPosts.map((post) => (
+              <Link
+                key={post.slug}
+                to={`/blog/${post.slug}`}
+                className="group flex gap-4 rounded-2xl bg-white border border-gray-100 p-4 hover:shadow-lg transition-shadow"
+              >
+                <img src={post.cover} alt={post.coverAlt} loading="lazy" decoding="async" className="w-28 h-28 shrink-0 rounded-xl object-cover" />
+                <div className="min-w-0">
+                  <h3 className="font-extrabold text-gray-900 group-hover:text-emerald-800 line-clamp-2">{post.title}</h3>
+                  <p className="mt-1 text-sm text-gray-500 line-clamp-2">{post.excerpt}</p>
+                  <p className="mt-2 text-xs font-semibold text-gray-400">{formatPostDate(post.date)}</p>
+                </div>
+              </Link>
+            ))}
           </div>
         )}
       </div>
