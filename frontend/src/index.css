@@ -44,3 +44,10 @@
 @media (prefers-reduced-motion: reduce) {
   [class*="animate-[fadeIn"] { animation: none !important; }
 }
+@keyframes heroZoom {
+  from { transform: scale(1.12); }
+  to { transform: scale(1.02); }
+}
+@media (prefers-reduced-motion: reduce) {
+  [class*="animate-[heroZoom"] { animation: none !important; }
+}
