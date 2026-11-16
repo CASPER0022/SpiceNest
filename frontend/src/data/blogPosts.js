@@ -78,6 +78,12 @@ export const BLOG_POSTS = [
         type: 'p',
         text: 'The same day, the pods go to the **curing house**. There they are dried slowly over gentle heat for a day or more. Rush it with too much heat and the pods turn pale or split; do it well and they keep their deep green colour and their aroma. That green colour is why the trade still calls Kerala’s best cardamom **“Alleppey Green”**, after the old port it was shipped from.'
       },
+      {
+        type: 'image',
+        src: '/images/blog/cardamom-curing.jpg',
+        alt: 'Green cardamom pods drying on wire racks in a curing house',
+        caption: 'Fresh pods drying slowly on racks in a curing house, where they keep their green colour.'
+      },
       { type: 'h2', id: 'grading', text: 'Sorting by size' },
       {
         type: 'p',

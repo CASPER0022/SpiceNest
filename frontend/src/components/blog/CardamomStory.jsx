@@ -4,8 +4,7 @@ import {
 } from 'lucide-react';
 
 // Interactive parts of the cardamom cultivation article: the plant-to-plate journey,
-// the farm calendar and the pod size grader. Steps without a photo show an icon panel;
-// add an `image` to a step to show a picture instead.
+// the farm calendar and the pod size grader. A step without an `image` shows an icon panel.
 
 const STEPS = [
   {
@@ -21,6 +20,8 @@ const STEPS = [
     icon: Sprout,
     title: 'Nursery',
     when: '10–18 months',
+    image: '/images/blog/cardamom-nursery.jpg',
+    alt: 'Rows of young cardamom seedlings in nursery bags under shade netting',
     text: 'New plants are raised from seed or from pieces of the underground stem (rhizome) of strong, high-yielding mother plants. Seedlings start in a shaded seed bed, are moved to a second nursery to grow on, and are ready to plant out when they have a few healthy shoots.',
     tip: 'Many Idukki farmers grow farmer-selected varieties, such as Njallani Green Gold, chosen from their own best plants.'
   },
@@ -28,6 +29,8 @@ const STEPS = [
     icon: CloudRain,
     title: 'Planting with the monsoon',
     when: 'June – July',
+    image: '/images/blog/cardamom-planting.jpg',
+    alt: 'A farmer planting a young cardamom plant under forest trees',
     text: 'Young plants go into the ground at the start of the south-west monsoon, in pits filled with topsoil and compost, a couple of metres apart. The steady rain helps the roots settle in. Each plant slowly grows into a clump of leafy shoots, two to four metres tall.'
   },
   {
@@ -51,6 +54,8 @@ const STEPS = [
     icon: Hand,
     title: 'Harvesting by hand',
     when: 'August – February',
+    image: '/images/blog/cardamom-harvest.jpg',
+    alt: 'Hands picking ripe green cardamom pods into a woven basket',
     text: 'Pods on one stalk ripen at different times, so they cannot be harvested by machine. Pickers go through the plantation every two to four weeks, crouching to pick only the pods that are fully mature but still green, with black seeds inside. One season can mean seven or eight picking rounds.',
     tip: 'Pick too early and the pods shrivel when dried; too late and they split and lose their colour.'
   },
@@ -58,6 +63,8 @@ const STEPS = [
     icon: Flame,
     title: 'Curing (drying)',
     when: '1–2 days',
+    image: '/images/blog/cardamom-curing.jpg',
+    alt: 'Green cardamom pods drying on wire racks in a curing house',
     text: 'Fresh pods are washed and spread on racks in a curing house, where gentle, controlled heat (around 45–55 °C) slowly dries them until only about a tenth of their moisture is left. Slow drying keeps the bright green colour and locks in the aroma; too much heat turns the pods pale or brown.',
     tip: 'It takes about five kilos of fresh pods to make one kilo of dried cardamom.'
   },
