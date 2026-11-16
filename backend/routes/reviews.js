@@ -181,6 +181,64 @@ router.get('/', async (req, res) => {
   }
 });
 
+async function requireAdmin(req, res) {
+  const user = await prisma.user.findUnique({ where: { id: req.user.id }, select: { role: true } });
+  if (!user || user.role !== 'ADMIN') {
+    res.status(403).json({ error: 'Access denied: Admins only' });
+    return false;
+  }
+  return true;
+}
+
+// ==========================================
+// ADMIN: EVERY REVIEW WITH THE CUSTOMER'S DETAILS (GET /api/reviews/admin)
+// ==========================================
+router.get('/admin', verifyToken, async (req, res) => {
+  try {
+    if (!(await requireAdmin(req, res))) return;
+    const reviews = await prisma.review.findMany({
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        rating: true,
+        comment: true,
+        createdAt: true,
+        updatedAt: true,
+        user: { select: { id: true, name: true, email: true } },
+        product: { select: { id: true, name: true, slug: true, images: true } },
+        farmer: { select: { id: true, name: true } }
+      }
+    });
+    res.json(
+      reviews.map((r) => ({
+        ...r,
+        product: r.product ? { id: r.product.id, name: r.product.name, slug: r.product.slug, image: r.product.images?.[0] || null } : null
+      }))
+    );
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to fetch reviews' });
+  }
+});
+
+// ==========================================
+// ADMIN: DELETE SEVERAL REVIEWS (POST /api/reviews/admin/bulk-delete { ids })
+// ==========================================
+router.post('/admin/bulk-delete', verifyToken, async (req, res) => {
+  try {
+    if (!(await requireAdmin(req, res))) return;
+    const ids = Array.isArray(req.body?.ids) ? [...new Set(req.body.ids.map(Number))] : [];
+    if (ids.length === 0 || ids.length > 200 || !ids.every((id) => Number.isInteger(id) && id > 0)) {
+      return res.status(400).json({ error: 'Send between 1 and 200 review IDs' });
+    }
+    const { count } = await prisma.review.deleteMany({ where: { id: { in: ids } } });
+    res.json({ deleted: count });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to delete reviews' });
+  }
+});
+
 // ==========================================
 // GET REVIEWS FOR A PRODUCT (GET /api/reviews/product/:productId)
 // ==========================================
