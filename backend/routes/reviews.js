@@ -123,6 +123,64 @@ router.post('/', verifyToken, async (req, res) => {
   }
 });
 
+// "Anitha Kumar" -> "Anitha K." so the public reviews page doesn't show full names
+function shortName(name) {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'Customer';
+  if (parts.length === 1) return parts[0];
+  return `${parts[0]} ${parts[parts.length - 1][0].toUpperCase()}.`;
+}
+
+// ==========================================
+// ALL REVIEWS WITH A SUMMARY (GET /api/reviews)
+// ==========================================
+router.get('/', async (req, res) => {
+  try {
+    const [reviews, stats, groups] = await Promise.all([
+      prisma.review.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: 200,
+        select: {
+          id: true,
+          rating: true,
+          comment: true,
+          createdAt: true,
+          user: { select: { name: true } },
+          product: { select: { id: true, name: true, slug: true, images: true, isArchived: true } },
+          farmer: { select: { id: true, name: true, image: true } }
+        }
+      }),
+      prisma.review.aggregate({ _avg: { rating: true }, _count: { _all: true } }),
+      prisma.review.groupBy({ by: ['rating'], _count: { _all: true } })
+    ]);
+
+    const distribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    for (const g of groups) distribution[g.rating] = g._count._all;
+
+    res.json({
+      summary: {
+        count: stats._count._all,
+        average: stats._avg.rating ? parseFloat(stats._avg.rating.toFixed(1)) : 0,
+        distribution
+      },
+      reviews: reviews.map((r) => ({
+        id: r.id,
+        rating: r.rating,
+        comment: r.comment,
+        createdAt: r.createdAt,
+        name: shortName(r.user?.name),
+        product: r.product
+          ? { id: r.product.id, name: r.product.name, slug: r.product.isArchived ? null : r.product.slug, image: r.product.images?.[0] || null }
+          : null,
+        farmer: r.farmer ? { id: r.farmer.id, name: r.farmer.name, image: r.farmer.image } : null
+      }))
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to fetch reviews' });
+  }
+});
+
 // ==========================================
 // GET REVIEWS FOR A PRODUCT (GET /api/reviews/product/:productId)
 // ==========================================
