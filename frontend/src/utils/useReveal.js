@@ -11,8 +11,8 @@ export default function useReveal() {
       return undefined;
     }
     const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
           setShown(true);
           observer.disconnect();
         }
