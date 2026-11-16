@@ -316,39 +316,6 @@ export default function Certifications() {
         <QualityChecklist />
       </section>
 
-      {/* On every pack */}
-      <section className="max-w-6xl mx-auto px-4 pb-16">
-        <Reveal>
-          <div className="grid lg:grid-cols-2 gap-8 items-center rounded-3xl bg-white border border-gray-100 p-6 sm:p-10 shadow-sm">
-            <div className="relative">
-              <img src="/images/cardamom/cardamom-pouch.jpg" alt="Idukki Origins cardamom pouch" loading="lazy" className="mx-auto h-72 sm:h-80 object-contain" />
-              <span className="absolute left-2 sm:left-8 top-6 rounded-full bg-emerald-700 px-3 py-1.5 text-xs font-black text-white shadow-md animate-[fadeIn_.6s_ease]">
-                FSSAI 21326177000702
-              </span>
-            </div>
-            <div>
-              <p className="text-xs font-black text-emerald-600 uppercase tracking-widest mb-2">On every pack</p>
-              <h2 className="text-3xl font-black text-gray-900 tracking-tight">What to look for on your pouch</h2>
-              <ul className="mt-6 space-y-3">
-                {[
-                  'Our FSSAI registration number',
-                  'The spice name and net weight',
-                  'Packed in Idukki, Kerala, by Idukki Origins',
-                  'Our contact details, so you can always reach us'
-                ].map((item) => (
-                  <li key={item} className="flex items-start gap-3">
-                    <span className="mt-0.5 w-6 h-6 shrink-0 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center">
-                      <Check className="w-3.5 h-3.5" />
-                    </span>
-                    <span className="font-semibold text-gray-700">{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </Reveal>
-      </section>
-
       {/* CTA */}
       <section className="max-w-6xl mx-auto px-4 pb-20">
         <Reveal>
