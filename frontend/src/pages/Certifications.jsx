@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
-  ArrowRight, BadgeCheck, Building2, Check, Copy, Droplets, ExternalLink, Eye, FileCheck2, Flower2, Landmark, Leaf, Ruler, Search, ShieldCheck,
+  ArrowRight, BadgeCheck, Building2, Check, Copy, Droplets, Eye, FileCheck2, Flower2, Landmark, Leaf, Ruler, ShieldCheck,
   Sparkles, UtensilsCrossed, Wind
 } from 'lucide-react';
 import usePageMeta from '../utils/usePageMeta';
@@ -21,8 +21,6 @@ const REGISTRATIONS = [
     meaning:
       'FSSAI is India’s food safety regulator. Every business that handles, packs or sells food must be registered with it. Our registration means we are a recognised food business that follows the national food safety and hygiene rules.',
     forYou: 'The spices you buy come from a registered food business, and our FSSAI number is printed on every pack.',
-    verifyUrl: 'https://foscos.fssai.gov.in/',
-    steps: ['Open the FoSCoS portal of FSSAI.', 'Choose “FBO Search” on the home page.', 'Enter our 14-digit number and search.']
   },
   {
     id: 'gst',
@@ -35,8 +33,6 @@ const REGISTRATIONS = [
     meaning:
       'GST registration means we are a tax-registered business in Kerala. The 32 at the start of our GSTIN is Kerala’s state code. Every order comes with a proper tax invoice.',
     forYou: 'Businesses buying from us can claim input tax credit, and every customer gets a proper GST invoice.',
-    verifyUrl: 'https://services.gst.gov.in/services/searchtp',
-    steps: ['Open the GST portal’s “Search Taxpayer” page.', 'Choose “Search by GSTIN/UIN”.', 'Enter our GSTIN, fill in the captcha and search.']
   },
   {
     id: 'udyam',
@@ -49,8 +45,6 @@ const REGISTRATIONS = [
     meaning:
       'Udyam registration is the Government of India’s recognition of a micro, small or medium enterprise. It confirms that Idukki Origins is a registered small business from Kerala (KL), Idukki district.',
     forYou: 'When you buy from us, you support a registered local business and the Idukki farmers it works with.',
-    verifyUrl: 'https://udyamregistration.gov.in/Udyam_Verify.aspx',
-    steps: ['Open the Udyam Registration portal’s “Verify Udyam Registration Number” page.', 'Enter our Udyam number.', 'Fill in the captcha and verify.']
   }
 ];
 
@@ -126,14 +120,6 @@ function RegistrationCard({ reg, active, onSelect, delay }) {
           >
             <Sparkles className="w-4 h-4" /> What it means
           </button>
-          <a
-            href={reg.verifyUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-full border border-white/30 px-4 py-2 text-sm font-extrabold hover:bg-white/10 transition-colors"
-          >
-            Verify <ExternalLink className="w-3.5 h-3.5" />
-          </a>
         </div>
       </div>
     </Reveal>
@@ -156,27 +142,21 @@ function Explainer({ reg }) {
         </div>
       </div>
       <div className="rounded-3xl bg-emerald-950 p-6 sm:p-8 text-white shadow-sm">
-        <p className="text-xs font-black text-emerald-300 uppercase tracking-widest">Check it yourself</p>
-        <h3 className="mt-2 text-2xl font-black">Verify in three steps</h3>
-        <ol className="mt-6 space-y-4">
-          {reg.steps.map((step, i) => (
-            <li key={step} className="flex gap-4">
-              <span className="w-8 h-8 shrink-0 rounded-full bg-amber-400 text-amber-950 font-black flex items-center justify-center">{i + 1}</span>
-              <p className="pt-1 text-emerald-50/90">{step}</p>
-            </li>
+        <p className="text-xs font-black text-emerald-300 uppercase tracking-widest">Registration details</p>
+        <h3 className="mt-2 text-2xl font-black">{reg.short}</h3>
+        <dl className="mt-6 space-y-4">
+          {[
+            ['Registration number', reg.number, true],
+            ['Issued by', reg.authority],
+            ['Registered business', 'Idukki Origins'],
+            ['Location', 'Kanjikuzhy, Idukki, Kerala 685606']
+          ].map(([label, value, mono]) => (
+            <div key={label} className="border-b border-white/10 pb-3 last:border-0">
+              <dt className="text-[11px] font-black uppercase tracking-widest text-emerald-300/80">{label}</dt>
+              <dd className={`mt-1 text-emerald-50 ${mono ? 'font-mono text-lg font-bold tracking-wide [overflow-wrap:anywhere]' : 'font-semibold'}`}>{value}</dd>
+            </div>
           ))}
-        </ol>
-        <div className="mt-6 flex flex-wrap items-center gap-3">
-          <a
-            href={reg.verifyUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-extrabold text-emerald-900 hover:bg-emerald-50 transition-colors"
-          >
-            <Search className="w-4 h-4" /> Open the official portal
-          </a>
-          <span className="font-mono text-sm text-emerald-200">{reg.number}</span>
-        </div>
+        </dl>
       </div>
     </div>
   );
@@ -242,7 +222,7 @@ function QualityChecklist() {
 export default function Certifications() {
   usePageMeta(
     'Certifications',
-    'Idukki Origins is FSSAI registered (21326177000702), GST registered (32AGFPJ8946D1ZH) and an MSME Udyam registered business (UDYAM-KL-03-0041531). Verify each one yourself.'
+    'Idukki Origins is FSSAI registered (21326177000702), GST registered (32AGFPJ8946D1ZH) and an MSME Udyam registered business (UDYAM-KL-03-0041531).'
   );
   const [selected, setSelected] = useState(REGISTRATIONS[0].id);
   const current = REGISTRATIONS.find((r) => r.id === selected);
@@ -264,14 +244,14 @@ export default function Certifications() {
         <div className="absolute inset-0 bg-gradient-to-t from-emerald-950 via-emerald-950/60 to-emerald-950/20" />
         <div className="relative max-w-6xl mx-auto w-full px-4 pt-36 pb-24 sm:pb-28">
           <p className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/15 px-4 py-1.5 text-xs font-extrabold uppercase tracking-widest text-emerald-200 animate-[fadeIn_.6s_ease]">
-            <ShieldCheck className="w-3.5 h-3.5" /> Registered and verifiable
+            <ShieldCheck className="w-3.5 h-3.5" /> Registered and compliant
           </p>
           <h1 className="mt-5 max-w-3xl text-4xl sm:text-6xl font-black tracking-tight leading-[1.05] animate-[fadeIn_.8s_ease]">
-            Trust you can check.
+            Registered. Responsible. Real.
           </h1>
           <p className="mt-5 max-w-2xl text-lg sm:text-xl text-emerald-50/90 animate-[fadeIn_1s_ease]">
-            Idukki Origins is a registered food business, a GST-registered company and a government-recognised small enterprise. Here is every number, what
-            it means, and how to verify it yourself on the official websites.
+            Idukki Origins is a registered food business, a GST-registered company and a government-recognised small enterprise. Here is every registration we hold
+            and what it means for you.
           </p>
           <div className="mt-8 flex flex-wrap gap-2 animate-[fadeIn_1.2s_ease]">
             {REGISTRATIONS.map((r) => (
