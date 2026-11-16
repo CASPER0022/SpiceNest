@@ -30,6 +30,7 @@ import TrackOrder from './pages/TrackOrder';
 import About from './pages/About';
 import Gallery from './pages/Gallery';
 import Blog from './pages/Blog';
+import BlogPost from './pages/BlogPost';
 import Contact from './pages/Contact';
 import Reviews from './pages/Reviews';
 import Certifications from './pages/Certifications';
@@ -94,6 +95,7 @@ function AppLayout() {
           <Route path="/about" element={<About />} />
           <Route path="/gallery" element={<Gallery />} />
           <Route path="/blog" element={<Blog />} />
+          <Route path="/blog/:slug" element={<BlogPost />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/reviews" element={<Reviews />} />
           <Route path="/certifications" element={<Certifications />} />
