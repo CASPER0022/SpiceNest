@@ -48,6 +48,7 @@ export default function Navbar() {
             <Link to="/" className={`inline-flex items-center px-1 pt-1 text-xs lg:text-sm font-bold transition-colors whitespace-nowrap ${textClass}`}>Home</Link>
             <Link to="/shop" className={`inline-flex items-center px-1 pt-1 text-xs lg:text-sm font-bold transition-colors whitespace-nowrap ${mutedTextClass}`}>Shop</Link>
             <Link to="/farmers" className={`inline-flex items-center px-1 pt-1 text-xs lg:text-sm font-bold transition-colors whitespace-nowrap ${mutedTextClass}`}>Our Farmers</Link>
+            <Link to="/blog" className={`inline-flex items-center px-1 pt-1 text-xs lg:text-sm font-bold transition-colors whitespace-nowrap ${mutedTextClass}`}>Blog</Link>
             <Link to="/wishlist" className={`inline-flex items-center px-1 pt-1 text-xs lg:text-sm font-bold relative mr-2 lg:mr-4 transition-colors whitespace-nowrap ${mutedTextClass}`}>
               Wishlist
               {wishlistCount > 0 && (
@@ -112,6 +113,7 @@ export default function Navbar() {
             <Link to="/" onClick={() => setIsMenuOpen(false)} className="block pl-6 pr-4 py-4 text-base font-bold text-gray-900 border-b border-gray-50">Home</Link>
             <Link to="/shop" onClick={() => setIsMenuOpen(false)} className="block pl-6 pr-4 py-4 text-base font-bold text-gray-600 border-b border-gray-50">Shop</Link>
             <Link to="/farmers" onClick={() => setIsMenuOpen(false)} className="block pl-6 pr-4 py-4 text-base font-bold text-gray-600 border-b border-gray-50">Our Farmers</Link>
+            <Link to="/blog" onClick={() => setIsMenuOpen(false)} className="block pl-6 pr-4 py-4 text-base font-bold text-gray-600 border-b border-gray-50">Blog</Link>
             <Link to="/wishlist" onClick={() => setIsMenuOpen(false)} className="block pl-6 pr-4 py-4 text-base font-bold text-gray-600 border-b border-gray-50">
               Wishlist
               {wishlistCount > 0 && (
