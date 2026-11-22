@@ -156,6 +156,12 @@ export const BLOG_POSTS = [
         type: 'p',
         text: 'This is the story of that route: who sailed it, what they paid, and why a handful of small, dried berries from Kerala ended up shaping empires.'
       },
+      {
+        type: 'image',
+        src: '/images/blog/pepper-worth-gold.jpg',
+        alt: 'An old brass balance with black peppercorns in one pan and gold coins in the other',
+        caption: 'Illustration: for centuries, pepper was worth its weight in gold.'
+      },
       { type: 'h2', id: 'where-it-began', text: 'Where it began: the hills behind the coast' },
       {
         type: 'p',
@@ -183,12 +189,24 @@ export const BLOG_POSTS = [
         text: 'Pepper was prized very early: black peppercorns were found in the nose of the Egyptian pharaoh **Ramesses II**, who died in 1213 BCE, placed there during mummification. Since pepper grows only in South India, it must already have travelled a very long way.'
       },
       {
+        type: 'image',
+        src: '/images/blog/pepper-ramesses.jpg',
+        alt: 'An embalmer placing black peppercorns beside a wrapped Egyptian mummy in a tomb',
+        caption: 'Illustration: peppercorns from South India were used in the mummification of Ramesses II.'
+      },
+      {
         type: 'p',
         text: 'The trade grew enormously after Rome took Egypt in 30 BCE. Greek and Roman sailors learned to use the **monsoon winds**: blowing towards India in summer and back towards Arabia in winter, they let ships cross the open Arabian Sea instead of hugging the coast. The *Periplus of the Erythraean Sea*, a sailors’ guide from the first century CE, describes ships coming to the Malabar coast “because of the great quantity of pepper”.'
       },
       {
         type: 'p',
         text: 'Their main port was **Muziris**, near today’s Kodungallur, north of Kochi. Roman coins have been found across South India, and excavations at **Pattanam** near Kodungallur have uncovered Mediterranean pottery that many historians link to Muziris.'
+      },
+      {
+        type: 'image',
+        src: '/images/blog/malabar-coast-trade.jpg',
+        alt: 'Workers carrying sacks of pepper in small boats to a sailing ship anchored off a palm-lined Kerala coast',
+        caption: 'Illustration: sacks of pepper ferried out to a trading ship on the Malabar coast.'
       },
       {
         type: 'quote',
@@ -198,6 +216,12 @@ export const BLOG_POSTS = [
       {
         type: 'p',
         text: 'Pliny was complaining that Romans spent fortunes on Eastern luxuries. In 408 CE, when the Goth king Alaric besieged Rome, his ransom demand reportedly included **3,000 pounds of pepper**, alongside gold and silver.'
+      },
+      {
+        type: 'image',
+        src: '/images/blog/alaric-pepper-ransom.jpg',
+        alt: 'Roman officials handing over chests of gold and sacks of pepper to Gothic warriors at the gates of Rome',
+        caption: 'Illustration: Rome pays Alaric’s ransom in gold, silver and pepper, 408 CE.'
       },
       {
         type: 'facts',
@@ -226,6 +250,12 @@ export const BLOG_POSTS = [
       {
         type: 'p',
         text: 'European kingdoms wanted to buy spices at the source rather than through Venice and the Middle East. In 1498 the Portuguese explorer **Vasco da Gama** sailed around Africa and landed at Kappad, near Calicut. It opened a direct sea route from Europe to Kerala.'
+      },
+      {
+        type: 'image',
+        src: '/images/blog/portuguese-arrival-1498.jpg',
+        alt: 'Portuguese sailing ships with red-cross sails anchored off a beach as local fishermen watch boats row ashore',
+        caption: 'Illustration: Vasco da Gama’s ships arrive off Kappad, near Calicut, in 1498.'
       },
       {
         type: 'p',
