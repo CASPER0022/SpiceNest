@@ -44,7 +44,7 @@ export default function Navbar() {
           </div>
           
           {/* Desktop Menu */}
-          <div className="hidden md:ml-4 md:flex md:space-x-3 lg:space-x-4 xl:space-x-6 items-center">
+          <div className="hidden md:ml-4 md:flex md:space-x-3 lg:space-x-4 items-center">
             <Link to="/" className={`inline-flex items-center px-1 pt-1 text-xs lg:text-sm font-bold transition-colors whitespace-nowrap ${textClass}`}>Home</Link>
             <Link to="/shop" className={`inline-flex items-center px-1 pt-1 text-xs lg:text-sm font-bold transition-colors whitespace-nowrap ${mutedTextClass}`}>Shop</Link>
             <Link to="/farmers" className={`inline-flex items-center px-1 pt-1 text-xs lg:text-sm font-bold transition-colors whitespace-nowrap ${mutedTextClass}`}>Our Farmers</Link>
@@ -76,7 +76,7 @@ export default function Navbar() {
 
             {user ? (
               <div className={`flex items-center space-x-2 lg:space-x-4 border-l pl-2 lg:pl-4 ${borderClass} shrink-0`}>
-                <Link to="/profile" className={`text-xs lg:text-sm font-bold flex items-center whitespace-nowrap ${textClass}`}><User size={16} className="mr-1 shrink-0" /> {user.name}</Link>
+                <Link to="/profile" className={`text-xs lg:text-sm font-bold flex items-center whitespace-nowrap ${textClass}`}><User size={16} className="mr-1 shrink-0" /> <span className="max-w-[7rem] truncate" title={user.name}>{user.name?.split(' ')[0]}</span></Link>
                 <button onClick={handleLogout} className="text-xs lg:text-sm font-bold text-red-500 hover:text-red-600 transition-colors whitespace-nowrap">Logout</button>
               </div>
             ) : (
