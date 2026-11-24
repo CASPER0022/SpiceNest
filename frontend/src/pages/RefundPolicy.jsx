@@ -1,7 +1,7 @@
 import usePageMeta from '../utils/usePageMeta';
 
 export default function RefundPolicy() {
-  usePageMeta('Refund Policy', 'How and when Idukki Origins refunds orders: damaged or wrong items, cancellations before dispatch and returns, paid back to your original payment method.');
+  usePageMeta('Refund Policy', 'How and when Idukki Origins refunds orders: damaged or wrong items and cancellations before dispatch, paid back to your original payment method.');
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-16">
@@ -13,8 +13,11 @@ export default function RefundPolicy() {
           <ul className="list-disc pl-5 space-y-2">
             <li><strong>Damaged or wrong item</strong> reported within 7 days of delivery with photos: full refund of that item and any shipping you paid for it (or a free replacement, if you prefer).</li>
             <li><strong>Order cancelled before dispatch:</strong> full refund.</li>
-            <li><strong>Unopened item returned</strong> within 7 days of delivery: refund of the item price minus ₹100 for shipping.</li>
           </ul>
+          <p>
+            Because our products are food, we <strong>do not accept returns</strong> and do not give refunds if you change your mind after delivery,
+            even for unopened pouches.
+          </p>
           <p>
             Details are in our <a href="/cancellation-return" className="text-emerald-700 font-semibold hover:underline">Cancellation &amp; Return Policy</a>.
           </p>
