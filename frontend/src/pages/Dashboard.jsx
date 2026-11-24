@@ -1,5 +1,5 @@
 import { useState, useEffect, Fragment } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { 
   Package, Calendar, CreditCard, ChevronDown, ChevronUp, MapPin, 
@@ -241,6 +241,19 @@ export default function Dashboard() {
   const [productEndDate, setProductEndDate] = useState('');
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [editAddressForm, setEditAddressForm] = useState(null);
+  // Clicking "Dashboard" in the menu while an order, customer or product page is open
+  // goes to the same address, so close that page and show the dashboard list again.
+  const location = useLocation();
+  const [navKey, setNavKey] = useState(location.key);
+  if (navKey !== location.key) {
+    setNavKey(location.key);
+    setSelectedOrderId(null);
+    setSelectedCustomerEmail(null);
+    setSelectedProductAnalyticsId(null);
+    setAdminMessage('');
+    setIsEditingAddress(false);
+    setEditAddressForm(null);
+  }
   const [updatingAddress, setUpdatingAddress] = useState(false);
 
   // Product Management States
@@ -1312,6 +1325,101 @@ export default function Dashboard() {
 
   const graph = generateGraphData();
 
+  // Courier tracking number pop-up. Shown on both the Order Registry and the order details page.
+  const trackingModal = trackingEdit && (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+        onClick={() => !savingTracking && setTrackingEdit(null)}
+      >
+        <form
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="tracking-title"
+          className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 sm:p-8"
+          onClick={(e) => e.stopPropagation()}
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSaveTracking();
+          }}
+        >
+          <h3 id="tracking-title" className="text-lg font-black text-gray-900 mb-1">Shipment tracking · Order #{trackingEdit.id}</h3>
+          <p className="text-sm text-gray-500 mb-5">{trackingEdit.customerName}</p>
+          <p className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2" id="courier-label">Courier</p>
+          <div className="grid grid-cols-3 gap-2 mb-4" role="radiogroup" aria-labelledby="courier-label">
+            {CARRIERS.map(carrier => (
+              <button
+                key={carrier.id}
+                type="button"
+                role="radio"
+                aria-checked={trackingEdit.carrier === carrier.id}
+                onClick={() => setTrackingEdit(t => ({ ...t, carrier: carrier.id }))}
+                className={`text-xs font-black px-2 py-2.5 rounded-xl border transition-all ${
+                  trackingEdit.carrier === carrier.id
+                    ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm'
+                    : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                {carrier.name}
+              </button>
+            ))}
+          </div>
+          <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2" htmlFor="tracking-number">
+            {carrierById(trackingEdit.carrier).numberLabel}
+          </label>
+          <input
+            id="tracking-number"
+            type="text"
+            autoFocus
+            value={trackingEdit.value}
+            onChange={(e) => setTrackingEdit(t => ({ ...t, value: e.target.value.toUpperCase() }))}
+            placeholder={`e.g. ${carrierById(trackingEdit.carrier).example}`}
+            className="w-full font-mono text-base tracking-wider p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none mb-4"
+          />
+          <label className="flex items-center gap-3 text-sm text-gray-700 mb-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={trackingEdit.markShipped}
+              onChange={(e) => setTrackingEdit(t => ({ ...t, markShipped: e.target.checked }))}
+              disabled={!['PAID', 'Processing'].includes(trackingEdit.status)}
+              className="w-4 h-4 accent-emerald-600"
+            />
+            <span>
+              Mark order as <strong>Shipped</strong>
+              {!['PAID', 'Processing'].includes(trackingEdit.status) && (
+                <span className="text-xs text-gray-400"> (currently {trackingEdit.status})</span>
+              )}
+            </span>
+          </label>
+          <label className="flex items-center gap-3 text-sm text-gray-700 mb-6 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={trackingEdit.notifyCustomer}
+              onChange={(e) => setTrackingEdit(t => ({ ...t, notifyCustomer: e.target.checked }))}
+              className="w-4 h-4 accent-emerald-600"
+            />
+            <span>Email the tracking number to the customer</span>
+          </label>
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setTrackingEdit(null)}
+              disabled={savingTracking}
+              className="px-4 py-2 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={savingTracking}
+              className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors disabled:opacity-50"
+            >
+              {savingTracking ? 'Saving...' : trackingEdit.value.trim() ? 'Save tracking' : 'Remove tracking'}
+            </button>
+          </div>
+        </form>
+      </div>
+  );
+
   const selectedOrder = orders.find(o => o.id === selectedOrderId);
 
   if (selectedOrderId && selectedOrder) {
@@ -1331,7 +1439,7 @@ export default function Dashboard() {
     const recipientEmail = address.email || selectedOrder.user?.email || 'No email provided';
 
     return (
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20 min-h-[85vh] animate-fadeIn">
+      <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20 min-h-[85vh] animate-fadeIn">
         {/* Back Button */}
         <button
           onClick={() => {
@@ -1445,7 +1553,12 @@ export default function Dashboard() {
               key={`${selectedOrder.id}-${selectedOrder.trackingNumber || ''}-${selectedOrder.shippingCarrier || ''}`}
               apiUrl={API_URL}
               orderId={selectedOrder.id}
+              trackingLabel={selectedOrder.trackingNumber ? 'Edit tracking' : '+ Add tracking'}
+              onEditTracking={() => setTrackingEdit(selectedOrder.trackingNumber
+                ? { id: selectedOrder.id, customerName: selectedOrder.user?.name || address.fullName || 'Guest', status: selectedOrder.status, carrier: carrierById(selectedOrder.shippingCarrier).id, value: selectedOrder.trackingNumber, markShipped: false, notifyCustomer: false }
+                : { id: selectedOrder.id, customerName: selectedOrder.user?.name || address.fullName || 'Guest', status: selectedOrder.status, carrier: CARRIERS[0].id, value: '', markShipped: true, notifyCustomer: true })}
             />
+            {trackingModal}
 
             {/* Recipient Shipping Details Card */}
             <div className="bg-white rounded-3xl border border-gray-150 p-6 md:p-8 shadow-sm">
@@ -1595,7 +1708,7 @@ export default function Dashboard() {
                     <div className="flex items-start gap-3">
                       <Mail className="text-gray-400 shrink-0 mt-0.5" size={18} />
                       <div className="space-y-1">
-                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Stripe Checkout Email</span>
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Checkout Email</span>
                         <span className="text-xs font-bold text-gray-700">{recipientEmail}</span>
                       </div>
                     </div>
@@ -1611,7 +1724,27 @@ export default function Dashboard() {
                         <div className="w-[18px] shrink-0" />
                         <div className="space-y-1">
                           <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Contact Phone</span>
-                          <span className="text-xs font-bold text-gray-700">{address.mobileNumber}</span>
+                          {(() => {
+                            // Call and WhatsApp the customer (same as the Order Registry)
+                            const phoneDigits = normalizeIndianMobile(address.mobileNumber);
+                            const customerName = selectedOrder.user?.name || address.fullName || 'Guest';
+                            return (
+                              <div className="flex items-center gap-2">
+                                <a href={`tel:${phoneDigits ? `+91${phoneDigits}` : address.mobileNumber}`} className="text-xs font-bold text-gray-700 hover:text-emerald-600">{address.mobileNumber}</a>
+                                {phoneDigits && (
+                                  <a
+                                    href={`https://wa.me/91${phoneDigits}?text=${encodeURIComponent(`Hi ${customerName}, this is Idukki Origins about your order #${selectedOrder.id}. `)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title={`Chat with ${customerName} on WhatsApp`}
+                                    className="text-[9px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full hover:bg-emerald-100"
+                                  >
+                                    WhatsApp
+                                  </a>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                     )}
@@ -2185,7 +2318,7 @@ export default function Dashboard() {
 
   if (authLoading || loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20 min-h-[70vh]">
+      <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20 min-h-[70vh]">
         <div className="space-y-6 animate-pulse">
           <div className="h-10 bg-gray-200 rounded-xl w-64 mb-10"></div>
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -2202,7 +2335,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20 min-h-[85vh]">
+    <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20 min-h-[85vh]">
       
       {/* Header section with tab bar */}
       <div className="mb-10 flex flex-col md:flex-row md:items-end md:justify-between gap-6 border-b border-gray-100 pb-6">
@@ -2937,14 +3070,14 @@ export default function Dashboard() {
                         className="w-4 h-4 accent-emerald-600 cursor-pointer"
                       />
                     </th>
-                    <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Order ID</th>
-                    <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Customer</th>
-                    <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Contact</th>
-                    <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Address</th>
-                    <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Date Mapped</th>
-                    <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Paid</th>
-                    <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Payment Status</th>
-                    <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Shipment Tracking</th>
+                    <th scope="col" className="px-4 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Order ID</th>
+                    <th scope="col" className="px-4 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Customer</th>
+                    <th scope="col" className="px-4 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Contact</th>
+                    <th scope="col" className="px-4 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Address</th>
+                    <th scope="col" className="px-4 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Date Mapped</th>
+                    <th scope="col" className="px-4 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Paid</th>
+                    <th scope="col" className="px-4 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Payment Status</th>
+                    <th scope="col" className="px-4 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Shipment Tracking</th>
                     {/* Pinned to the right so the actions stay visible when the table scrolls */}
                     <th scope="col" className="sticky right-0 z-10 bg-gray-50 shadow-[-10px_0_12px_-10px_rgba(0,0,0,0.15)] px-4 py-4 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest">Actions</th>
                   </tr>
@@ -2995,13 +3128,13 @@ export default function Dashboard() {
                         </td>
                         <td
                           onClick={() => setSelectedOrderId(order.id)}
-                          className="px-6 py-5 whitespace-nowrap text-sm font-bold text-gray-800 cursor-pointer hover:text-emerald-600 transition-colors"
+                          className="px-4 py-5 whitespace-nowrap text-sm font-bold text-gray-800 cursor-pointer hover:text-emerald-600 transition-colors"
                         >
                           #{displayOrderId}
                         </td>
                         <td 
                           onClick={() => setSelectedOrderId(order.id)}
-                          className="px-6 py-5 whitespace-nowrap cursor-pointer"
+                          className="px-4 py-5 whitespace-nowrap cursor-pointer"
                         >
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-700 text-xs font-black uppercase shadow-inner">
@@ -3014,7 +3147,7 @@ export default function Dashboard() {
                           </div>
                         </td>
                         {/* Contact: call, WhatsApp, email (same as Abandoned Checkout) */}
-                        <td className="px-6 py-5 text-xs whitespace-nowrap">
+                        <td className="px-4 py-5 text-xs whitespace-nowrap">
                           {address?.mobileNumber && (
                             <div className="flex items-center gap-2 font-bold text-gray-800">
                               <Phone size={12} className="text-gray-400" />
@@ -3039,14 +3172,14 @@ export default function Dashboard() {
                             </div>
                           )}
                         </td>
-                        <td className="px-6 py-5 text-xs text-gray-600 min-w-[14rem] max-w-xs">{formatAbandonedAddress(address) || '-'}</td>
-                        <td className="px-6 py-5 whitespace-nowrap text-sm font-medium text-gray-600">
+                        <td className="px-4 py-5 text-xs text-gray-600 min-w-[14rem] max-w-xs">{formatAbandonedAddress(address) || '-'}</td>
+                        <td className="px-4 py-5 whitespace-nowrap text-sm font-medium text-gray-600">
                           {new Date(order.createdAt).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })}
                         </td>
-                        <td className="px-6 py-5 whitespace-nowrap text-sm font-extrabold text-emerald-600">
+                        <td className="px-4 py-5 whitespace-nowrap text-sm font-extrabold text-emerald-600">
                           ₹{order.totalAmount.toFixed(2)}
                         </td>
-                        <td className="px-6 py-5 whitespace-nowrap">
+                        <td className="px-4 py-5 whitespace-nowrap">
                           <div className="relative inline-flex items-center">
                             <select
                                value={order.status}
@@ -3070,7 +3203,7 @@ export default function Dashboard() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-5 whitespace-nowrap">
+                        <td className="px-4 py-5 whitespace-nowrap">
                           {/* Courier and tracking number */}
                           {order.trackingNumber ? (
                             <button
@@ -3133,99 +3266,7 @@ export default function Dashboard() {
           </div>
 
           {/* Courier tracking number */}
-          {trackingEdit && (
-            <div
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-              onClick={() => !savingTracking && setTrackingEdit(null)}
-            >
-              <form
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="tracking-title"
-                className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 sm:p-8"
-                onClick={(e) => e.stopPropagation()}
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleSaveTracking();
-                }}
-              >
-                <h3 id="tracking-title" className="text-lg font-black text-gray-900 mb-1">Shipment tracking · Order #{trackingEdit.id}</h3>
-                <p className="text-sm text-gray-500 mb-5">{trackingEdit.customerName}</p>
-                <p className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2" id="courier-label">Courier</p>
-                <div className="grid grid-cols-3 gap-2 mb-4" role="radiogroup" aria-labelledby="courier-label">
-                  {CARRIERS.map(carrier => (
-                    <button
-                      key={carrier.id}
-                      type="button"
-                      role="radio"
-                      aria-checked={trackingEdit.carrier === carrier.id}
-                      onClick={() => setTrackingEdit(t => ({ ...t, carrier: carrier.id }))}
-                      className={`text-xs font-black px-2 py-2.5 rounded-xl border transition-all ${
-                        trackingEdit.carrier === carrier.id
-                          ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm'
-                          : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
-                      }`}
-                    >
-                      {carrier.name}
-                    </button>
-                  ))}
-                </div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2" htmlFor="tracking-number">
-                  {carrierById(trackingEdit.carrier).numberLabel}
-                </label>
-                <input
-                  id="tracking-number"
-                  type="text"
-                  autoFocus
-                  value={trackingEdit.value}
-                  onChange={(e) => setTrackingEdit(t => ({ ...t, value: e.target.value.toUpperCase() }))}
-                  placeholder={`e.g. ${carrierById(trackingEdit.carrier).example}`}
-                  className="w-full font-mono text-base tracking-wider p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none mb-4"
-                />
-                <label className="flex items-center gap-3 text-sm text-gray-700 mb-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={trackingEdit.markShipped}
-                    onChange={(e) => setTrackingEdit(t => ({ ...t, markShipped: e.target.checked }))}
-                    disabled={!['PAID', 'Processing'].includes(trackingEdit.status)}
-                    className="w-4 h-4 accent-emerald-600"
-                  />
-                  <span>
-                    Mark order as <strong>Shipped</strong>
-                    {!['PAID', 'Processing'].includes(trackingEdit.status) && (
-                      <span className="text-xs text-gray-400"> (currently {trackingEdit.status})</span>
-                    )}
-                  </span>
-                </label>
-                <label className="flex items-center gap-3 text-sm text-gray-700 mb-6 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={trackingEdit.notifyCustomer}
-                    onChange={(e) => setTrackingEdit(t => ({ ...t, notifyCustomer: e.target.checked }))}
-                    className="w-4 h-4 accent-emerald-600"
-                  />
-                  <span>Email the tracking number to the customer</span>
-                </label>
-                <div className="flex justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setTrackingEdit(null)}
-                    disabled={savingTracking}
-                    className="px-4 py-2 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={savingTracking}
-                    className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors disabled:opacity-50"
-                  >
-                    {savingTracking ? 'Saving...' : trackingEdit.value.trim() ? 'Save tracking' : 'Remove tracking'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
+          {trackingModal}
 
           {/* Delete order confirmation */}
           {orderToDelete && (

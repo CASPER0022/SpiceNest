@@ -8,7 +8,8 @@ const rupees = (amount) => {
 
 // Price, coupon, shipping and GST of one order, plus shipping and payment details. The figures come
 // from the server (the same code that builds the invoice), so they always match the invoice.
-export default function OrderBreakdown({ apiUrl, orderId }) {
+// onEditTracking (optional): shows a button in the Shipping card that opens the tracking pop-up.
+export default function OrderBreakdown({ apiUrl, orderId, onEditTracking, trackingLabel = '+ Add tracking' }) {
   const [state, setState] = useState({ orderId: null, data: null, error: '' });
 
   useEffect(() => {
@@ -146,7 +147,18 @@ export default function OrderBreakdown({ apiUrl, orderId }) {
       {/* Shipping and payment */}
       <div className={`${card} grid grid-cols-1 sm:grid-cols-2 gap-6`}>
         <div>
-          <h3 className={heading}><Truck size={14} /> Shipping</h3>
+          <div className="flex items-start justify-between gap-3">
+            <h3 className={heading}><Truck size={14} /> Shipping</h3>
+            {onEditTracking && (
+              <button
+                type="button"
+                onClick={onEditTracking}
+                className="shrink-0 text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 px-2.5 py-1.5 rounded-lg transition-colors"
+              >
+                {trackingLabel}
+              </button>
+            )}
+          </div>
           <dl className="space-y-2 text-sm">
             <div className="flex justify-between gap-4"><dt className="text-gray-500">Charge</dt><dd className="font-semibold text-right">{shipping.charge ? `${rupees(shipping.charge)} (incl. 18% GST)` : 'Free'}</dd></div>
             <div className="flex justify-between gap-4"><dt className="text-gray-500">Courier</dt><dd className="font-semibold text-right">{shipping.carrier?.name || 'Not shipped yet'}</dd></div>
