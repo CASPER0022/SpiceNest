@@ -585,17 +585,6 @@ export default function Cart() {
               const discountedSubtotal = Math.max(0, cartTotal - (appliedCoupon ? appliedCoupon.discount : 0));
               const shippingCharges = cartTotal < 500 ? 100 : 0;
               const finalTotal = Math.round(discountedSubtotal + shippingCharges);
-              // Prices include GST: 5% on the spices, 18% on shipping (same rule as invoices and the
-              // dashboard tax report). Kerala: CGST + SGST; other states and UTs: IGST.
-              const goodsGst = Math.round((finalTotal - shippingCharges) * 5 / 105 * 100) / 100;
-              const shippingGst = Math.round(shippingCharges * 18 / 118 * 100) / 100;
-              const gstAmount = Math.round((goodsGst + shippingGst) * 100) / 100;
-              const gstLabel = !address.state
-                ? 'Includes GST'
-                : address.state === 'Kerala'
-                  ? 'Includes GST (CGST + SGST)'
-                  : 'Includes GST (IGST)';
-              const gstDetail = shippingCharges > 0 ? '5% on spices, 18% on shipping' : '5% on spices';
 
               return (
                 <div className="space-y-3 mb-6">
@@ -613,10 +602,8 @@ export default function Cart() {
                       <span>-₹{Math.round(appliedCoupon.discount)}</span>
                     </div>
                   )}
-                  <div className="flex justify-between text-gray-400 text-xs italic">
-                    <span>{gstLabel} <span className="not-italic">· {gstDetail}</span></span>
-                    <span>₹{gstAmount.toFixed(2)}</span>
-                  </div>
+                  {/* Prices include GST; the GST amounts are on the invoice */}
+                  <p className="text-gray-400 text-xs">Inclusive of all taxes.</p>
                   <div className="border-t pt-4 flex justify-between items-end">
                     <span className="text-lg font-bold text-gray-900">Total</span>
                     <span className="text-3xl font-black text-emerald-600">

@@ -1,4 +1,5 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X, ShoppingCart, Trash2, Plus, Minus } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 
@@ -6,11 +7,30 @@ export default function CartDrawer() {
   const { cartItems, updateQuantity, removeFromCart, cartTotal, isCartOpen, setIsCartOpen, clearCart } = useCart();
   const navigate = useNavigate();
 
+  // The phone's Back button closes the drawer, like the close button. Opening the drawer adds a
+  // history entry; Back (or closeDrawer) removes it and closes the drawer.
+  useEffect(() => {
+    if (!isCartOpen) return undefined;
+    window.history.pushState({ ...window.history.state, cartDrawer: true }, '');
+    const onBack = () => setIsCartOpen(false);
+    window.addEventListener('popstate', onBack);
+    return () => window.removeEventListener('popstate', onBack);
+  }, [isCartOpen, setIsCartOpen]);
+
   if (!isCartOpen) return null;
+
+  const closeDrawer = () => {
+    if (window.history.state?.cartDrawer) {
+      window.history.back(); // closes the drawer through the popstate listener above
+    } else {
+      setIsCartOpen(false);
+    }
+  };
 
   const handleProceedToCheckout = () => {
     setIsCartOpen(false);
-    navigate('/cart');
+    // Replace the drawer's history entry, so Back from checkout returns to the page before it
+    navigate('/cart', { replace: Boolean(window.history.state?.cartDrawer) });
   };
 
   const amountAwayFromFreeDelivery = Math.max(0, 500 - cartTotal);
@@ -20,7 +40,7 @@ export default function CartDrawer() {
       {/* Backdrop */}
       <div 
         className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] transition-opacity"
-        onClick={() => setIsCartOpen(false)}
+        onClick={closeDrawer}
       />
 
       {/* Drawer */}
@@ -33,7 +53,7 @@ export default function CartDrawer() {
             <h2 className="text-xl font-bold">Shopping Cart</h2>
           </div>
           <button 
-            onClick={() => setIsCartOpen(false)}
+            onClick={closeDrawer}
             className="text-gray-400 hover:text-gray-900 transition-colors p-1"
           >
             <X size={24} />
@@ -66,7 +86,7 @@ export default function CartDrawer() {
               <ShoppingCart size={48} className="mb-4 text-gray-300" />
               <p className="font-medium text-lg">Your cart is empty.</p>
               <button 
-                onClick={() => setIsCartOpen(false)}
+                onClick={closeDrawer}
                 className="mt-4 text-emerald-600 font-bold hover:underline"
               >
                 Continue Shopping
@@ -119,7 +139,7 @@ export default function CartDrawer() {
             </p>
             
             <button 
-              onClick={() => setIsCartOpen(false)}
+              onClick={closeDrawer}
               className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-3.5 px-4 rounded-xl flex justify-center items-center mb-3 transition-colors shadow-sm"
             >
               Add more products
