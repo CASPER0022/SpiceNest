@@ -162,7 +162,7 @@ export default function FarmerProfile() {
         <div className="px-6 sm:px-10 pb-10 relative">
           <div className="flex flex-col sm:flex-row items-center sm:items-end mb-6">
             <img 
-              src={farmer.image || 'https://ui-avatars.com/api/?name=Raju+John&background=10b981&color=fff&size=256'} 
+              src={farmer.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(farmer.name || 'Farmer')}&background=10b981&color=fff&size=256`}
               alt={farmer.name} 
               className="w-40 h-40 rounded-full border-4 border-white shadow-lg object-cover bg-white relative z-10 -mt-20 sm:-mt-24"
               onError={(e) => { e.target.src = 'https://ui-avatars.com/api/?name=Farmer&background=10b981&color=fff&size=256' }}

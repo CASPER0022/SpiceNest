@@ -491,7 +491,7 @@ export default function ProductDetails() {
           {product.stock !== undefined && product.stock < 0.1 ? (
             <div className="mb-6 p-4 bg-rose-50 border border-rose-150 text-rose-800 rounded-2xl text-center font-bold text-sm flex items-center justify-center space-x-2">
               <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
-              <span>Currently Out of Stock. Raju John is preparing the next fresh harvest! 🌿</span>
+              <span>Currently Out of Stock. {product.farmer?.name || 'Our farmer'} is preparing the next fresh harvest! 🌿</span>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-3 mb-6">

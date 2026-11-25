@@ -13,12 +13,17 @@ const SUPPORT_EMAIL = 'info.idukkiorigins@gmail.com';
 const escapeHtml = (value) =>
   String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-// Product photos are stored as site paths ("/images/pepper/pepper-1.jpg"); emails need full URLs
+// Product photos are stored as site paths ("/images/pepper/pepper-1.jpg"); emails need full URLs.
+// Images always come from the public site: mail apps cannot load them from a local dev server.
 const SITE_URL = (process.env.FRONTEND_URL || 'https://www.idukkiorigins.com').replace(/\/+$/, '');
+const PUBLIC_SITE_URL = /localhost|127\.0\.0\.1/.test(SITE_URL) ? 'https://www.idukkiorigins.com' : SITE_URL;
+// "?v=<today>": Gmail caches images by URL, so without it a replaced product photo would keep
+// showing the old picture in emails. A daily version fetches the current photo at least once a day.
 const absoluteImageUrl = (path) => {
   if (!path) return '';
   if (/^https?:\/\//i.test(path)) return path;
-  return encodeURI(`${SITE_URL}/${String(path).replace(/^\/+/, '')}`);
+  const version = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  return `${encodeURI(`${PUBLIC_SITE_URL}/${String(path).replace(/^\/+/, '')}`)}?v=${version}`;
 };
 
 // 48px product photo for email item lists, or a leaf badge when the product has none
@@ -43,6 +48,172 @@ const itemCellHtml = (item) => `
 // Escaped address field, or '' when missing (so it never renders as "undefined")
 const addr = (address, field) => escapeHtml(address && address[field] ? address[field] : '');
 
+// ---------- Order confirmation email ----------
+// Farm-direct look: cream paper, forest green, the logo, who grew
+// each spice and the short trip from the farm to the customer. Table layout and inline styles
+// only, so it renders the same in Gmail, Outlook and phone mail apps. No emoji.
+const BRAND = {
+  green: '#14532d',      // forest green (logo)
+  greenSoft: '#e8f0e6',
+  cream: '#f7f3ea',      // page background
+  paper: '#fffdf8',      // card background
+  earth: '#8a5a2b',      // cardamom / soil brown accents
+  ink: '#1f2a1f',
+  muted: '#6b6f64',
+  line: '#e6dfcf'
+};
+const SERIF = "Georgia, 'Times New Roman', serif";
+const SANS = "Arial, Helvetica, sans-serif";
+const rupeesText = (n) => `&#8377;${(Number(n) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+// One item row: photo, name, weight, "Grown by <farmer>" when known, quantity and line total
+const confirmationItemRow = (item) => {
+  const url = absoluteImageUrl(item.productImage || item.product?.images?.[0]);
+  const photo = url
+    ? `<img src="${escapeHtml(url)}" width="64" height="64" alt="" style="display:block;width:64px;height:64px;object-fit:cover;border-radius:10px;border:1px solid ${BRAND.line};">`
+    : `<div style="width:64px;height:64px;border-radius:10px;background:${BRAND.greenSoft};"></div>`;
+  const farmer = item.product?.farmer?.name;
+  return `
+              <tr>
+                <td style="padding:14px 0;border-bottom:1px solid ${BRAND.line};width:76px;vertical-align:top;">${photo}</td>
+                <td style="padding:14px 10px;border-bottom:1px solid ${BRAND.line};vertical-align:top;font-family:${SANS};">
+                  <div style="font-family:${SERIF};font-size:17px;color:${BRAND.ink};font-weight:bold;">${escapeHtml(item.productName || item.product?.name || 'Spice')}</div>
+                  <div style="margin-top:4px;font-size:12px;color:${BRAND.muted};">${escapeHtml(item.weight)} &middot; Qty ${escapeHtml(item.quantity)}</div>
+                  ${farmer ? `<div style="margin-top:6px;font-size:12px;color:${BRAND.earth};">Grown by ${escapeHtml(farmer)}, Idukki</div>` : ''}
+                </td>
+                <td style="padding:14px 0;border-bottom:1px solid ${BRAND.line};vertical-align:top;text-align:right;font-family:${SANS};font-size:15px;color:${BRAND.ink};white-space:nowrap;">${rupeesText(item.price * item.quantity)}</td>
+              </tr>`;
+};
+
+// One step of "From our farm to your kitchen"
+const journeyStep = (number, title, text) => `
+                <td style="width:33%;padding:0 6px;vertical-align:top;text-align:center;font-family:${SANS};">
+                  <div style="width:34px;height:34px;line-height:34px;margin:0 auto 8px;border-radius:17px;background:${BRAND.green};color:#ffffff;font-weight:bold;font-size:14px;">${number}</div>
+                  <div style="font-family:${SERIF};font-size:14px;font-weight:bold;color:${BRAND.ink};">${title}</div>
+                  <div style="margin-top:4px;font-size:12px;line-height:1.5;color:${BRAND.muted};">${text}</div>
+                </td>`;
+
+/**
+ * HTML of the order confirmation email (also used for previews).
+ * @param {object} order - Prisma order with items (and items.product.farmer for "Grown by")
+ * @param {object} opts - { buyerName, address, includeBuyerDetails, trackingUrl, invoiceName }
+ */
+export function orderConfirmationHtml(order, { buyerName = '', address = {}, includeBuyerDetails = false, trackingUrl = '', invoiceName = '' } = {}) {
+  const firstName = escapeHtml(String(buyerName || '').trim().split(/\s+/)[0] || '');
+  const orderDate = new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+  const logo = absoluteImageUrl('/images/logo.jpg');
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Your Idukki Origins order #${escapeHtml(order.id)}</title>
+</head>
+<body style="margin:0;padding:0;background:${BRAND.cream};">
+  <div style="display:none;max-height:0;overflow:hidden;">Thank you! Your spices are being packed in Idukki and will be on their way soon.</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${BRAND.cream};">
+    <tr><td align="center" style="padding:24px 12px;">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:${BRAND.paper};border:1px solid ${BRAND.line};border-radius:16px;overflow:hidden;">
+
+        <!-- Logo -->
+        <tr><td align="center" style="padding:24px 24px 16px;">
+          <img src="${escapeHtml(logo)}" width="120" alt="Idukki Origins" style="display:block;width:120px;height:auto;border:0;">
+          <div style="margin-top:8px;font-family:${SANS};font-size:11px;letter-spacing:2px;text-transform:uppercase;color:${BRAND.earth};">Farm-direct spices from the hills of Idukki, Kerala</div>
+        </td></tr>
+
+        <!-- Thank you -->
+        <tr><td style="padding:28px 32px 8px;background:${BRAND.green};">
+          <div style="font-family:${SERIF};font-size:28px;line-height:1.25;color:#ffffff;">Thank you${firstName ? `, ${firstName}` : ''}!</div>
+          <div style="margin-top:10px;font-family:${SANS};font-size:15px;line-height:1.6;color:#d9e8d4;">
+            Your order is confirmed. The spices you chose were grown by our farmers in the hills of Idukki,
+            and they are now being hand-packed for you, straight from the farm. No warehouses, no middlemen.
+          </div>
+        </td></tr>
+        <tr><td style="padding:16px 32px 24px;background:${BRAND.green};">
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%"><tr>
+            <td style="font-family:${SANS};font-size:12px;color:#d9e8d4;">ORDER<br><span style="font-size:16px;font-weight:bold;color:#ffffff;">#${escapeHtml(order.id)}</span></td>
+            <td style="font-family:${SANS};font-size:12px;color:#d9e8d4;">DATE<br><span style="font-size:16px;font-weight:bold;color:#ffffff;">${escapeHtml(orderDate)}</span></td>
+            <td style="font-family:${SANS};font-size:12px;color:#d9e8d4;text-align:right;">TOTAL PAID<br><span style="font-size:16px;font-weight:bold;color:#ffffff;">${rupeesText(order.totalAmount)}</span></td>
+          </tr></table>
+        </td></tr>
+${trackingUrl ? `
+        <!-- Track -->
+        <tr><td align="center" style="padding:28px 32px 4px;">
+          <a href="${escapeHtml(trackingUrl)}" style="display:inline-block;background:${BRAND.earth};color:#ffffff;text-decoration:none;font-family:${SANS};font-weight:bold;font-size:15px;padding:14px 30px;border-radius:30px;">Track your order</a>
+          <div style="margin-top:8px;font-family:${SANS};font-size:11px;color:${BRAND.muted};">Keep this link private: it shows your delivery details.</div>
+        </td></tr>` : ''}
+
+        <!-- Items -->
+        <tr><td style="padding:24px 32px 8px;">
+          <div style="font-family:${SERIF};font-size:20px;color:${BRAND.ink};">From our farms to your kitchen</div>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:6px;">
+            ${order.items.map(confirmationItemRow).join('')}
+            <tr>
+              <td colspan="2" style="padding:14px 0 0;font-family:${SANS};font-size:14px;color:${BRAND.muted};">Total paid (incl. all taxes and shipping)</td>
+              <td style="padding:14px 0 0;text-align:right;font-family:${SERIF};font-size:20px;font-weight:bold;color:${BRAND.green};white-space:nowrap;">${rupeesText(order.totalAmount)}</td>
+            </tr>
+          </table>
+        </td></tr>
+
+        <!-- Journey -->
+        <tr><td style="padding:28px 26px 8px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${BRAND.greenSoft};border-radius:14px;">
+            <tr><td colspan="3" style="padding:20px 20px 14px;text-align:center;font-family:${SERIF};font-size:17px;color:${BRAND.green};">What happens next</td></tr>
+            <tr>
+              ${journeyStep(1, 'Picked at the farm', 'Your spices come from the latest harvest of our farmers in Idukki.')}
+              ${journeyStep(2, 'Hand-packed', 'Packed in small batches so the aroma stays locked in.')}
+              ${journeyStep(3, 'Shipped to you', 'We email you the courier and tracking number once it ships.')}
+            </tr>
+            <tr><td colspan="3" style="height:20px;"></td></tr>
+          </table>
+        </td></tr>
+
+        <!-- Freshness tip -->
+        <tr><td style="padding:20px 32px 4px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+            <td style="border-left:3px solid ${BRAND.earth};padding:4px 0 4px 14px;font-family:${SANS};font-size:13px;line-height:1.6;color:${BRAND.ink};">
+              <strong style="font-family:${SERIF};font-size:14px;">A tip from the farm:</strong>
+              keep your spices whole until you cook, in an airtight jar away from light and heat.
+              They stay fragrant for months.
+            </td>
+          </tr></table>
+        </td></tr>
+${includeBuyerDetails ? `
+        <!-- Address -->
+        <tr><td style="padding:24px 32px 4px;font-family:${SANS};">
+          <div style="font-family:${SERIF};font-size:16px;color:${BRAND.ink};">Delivering to</div>
+          <div style="margin-top:6px;font-size:13px;line-height:1.6;color:${BRAND.muted};">
+            ${addr(address, 'fullName')}<br>
+            ${addr(address, 'houseNo')}, ${addr(address, 'area')}<br>
+            ${addr(address, 'city')}, ${addr(address, 'state')} - ${addr(address, 'pincode')}<br>
+            Phone: ${addr(address, 'mobileNumber')}
+          </div>
+        </td></tr>` : ''}
+${invoiceName ? `
+        <tr><td style="padding:18px 32px 0;font-family:${SANS};font-size:13px;color:${BRAND.muted};">
+          Your GST invoice is attached to this email (${escapeHtml(invoiceName)}).
+        </td></tr>` : ''}
+
+        <!-- Help + footer -->
+        <tr><td style="padding:28px 32px 0;">
+          <div style="border-top:1px solid ${BRAND.line};"></div>
+        </td></tr>
+        <tr><td align="center" style="padding:20px 32px 28px;font-family:${SANS};font-size:13px;line-height:1.7;color:${BRAND.muted};">
+          Questions about your order? Just reply to this email,<br>
+          or WhatsApp us at <a href="https://wa.me/918129074658" style="color:${BRAND.green};font-weight:bold;text-decoration:none;">+91 81290 74658</a>.
+          <div style="margin-top:16px;font-family:${SERIF};font-size:15px;color:${BRAND.green};">Idukki Origins</div>
+          <div style="font-size:11px;color:${BRAND.muted};">Kanjikuzhy, Idukki, Kerala 685606 &middot; <a href="${escapeHtml(PUBLIC_SITE_URL)}" style="color:${BRAND.muted};">idukkiorigins.com</a></div>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
 /**
  * Sends an order confirmation email to the customer using Brevo API.
  * @param {string} to - Customer's email address
@@ -60,10 +231,8 @@ export async function sendOrderConfirmation(to, order, trackingUrl, { includeBuy
       return false;
     }
 
-    // Initialize Brevo Client
     const client = new BrevoClient({ apiKey: process.env.BREVO_API_KEY });
 
-    // Parse address if it's a string
     let address = {};
     try {
       address = typeof order.address === 'string' ? JSON.parse(order.address) : (order.address || {});
@@ -72,74 +241,14 @@ export async function sendOrderConfirmation(to, order, trackingUrl, { includeBuy
     }
     // Guests: their name only if it is a plain personal name (see personName.js)
     const buyerName = includeBuyerDetails ? (address.fullName || '') : plainPersonName(address.fullName);
-    const safeName = escapeHtml(buyerName || 'Valued Customer');
 
-    const itemsHtml = order.items.map(item => `
-      <tr>
-        <td style="padding: 10px; border-bottom: 1px solid #eee;">${itemCellHtml(item)}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #eee;">${escapeHtml(item.quantity)}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">₹${item.price.toFixed(2)}</td>
-      </tr>
-    `).join('');
-
-    const htmlContent = `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
-          <h1 style="color: #059669; text-align: center;">Order Confirmed!</h1>
-          <p>Hi ${safeName},</p>
-          <p>Thank you for shopping with Idukki Origins! Your order has been successfully placed and is being prepared for shipment from our farms.</p>
-          
-          <div style="background: #f9fafb; padding: 20px; border-radius: 10px; margin: 20px 0;">
-            <h2 style="margin-top: 0; font-size: 18px;">Order Details</h2>
-            <p><strong>Order ID:</strong> #${escapeHtml(order.id)}</p>
-            <p><strong>Date:</strong> ${new Date(order.createdAt).toLocaleDateString()}</p>
-            <p><strong>Total Paid:</strong> ₹${order.totalAmount.toFixed(2)}</p>
-          </div>
-${trackingUrl ? `
-          <div style="text-align: center; margin: 20px 0;">
-            <a href="${escapeHtml(trackingUrl)}" style="background: #059669; color: #fff; text-decoration: none; padding: 12px 25px; border-radius: 8px; font-weight: bold; display: inline-block;">
-              Track Your Order
-            </a>
-            <p style="font-size: 12px; color: #999;">Keep this link private: it shows your full delivery details.</p>
-          </div>` : ''}
-
-          <table style="width: 100%; border-collapse: collapse;">
-            <thead>
-              <tr style="background: #f3f4f6;">
-                <th style="padding: 10px; text-align: left;">Item</th>
-                <th style="padding: 10px; text-align: left;">Qty</th>
-                <th style="padding: 10px; text-align: right;">Price</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${itemsHtml}
-            </tbody>
-          </table>
-
-${includeBuyerDetails ? `
-          <div style="margin-top: 30px;">
-            <h2 style="font-size: 18px;">Shipping Address</h2>
-            <p style="color: #666; line-height: 1.6;">
-              ${addr(address, 'fullName')}<br>
-              ${addr(address, 'houseNo')}, ${addr(address, 'area')}<br>
-              ${addr(address, 'city')}, ${addr(address, 'state')} - ${addr(address, 'pincode')}<br>
-              Phone: ${addr(address, 'mobileNumber')}
-            </p>
-          </div>` : `
-          <p style="margin-top: 30px; color: #666;">Your full delivery details are available through the tracking link above.</p>`}
-${invoice ? `
-          <p style="margin-top: 20px; color: #666;">Your GST invoice is attached to this email (${escapeHtml(invoice.name)}).</p>` : ''}
-
-          <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="font-size: 12px; color: #999; text-align: center;">
-            Idukki Origins - From our farms to your kitchen.<br>
-            Kerala, India
-          </p>
-        </div>
-    `;
+    const htmlContent = orderConfirmationHtml(order, {
+      buyerName, address, includeBuyerDetails, trackingUrl, invoiceName: invoice?.name || ''
+    });
 
     const response = await client.transactionalEmails.sendTransacEmail({
-      subject: `Order Confirmed! Order ID: #${order.id}`,
-      htmlContent: htmlContent,
+      subject: `Order #${order.id} confirmed: your farm-fresh spices are being packed`,
+      htmlContent,
       sender: { name: "Idukki Origins", email: SENDER_EMAIL },
       to: [{ email: to, name: buyerName || "Valued Customer" }],
       replyTo: { email: SUPPORT_EMAIL, name: "Idukki Origins Support" },

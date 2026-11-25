@@ -230,7 +230,8 @@ export function startReservationSweeper(intervalMs = 60 * 1000) {
   reservationSweeper.unref();
 }
 
-const ORDER_INCLUDE = { items: { include: { product: true } } };
+// Farmer names are used by the confirmation email ("Grown by ...")
+const ORDER_INCLUDE = { items: { include: { product: { include: { farmer: { select: { name: true } } } } } } };
 
 /**
  * Records a paid order in ONE transaction. Normally the stock was reserved at checkout and is
@@ -323,32 +324,40 @@ function onNewOrder(order) {
 }
 
 function sendConfirmationInBackground(order) {
-  (async () => {
-    const recipient = await orderRecipient(order);
-    if (!recipient) return;
+  sendConfirmationEmail(order).catch((e) => console.error('Background email task failed:', e));
+}
 
-    const trackingUrl = `${FRONTEND_URL}/track-order?id=${order.id}&token=${order.trackingToken}`;
-    const includeBuyerDetails = Boolean(order.userId);
+// Sends the order confirmation email with the GST invoice attached, and records it in the order
+// history. Used automatically for every new order, and by admins to send it again.
+// order: with ORDER_INCLUDE. actor: the admin's email when sent by hand.
+// Returns { sent, recipient } (recipient is null when the order has no email address).
+async function sendConfirmationEmail(order, actor = null) {
+  const recipient = await orderRecipient(order);
+  if (!recipient) return { sent: false, recipient: null };
 
-    // GST invoice as a PDF attachment (same rule for buyer details as the email itself).
-    // If it cannot be built, the confirmation still goes out without it.
-    let invoice = null;
-    try {
-      invoice = { name: invoiceFileName(order), content: await renderInvoicePdf(order, { includeBuyerDetails }) };
-    } catch (err) {
-      console.error(`Invoice for order ${order.id} could not be created:`, err);
-    }
+  const trackingUrl = `${FRONTEND_URL}/track-order?id=${order.id}&token=${order.trackingToken}`;
+  const includeBuyerDetails = Boolean(order.userId);
 
-    console.log(`📧 Sending confirmation for order ${order.id}${invoice ? ' with invoice' : ''}`);
-    const sent = await sendOrderConfirmation(recipient, order, trackingUrl, { includeBuyerDetails, invoice });
-    await logOrderEvents([{
-      orderId: order.id,
-      type: 'email',
-      message: sent
-        ? `Order confirmation email sent to ${recipient}${invoice ? ' with the GST invoice' : ''}.`
-        : `Order confirmation email to ${recipient} could not be sent.`
-    }]);
-  })().catch((e) => console.error('Background email task failed:', e));
+  // GST invoice as a PDF attachment (same rule for buyer details as the email itself).
+  // If it cannot be built, the confirmation still goes out without it.
+  let invoice = null;
+  try {
+    invoice = { name: invoiceFileName(order), content: await renderInvoicePdf(order, { includeBuyerDetails }) };
+  } catch (err) {
+    console.error(`Invoice for order ${order.id} could not be created:`, err);
+  }
+
+  console.log(`📧 Sending confirmation for order ${order.id}${invoice ? ' with invoice' : ''}${actor ? ` (by ${actor})` : ''}`);
+  const sent = await sendOrderConfirmation(recipient, order, trackingUrl, { includeBuyerDetails, invoice });
+  await logOrderEvents([{
+    orderId: order.id,
+    type: 'email',
+    actor,
+    message: sent
+      ? `Order confirmation email ${actor ? 'sent again' : 'sent'} to ${recipient}${invoice ? ' with the GST invoice' : ''}.`
+      : `Order confirmation email to ${recipient} could not be sent.`
+  }]);
+  return { sent, recipient, withInvoice: Boolean(invoice) };
 }
 
 // First-order coupons (e.g. STARTER) need a logged-in customer who has never ordered before.
@@ -1450,6 +1459,37 @@ router.put('/admin/orders/:id/tracking', verifyToken, async (req, res) => {
   } catch (error) {
     console.error('Save tracking number error:', error);
     res.status(500).json({ error: 'Failed to save tracking number' });
+  }
+});
+
+// ==========================================
+// SEND THE ORDER CONFIRMATION EMAIL AGAIN (ADMIN ONLY), with the GST invoice attached.
+// Same email and recipient as the automatic one sent when the order is placed.
+// ==========================================
+router.post('/admin/orders/:id/send-confirmation', verifyToken, async (req, res) => {
+  try {
+    const adminUser = await requireAdminUser(req, res);
+    if (!adminUser) return;
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: 'Invalid order ID' });
+    }
+    const order = await prisma.order.findUnique({ where: { id }, include: ORDER_INCLUDE });
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    const result = await sendConfirmationEmail(order, adminUser.email || 'admin');
+    if (!result.recipient) {
+      return res.status(400).json({ error: 'This order has no email address to send to.' });
+    }
+    if (!result.sent) {
+      return res.status(502).json({ error: `The email to ${result.recipient} could not be sent. Please try again.` });
+    }
+    res.json({ success: true, recipient: result.recipient, withInvoice: result.withInvoice });
+  } catch (error) {
+    console.error('Send order confirmation error:', error);
+    res.status(500).json({ error: 'Failed to send the order email' });
   }
 });
 

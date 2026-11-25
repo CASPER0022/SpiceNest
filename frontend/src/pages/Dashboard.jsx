@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { 
   Package, Calendar, CreditCard, ChevronDown, ChevronUp, MapPin, 
   TrendingUp, Layers, Users, ShoppingBag, Percent, ArrowRightLeft, IndianRupee, Activity,
-  ArrowLeft, Mail, Clock, Globe, Search, Trash2, Download, Phone, Info, Scale
+  ArrowLeft, Mail, Clock, Globe, Search, Trash2, Download, Phone, Info, Scale, FileText
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import TaxReport from '../components/TaxReport';
@@ -205,6 +205,12 @@ const parseAddress = (addressStr) => {
   }
 };
 
+// Weight for packers: "5 kg", "1.5 kg", "500 g"
+const formatPackWeight = (kg) => {
+  const rounded = Math.round(kg * 1000) / 1000;
+  return rounded >= 1 ? `${rounded} kg` : `${Math.round(rounded * 1000)} g`;
+};
+
 const parseWeightToKg = (weightStr) => {
   if (!weightStr) return 0.1;
   const lower = weightStr.toLowerCase().trim();
@@ -248,6 +254,10 @@ export default function Dashboard() {
   const [selectedProductAnalyticsId, setSelectedProductAnalyticsId] = useState(null);
   const [adminMessage, setAdminMessage] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
+  // Order confirmation email sent again by hand: the order ID being sent, and a counter that
+  // reloads the order history afterwards
+  const [sendingConfirmation, setSendingConfirmation] = useState(null);
+  const [historyVersion, setHistoryVersion] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All'); // Order Registry: 'All', one order status, or ABANDONED_FILTER
   // Customers who filled in their details and opened the payment window but never paid
@@ -384,6 +394,28 @@ export default function Dashboard() {
 
   // Same order as the status dropdown in the Order Registry
   const orderStatuses = ['PAID', 'Processing', 'Shipped', 'Delivered', 'On Hold', 'Cancelled', 'Pending Payment', 'Refunded', 'Failed'];
+
+  // Sends the order confirmation email with the GST invoice again (the automatic one is sent
+  // when the order is placed)
+  const handleSendConfirmation = async (orderId) => {
+    setSendingConfirmation(orderId);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/api/payment/admin/orders/${orderId}/send-confirmation`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Failed to send the order email');
+      toast.success(`Order email${data.withInvoice ? ' with invoice' : ''} sent to ${data.recipient}`);
+      setHistoryVersion(v => v + 1);
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || 'Error sending the order email');
+    } finally {
+      setSendingConfirmation(null);
+    }
+  };
 
   const handleStatusChange = async (orderId, newStatus) => {
     try {
@@ -1549,6 +1581,10 @@ export default function Dashboard() {
                           <span className="text-sm font-extrabold text-gray-800 leading-snug">{item.productName || (item.product ? item.product.name : 'Unknown Product')}</span>
                           <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded w-fit mt-1">{item.weight}</span>
                           <span className="text-xs text-gray-400 font-bold mt-1">Qty: {item.quantity} × ₹{item.price.toFixed(2)}</span>
+                          {/* What the packer puts in the parcel for this line */}
+                          <span className="mt-2 w-fit text-xs font-black text-amber-900 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg">
+                            Pack: {item.quantity} × {item.weight} = {formatPackWeight(parseWeightToKg(item.weight) * item.quantity)}
+                          </span>
                         </div>
                       </div>
                       <span className="text-sm font-black text-gray-800">₹{(item.price * item.quantity).toFixed(2)}</span>
@@ -1556,6 +1592,19 @@ export default function Dashboard() {
                   );
                 })}
               </div>
+              {/* Whole parcel: number of pouches and total spice weight */}
+              {(() => {
+                const packs = selectedOrder.items.reduce((sum, item) => sum + item.quantity, 0);
+                const kg = selectedOrder.items.reduce((sum, item) => sum + parseWeightToKg(item.weight) * item.quantity, 0);
+                return (
+                  <div className="mt-5 flex flex-wrap items-center justify-between gap-2 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-800">Total to ship</span>
+                    <span className="text-sm font-black text-amber-900">
+                      {packs} {packs === 1 ? 'pack' : 'packs'} · {formatPackWeight(kg)}
+                    </span>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Prices, coupon, shipping, GST computation, courier and payment reference.
@@ -1767,7 +1816,7 @@ export default function Dashboard() {
             {/* Order history: status changes, stock taken and returned, emails, tracking.
                 Keyed on what can change here so it reloads after each change. */}
             <OrderHistory
-              key={`${selectedOrder.id}-${selectedOrder.status}-${selectedOrder.trackingNumber || ''}-${selectedOrder.shippingCarrier || ''}-${selectedOrder.address}-${selectedOrder.messages?.length || 0}`}
+              key={`${selectedOrder.id}-${selectedOrder.status}-${selectedOrder.trackingNumber || ''}-${selectedOrder.shippingCarrier || ''}-${selectedOrder.address}-${selectedOrder.messages?.length || 0}-${historyVersion}`}
               apiUrl={API_URL}
               orderId={selectedOrder.id}
             />
@@ -1776,6 +1825,29 @@ export default function Dashboard() {
 
           {/* Admin Messaging sidebar (1 col on lg) */}
           <div className="space-y-8">
+            {/* Send the order confirmation email + invoice again, on top of the automatic one */}
+            <div className="bg-white rounded-3xl border border-gray-150 p-6 md:p-8 shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <FileText className="text-emerald-600" size={20} />
+                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Order Email &amp; Invoice</h3>
+              </div>
+              <p className="text-xs text-gray-500 font-medium leading-relaxed mb-5">
+                Send the order confirmation email with the GST invoice (PDF) again. It is also sent automatically when the order is placed.
+              </p>
+              <button
+                type="button"
+                onClick={() => handleSendConfirmation(selectedOrder.id)}
+                disabled={sendingConfirmation === selectedOrder.id}
+                className="w-full inline-flex items-center justify-center gap-2 text-xs font-black uppercase tracking-widest text-white bg-emerald-600 hover:bg-emerald-700 py-4 rounded-full transition-colors shadow-sm disabled:opacity-50"
+              >
+                <Mail size={16} />
+                {sendingConfirmation === selectedOrder.id ? 'Sending...' : 'Send order email + invoice'}
+              </button>
+              <p className="text-[10px] text-gray-400 font-bold text-center mt-3">
+                To: <span className="text-gray-600">{(selectedOrder.userId ? selectedOrder.user?.email : address.email) || 'No email on this order'}</span>
+              </p>
+            </div>
+
             <div className="bg-white rounded-3xl border border-gray-150 p-6 md:p-8 shadow-sm flex flex-col h-fit justify-between">
               <div>
                 <div className="flex items-center gap-2 mb-4">
@@ -3601,7 +3673,7 @@ export default function Dashboard() {
                             ))
                           ) : (
                             <>
-                              <option value={1}>Raju John</option>
+                              <option value={1}>Raju</option>
                               <option value={2}>John</option>
                               <option value={3}>Bibin</option>
                             </>
