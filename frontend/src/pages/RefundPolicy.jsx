@@ -35,7 +35,7 @@ export default function RefundPolicy() {
           <h2 className="text-xl font-bold text-emerald-800">Late or missing refunds</h2>
           <p>If you haven’t received a refund yet, first check your bank or card statement again, then contact your bank: posting a refund can take a few days.</p>
           <p>
-            If you still have not received it, contact us at <strong>info.idukkiorigins@gmail.com</strong> or WhatsApp <strong>+91 8921663449</strong> with
+            If you still have not received it, contact us at <strong>info.idukkiorigins@gmail.com</strong> or WhatsApp <strong>+91 8129074658</strong> with
             your order number.
           </p>
         </section>

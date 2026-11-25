@@ -7,7 +7,7 @@ import {
 import usePageMeta from '../utils/usePageMeta';
 import Reveal from '../components/Reveal';
 
-const WHATSAPP = '918921663449';
+const WHATSAPP = '918129074658';
 const EMAIL = 'info.idukkiorigins@gmail.com';
 const ADDRESS = 'Kanjikuzhy, Idukki, Kerala - 685606';
 const MAP_QUERY = encodeURIComponent('Kanjikuzhy, Idukki, Kerala 685606');
@@ -19,7 +19,7 @@ const CHANNELS = [
     icon: MessageCircle,
     title: 'WhatsApp',
     note: 'The quickest way to reach us',
-    value: '+91 8921663449',
+    value: '+91 8129074658',
     href: `https://wa.me/${WHATSAPP}`,
     external: true,
     accent: 'bg-green-500'
@@ -29,9 +29,8 @@ const CHANNELS = [
     icon: Phone,
     title: 'Call us',
     note: 'Talk to our team directly',
-    value: '+91 8921663449',
-    extra: { value: '+91 9645425742', href: 'tel:+919645425742' },
-    href: 'tel:+918921663449',
+    value: '+91 8129074658',
+    href: 'tel:+918129074658',
     accent: 'bg-emerald-600'
   },
   {

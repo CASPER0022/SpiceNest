@@ -19,7 +19,7 @@ export const LOGO = path.join(ASSETS, 'logo.jpg');
 export const SELLER = {
   name: process.env.SELLER_LEGAL_NAME || 'Idukki Origins',
   address: process.env.SELLER_ADDRESS || 'Kanjikuzhy, Idukki, Kerala - 685606',
-  phone: process.env.SELLER_PHONE || '+91 8921663449, +91 9645425742',
+  phone: process.env.SELLER_PHONE || '+91 8129074658',
   email: process.env.SELLER_EMAIL || 'info.idukkiorigins@gmail.com',
   gstin: (process.env.SELLER_GSTIN || '32AGFPJ8946D1ZH').trim(),
   // FSSAI requires the registration number on invoices of food businesses

@@ -122,7 +122,7 @@ function AppLayout() {
       `}</style>
       <div className="fixed bottom-20 md:bottom-8 right-4 md:right-8 z-50 animate-float-slow select-none">
         <a
-          href="https://wa.me/918921663449"
+          href="https://wa.me/918129074658"
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center bg-[#EAEAEA] hover:bg-[#E2E2E2] shadow-[0_4px_16px_rgba(0,0,0,0.12)] rounded-full pr-4 md:pr-5 pl-1 md:pl-1.5 py-1.5 transition-all duration-300 hover:scale-105 active:scale-98 cursor-pointer border border-white/50 group"

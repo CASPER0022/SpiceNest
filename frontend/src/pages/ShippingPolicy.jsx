@@ -64,7 +64,7 @@ export default function ShippingPolicy() {
         <section className="space-y-3">
           <h2 className="text-xl font-bold text-emerald-800">Questions</h2>
           <p>
-            WhatsApp or call us at <strong>+91 8921663449</strong> or <strong>+91 9645425742</strong> (Monday to Saturday, 9 AM–6 PM), or email{' '}
+            WhatsApp or call us at <strong>+91 8129074658</strong> (Monday to Saturday, 9 AM–6 PM), or email{' '}
             <strong>info.idukkiorigins@gmail.com</strong>.
           </p>
         </section>

@@ -29,7 +29,7 @@ export default function PrivacyPolicy() {
           </p>
           <p className="font-semibold text-gray-800">How do I withdraw my consent?</p>
           <p>
-            If after you opt-in, you change your mind, you may withdraw your consent for us to contact you, for the continued collection, use or disclosure of your information, at anytime, by contacting us at <strong>+91 8921663449, +91 9645425742</strong> or mailing us at: <strong>info.idukkiorigins@gmail.com</strong>
+            If after you opt-in, you change your mind, you may withdraw your consent for us to contact you, for the continued collection, use or disclosure of your information, at anytime, by contacting us at <strong>+91 8129074658</strong> or mailing us at: <strong>info.idukkiorigins@gmail.com</strong>
           </p>
         </section>
 

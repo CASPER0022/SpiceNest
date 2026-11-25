@@ -26,7 +26,7 @@ export default function CancellationReturn() {
             we will make it right at no cost to you:
           </p>
           <ol className="list-decimal pl-5 space-y-2">
-            <li>Contact us within <strong>7 days of delivery</strong> by WhatsApp (+91 8921663449) or email (info.idukkiorigins@gmail.com).</li>
+            <li>Contact us within <strong>7 days of delivery</strong> by WhatsApp (+91 8129074658) or email (info.idukkiorigins@gmail.com).</li>
             <li>Send your <strong>order number</strong> and <strong>clear photos</strong> of the item and the packaging (and the shipping label, if the parcel was damaged).</li>
             <li>Once we have checked the photos, choose a <strong>free replacement</strong> or a <strong>full refund</strong> of that item, including any shipping you paid for it.</li>
           </ol>
