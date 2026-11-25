@@ -140,6 +140,26 @@ function PeriodFilter({ period, onPeriodChange, startDate, onStartDateChange, en
 // Order Registry filter for checkouts that were never paid (they are not orders)
 const ABANDONED_FILTER = 'Abandoned Checkout';
 
+// WhatsApp message to win back an abandoned checkout: the items they left, the total and a link
+// back to the shop. Opens pre-filled in WhatsApp; the admin can edit it before sending.
+const abandonedWhatsappMessage = (checkout) => {
+  const firstName = String(checkout.address?.fullName || '').trim().split(/\s+/)[0];
+  const items = (checkout.items || []).map(item => `• ${item.name} ${item.weight} × ${item.quantity}`).join('\n');
+  const total = Math.round(checkout.cartValue).toLocaleString('en-IN');
+  return [
+    `Hi${firstName ? ` ${firstName}` : ''}! 👋 This is Idukki Origins.`,
+    '',
+    'We noticed you were about to order these spices but the payment didn’t go through:',
+    items,
+    `Total: ₹${total}${checkout.couponCode ? ` (with your ${checkout.couponCode} coupon)` : ''}`,
+    '',
+    'Was there a problem with the payment or anything we can help with? Just reply here.',
+    '',
+    'You can complete your order anytime at https://www.idukkiorigins.com/shop 🌿',
+    'Fresh from our farmers in Idukki, Kerala.'
+  ].join('\n');
+};
+
 const formatAbandonedAddress = (a = {}) =>
   [a.houseNo, a.area, a.landmark, a.city, a.state, a.pincode].filter(Boolean).join(', ');
 
@@ -2961,9 +2981,10 @@ export default function Dashboard() {
                                 <a href={`tel:${a.mobileNumber}`} className="hover:text-emerald-600">{a.mobileNumber}</a>
                                 {phoneDigits.length === 10 && (
                                   <a
-                                    href={`https://wa.me/91${phoneDigits}`}
+                                    href={`https://wa.me/91${phoneDigits}?text=${encodeURIComponent(abandonedWhatsappMessage(checkout))}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
+                                    title={`Send ${a.fullName || 'the customer'} a reminder about their cart on WhatsApp`}
                                     className="text-[9px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full hover:bg-emerald-100"
                                   >
                                     WhatsApp
