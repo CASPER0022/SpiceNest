@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import ProductToastIcon from '../components/ProductToastIcon';
 import { trackViewItem } from '../utils/analytics';
 import usePageMeta from '../utils/usePageMeta';
+import { thumbSrc, onThumbError } from '../utils/images';
 import { productJsonLd, useJsonLd } from '../utils/structuredData';
 
 const WEIGHT_OPTIONS = [
@@ -322,15 +323,12 @@ export default function ProductDetails() {
                 className={`shrink-0 w-20 h-20 rounded-xl overflow-hidden border-2 ${activeImage === img ? 'border-emerald-500' : 'border-transparent'} opacity-${activeImage === img ? '100' : '70'} hover:opacity-100 transition-opacity bg-gray-50`}
               >
                  <img 
-                   src={img} 
+                   src={thumbSrc(img)} 
                    alt={`${product.name} ${i + 1}`}
                    loading="lazy"
                    decoding="async"
                    className="w-full h-full object-contain"
-                   onError={(e) => {
-                     // Fallback to the first image if there's an error
-                     if (i > 0 && product.images) e.target.src = product.images[0];
-                   }}
+                   onError={onThumbError(img)}
                  />
               </button>
             ))}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { CartProvider } from './context/CartContext';
@@ -12,33 +12,63 @@ import Footer from './components/Footer';
 import ScrollToTop from './components/ScrollToTop';
 import Home from './pages/Home';
 import Shop from './pages/Shop';
-import ProductDetails from './pages/ProductDetails';
-import Cart from './pages/Cart';
-import Login from './pages/Login';
-import Signup from './pages/Signup';
-import Success from './pages/Success';
-import Profile from './pages/Profile';
-import Wishlist from './pages/Wishlist';
-import FarmerProfile from './pages/FarmerProfile';
-import Farmers from './pages/Farmers';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
-import VerifyEmail from './pages/VerifyEmail';
-import Orders from './pages/Orders';
-import Dashboard from './pages/Dashboard';
-import TrackOrder from './pages/TrackOrder';
-import About from './pages/About';
-import Gallery from './pages/Gallery';
-import Blog from './pages/Blog';
-import BlogPost from './pages/BlogPost';
-import Contact from './pages/Contact';
-import Reviews from './pages/Reviews';
-import Certifications from './pages/Certifications';
-import ShippingPolicy from './pages/ShippingPolicy';
-import CancellationReturn from './pages/CancellationReturn';
-import RefundPolicy from './pages/RefundPolicy';
-import PrivacyPolicy from './pages/PrivacyPolicy';
-import TermsConditions from './pages/TermsConditions';
+
+// Every page except Home and Shop loads its own code only when it is opened, so a first visit
+// downloads much less (the admin dashboard alone is a large part of the app).
+// After a new deployment an open tab may ask for page files that no longer exist: then reload
+// the site once to get the new version.
+const lazyPage = (load) => lazy(() => load().then(
+  (module) => {
+    try { sessionStorage.removeItem('page-reload'); } catch { /* storage unavailable */ }
+    return module;
+  },
+  (error) => {
+    let reloaded = false;
+    try { reloaded = sessionStorage.getItem('page-reload') === '1'; sessionStorage.setItem('page-reload', '1'); } catch { /* storage unavailable */ }
+    if (!reloaded) {
+      window.location.reload();
+      return new Promise(() => {}); // keep showing the loader while the page reloads
+    }
+    throw error;
+  }
+));
+
+const ProductDetails = lazyPage(() => import('./pages/ProductDetails'));
+const Cart = lazyPage(() => import('./pages/Cart'));
+const Login = lazyPage(() => import('./pages/Login'));
+const Signup = lazyPage(() => import('./pages/Signup'));
+const Success = lazyPage(() => import('./pages/Success'));
+const Profile = lazyPage(() => import('./pages/Profile'));
+const Wishlist = lazyPage(() => import('./pages/Wishlist'));
+const FarmerProfile = lazyPage(() => import('./pages/FarmerProfile'));
+const Farmers = lazyPage(() => import('./pages/Farmers'));
+const ForgotPassword = lazyPage(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazyPage(() => import('./pages/ResetPassword'));
+const VerifyEmail = lazyPage(() => import('./pages/VerifyEmail'));
+const Orders = lazyPage(() => import('./pages/Orders'));
+const Dashboard = lazyPage(() => import('./pages/Dashboard'));
+const TrackOrder = lazyPage(() => import('./pages/TrackOrder'));
+const About = lazyPage(() => import('./pages/About'));
+const Gallery = lazyPage(() => import('./pages/Gallery'));
+const Blog = lazyPage(() => import('./pages/Blog'));
+const BlogPost = lazyPage(() => import('./pages/BlogPost'));
+const Contact = lazyPage(() => import('./pages/Contact'));
+const Reviews = lazyPage(() => import('./pages/Reviews'));
+const Certifications = lazyPage(() => import('./pages/Certifications'));
+const ShippingPolicy = lazyPage(() => import('./pages/ShippingPolicy'));
+const CancellationReturn = lazyPage(() => import('./pages/CancellationReturn'));
+const RefundPolicy = lazyPage(() => import('./pages/RefundPolicy'));
+const PrivacyPolicy = lazyPage(() => import('./pages/PrivacyPolicy'));
+const TermsConditions = lazyPage(() => import('./pages/TermsConditions'));
+
+// Shown while a page's code loads (usually a fraction of a second)
+function PageLoader() {
+  return (
+    <div className="min-h-[60vh] flex items-center justify-center" role="status" aria-label="Loading">
+      <div className="w-9 h-9 rounded-full border-4 border-emerald-100 border-t-emerald-600 animate-spin" />
+    </div>
+  );
+}
 
 // Main App Layout component to handle routing logic like dynamic padding
 function AppLayout() {
@@ -74,6 +104,7 @@ function AppLayout() {
       <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
       {/* If it's not the home page, add top padding to account for the fixed navbar */}
       <main className={`flex-grow ${!isHome ? 'pt-20' : ''} pb-16 md:pb-0`}>
+        <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/shop" element={<Shop />} />
@@ -105,6 +136,7 @@ function AppLayout() {
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms-conditions" element={<TermsConditions />} />
         </Routes>
+        </Suspense>
       </main>
       <Footer />
       <MobileBottomNav />

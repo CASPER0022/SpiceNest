@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import { trackBeginCheckout, metaBrowserIds } from '../utils/analytics';
 import { INDIAN_STATES, INDIAN_UNION_TERRITORIES, matchIndianState } from '../utils/indianStates';
 import { normalizeIndianMobile, PHONE_ERROR } from '../utils/phone';
+import { thumbSrc, onThumbError } from '../utils/images';
 
 const loadRazorpayScript = () => {
   return new Promise((resolve) => {
@@ -309,7 +310,7 @@ export default function Cart() {
                 const itemId = item.cartItemId || item.id;
                 return (
                 <li key={itemId} className="p-4 sm:p-6 flex items-center gap-4 sm:gap-6">
-                  <img src={item.images ? item.images[0] : item.image} alt={item.name} className="w-20 h-20 object-cover rounded-xl shadow-sm shrink-0" />
+                  <img src={thumbSrc(item.images ? item.images[0] : item.image)} onError={onThumbError(item.images ? item.images[0] : item.image)} alt={item.name} className="w-20 h-20 object-cover rounded-xl shadow-sm shrink-0" />
                   {/* Beside the photo: name and price, then quantity (one row from the sm breakpoint) */}
                   <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
                     <div className="flex-1 min-w-0">

@@ -4,6 +4,7 @@ import { useCart } from '../context/CartContext';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import ProductToastIcon from './ProductToastIcon';
+import { thumbSrc, onThumbError } from '../utils/images';
 
 const WEIGHT_OPTIONS = [
   { label: '100g', multiplier: 1.0, kg: 0.1, discountPercent: 0 },
@@ -105,7 +106,8 @@ export default function ProductCard({ product }) {
       {/* Product Image Area */}
       <div className="relative h-64 overflow-hidden bg-stone-50 shrink-0">
         <img 
-          src={(product.images && product.images[0]) || '/images/placeholder.jpg'} 
+          src={thumbSrc(product.images && product.images[0]) || '/images/placeholder.jpg'} 
+          onError={onThumbError(product.images && product.images[0])}
           alt={product.name}
           loading="lazy"
           decoding="async"
