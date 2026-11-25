@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { ArrowRight, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
 import usePageMeta from '../utils/usePageMeta';
+import { webSrc, thumbSrc, onThumbError } from '../utils/images';
 import { formatPostDate, sortedPosts } from '../data/blogPosts';
 
 // Newest blog article, plus up to two more, for the "From the Blog" section
@@ -27,6 +28,15 @@ const FEATURES = [
 export default function Home() {
   usePageMeta(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(() => Math.floor(Math.random() * IMAGES.length));
+  // Slideshow photos are downloaded only when needed: the one on screen, the next one (so it is
+  // ready when the slide changes) and any already shown (still fading out, or cached). Loading all
+  // six at once used to cost visitors several megabytes before anything else.
+  const [shownSlides, setShownSlides] = useState(() => new Set());
+  const goToSlide = (index) => {
+    setShownSlides((prev) => (prev.has(currentImageIndex) ? prev : new Set(prev).add(currentImageIndex)));
+    setCurrentImageIndex(index);
+  };
+  const nextSlideIndex = (currentImageIndex + 1) % IMAGES.length;
   const [scrollY, setScrollY] = useState(0);
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -128,7 +138,7 @@ export default function Home() {
   // Handle the automatic image slider with dynamic reset on slide change
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentImageIndex((prev) => (prev + 1) % IMAGES.length);
+      goToSlide((currentImageIndex + 1) % IMAGES.length);
     }, 5000); // Auto-slide every 5 seconds
     return () => clearInterval(interval);
   }, [currentImageIndex]);
@@ -181,11 +191,15 @@ export default function Home() {
             className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${index === currentImageIndex ? 'opacity-100' : 'opacity-0'
               }`}
           >
-            <img
-              src={img}
-              alt="Lush Greenery"
-              className="w-full h-full object-cover"
-            />
+            {(index === currentImageIndex || index === nextSlideIndex || shownSlides.has(index)) && (
+              <img
+                src={webSrc(img)}
+                onError={onThumbError(img)}
+                alt="Lush Greenery"
+                fetchPriority={index === currentImageIndex ? 'high' : 'low'}
+                className="w-full h-full object-cover"
+              />
+            )}
             {/* Dark gradient overlay for text readability - lightened in the middle for a fresh, bright look */}
             <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/35 to-black/80" />
           </div>
@@ -235,7 +249,7 @@ export default function Home() {
           {IMAGES.map((_, index) => (
             <button
               key={index}
-              onClick={() => setCurrentImageIndex(index)}
+              onClick={() => goToSlide(index)}
               className="h-[3px] w-10 md:w-14 rounded-full bg-white/20 overflow-hidden relative focus:outline-none group cursor-pointer transition-all duration-300 hover:bg-white/40"
               aria-label={`Go to slide ${index + 1}`}
             >
@@ -299,8 +313,11 @@ export default function Home() {
                       className="w-[calc(33.333%-6.67px)] flex-shrink-0 relative group rounded-2xl overflow-hidden h-[220px] sm:h-[280px] shadow-md border border-gray-100/50 flex flex-col justify-between p-3.5 text-center transition-all transform hover:scale-[1.02]"
                     >
                       <img
-                        src={item.img}
+                        src={thumbSrc(item.img)}
+                        onError={onThumbError(item.img)}
                         alt={item.title}
+                        loading="lazy"
+                        decoding="async"
                         className="absolute inset-0 w-full h-full object-cover"
                       />
                       <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-black/15 to-black/85" />
@@ -347,8 +364,11 @@ export default function Home() {
                 className="relative group rounded-3xl overflow-hidden h-[380px] md:h-[450px] shadow-lg border border-gray-100"
               >
                 <img
-                  src={item.img}
+                  src={webSrc(item.img)}
+                  onError={onThumbError(item.img)}
                   alt={item.title}
+                  loading="lazy"
+                  decoding="async"
                   className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/10 to-black/80" />
@@ -467,7 +487,8 @@ export default function Home() {
           >
             <div className="relative h-56 md:h-auto md:min-h-80 overflow-hidden">
               <img
-                src={latestPost.cover}
+                src={webSrc(latestPost.cover)}
+                onError={onThumbError(latestPost.cover)}
                 alt={latestPost.coverAlt}
                 loading="lazy"
                 decoding="async"
@@ -508,7 +529,7 @@ export default function Home() {
                 to={`/blog/${post.slug}`}
                 className="group flex gap-4 rounded-2xl bg-white border border-gray-100 p-4 hover:shadow-lg transition-shadow"
               >
-                <img src={post.cover} alt={post.coverAlt} loading="lazy" decoding="async" className="w-28 h-28 shrink-0 rounded-xl object-cover" />
+                <img src={thumbSrc(post.cover)} onError={onThumbError(post.cover)} alt={post.coverAlt} loading="lazy" decoding="async" className="w-28 h-28 shrink-0 rounded-xl object-cover" />
                 <div className="min-w-0">
                   <h3 className="font-extrabold text-gray-900 group-hover:text-emerald-800 line-clamp-2">{post.title}</h3>
                   <p className="mt-1 text-sm text-gray-500 line-clamp-2">{post.excerpt}</p>

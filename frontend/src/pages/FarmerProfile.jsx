@@ -5,6 +5,7 @@ import ProductCard from '../components/ProductCard';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import usePageMeta from '../utils/usePageMeta';
+import SiteImg from '../components/SiteImg';
 
 export default function FarmerProfile() {
   const { id } = useParams();
@@ -156,12 +157,12 @@ export default function FarmerProfile() {
       {/* Farmer Header */}
       <div className="bg-white rounded-3xl shadow-xl overflow-hidden mb-12 border border-gray-100">
         <div className="h-48 md:h-64 bg-emerald-700 relative">
-          <img src={farmer.id === 1 ? "/images/farmers/raju/farm1.jpg" : farmer.id === 2 ? "/images/farmers/John/farm1.jpg" : farmer.id === 3 ? "/images/farmers/bibin/farm1.jpg" : farmer.id === 4 ? "/images/farmers/reji/farm1.jpg" : "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200&q=80"} alt="Farm Background" className="w-full h-full object-cover" />
+          <SiteImg size="web" src={farmer.id === 1 ? "/images/farmers/raju/farm1.jpg" : farmer.id === 2 ? "/images/farmers/John/farm1.jpg" : farmer.id === 3 ? "/images/farmers/bibin/farm1.jpg" : farmer.id === 4 ? "/images/farmers/reji/farm1.jpg" : "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200&q=80"} alt="Farm Background" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-black/40"></div>
         </div>
         <div className="px-6 sm:px-10 pb-10 relative">
           <div className="flex flex-col sm:flex-row items-center sm:items-end mb-6">
-            <img 
+            <SiteImg size="thumb" 
               src={farmer.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(farmer.name || 'Farmer')}&background=10b981&color=fff&size=256`}
               alt={farmer.name} 
               className="w-40 h-40 rounded-full border-4 border-white shadow-lg object-cover bg-white relative z-10 -mt-20 sm:-mt-24"
@@ -263,7 +264,7 @@ export default function FarmerProfile() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* Farm Image 1 */}
               <div className="group relative rounded-2xl overflow-hidden shadow-md border border-gray-100 aspect-[4/3] bg-gray-50">
-                <img 
+                <SiteImg size="web" loading="lazy" 
                   src={farmer.id === 1 ? "/images/farmers/raju/farm1.jpg" : farmer.id === 2 ? "/images/farmers/John/farm1.jpg" : farmer.id === 3 ? "/images/farmers/bibin/farm1.jpg" : farmer.id === 4 ? "/images/farmers/reji/farm1.jpg" : ""} 
                   alt={`${farmer.name}'s Spices Cultivation`} 
                   className="w-full h-full object-cover transition-transform duration-[1000ms] group-hover:scale-105"
@@ -282,7 +283,7 @@ export default function FarmerProfile() {
 
               {/* Farm Image 2 */}
               <div className="group relative rounded-2xl overflow-hidden shadow-md border border-gray-150 aspect-[4/3] bg-gray-50">
-                <img 
+                <SiteImg size="web" loading="lazy" 
                   src={farmer.id === 1 ? "/images/farmers/raju/farm2.jpg" : farmer.id === 2 ? "/images/farmers/John/farm2.jpg" : farmer.id === 3 ? "/images/farmers/bibin/farm2.jpg" : farmer.id === 4 ? "/images/farmers/reji/farm2.jpg" : ""} 
                   alt="Harvesting Spices" 
                   className="w-full h-full object-cover transition-transform duration-[1000ms] group-hover:scale-105"

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import SiteImg from '../SiteImg';
 import {
   ArrowLeft, ArrowRight, CloudRain, Flame, Flower2, Hand, Leaf, Package, Ruler, Sprout, Trees, Truck
 } from 'lucide-react';
@@ -138,7 +139,7 @@ export function CardamomJourney() {
         {/* Picture or icon panel */}
         <div className="relative h-60 md:h-auto md:min-h-[380px] overflow-hidden bg-stone-50">
           {step.image ? (
-            <img
+            <SiteImg size="web"
               key={step.image}
               src={step.image}
               alt={step.alt}

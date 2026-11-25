@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, CalendarDays, Clock, Search } from 'lucide-react';
 import usePageMeta from '../utils/usePageMeta';
 import { formatPostDate, sortedPosts } from '../data/blogPosts';
+import SiteImg from '../components/SiteImg';
 
 function PostMeta({ post, light }) {
   return (
@@ -36,7 +37,7 @@ export default function Blog() {
     <div className="bg-gray-50 min-h-screen">
       {/* Hero */}
       <div className="relative overflow-hidden bg-emerald-950 text-white">
-        <img src="/images/homepage/homepage-bg1.jpg" alt="" className="absolute inset-0 w-full h-full object-cover opacity-25" />
+        <SiteImg size="web" src="/images/homepage/homepage-bg1.jpg" alt="" className="absolute inset-0 w-full h-full object-cover opacity-25" />
         <div className="absolute inset-0 bg-gradient-to-b from-emerald-950/40 to-emerald-950" />
         <div className="relative max-w-6xl mx-auto px-4 py-16 sm:py-20">
           <p className="text-sm font-extrabold uppercase tracking-widest text-emerald-300">The Idukki Origins Blog</p>
@@ -91,7 +92,7 @@ export default function Blog() {
             className="group mt-6 grid overflow-hidden rounded-3xl bg-white shadow-sm border border-gray-100 hover:shadow-xl transition-shadow md:grid-cols-2"
           >
             <div className="relative h-64 md:h-auto min-h-72 overflow-hidden">
-              <img src={featured.cover} alt={featured.coverAlt} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+              <SiteImg size="web" src={featured.cover} alt={featured.coverAlt} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
               {!browsing && <span className="absolute top-4 left-4 rounded-full bg-amber-400 px-3 py-1 text-xs font-black text-amber-950">Latest</span>}
             </div>
             <div className="p-6 sm:p-10 flex flex-col justify-center">
@@ -120,7 +121,7 @@ export default function Blog() {
             {rest.map((post) => (
               <Link key={post.slug} to={`/blog/${post.slug}`} className="group overflow-hidden rounded-3xl bg-white border border-gray-100 hover:shadow-lg transition-shadow">
                 <div className="h-48 overflow-hidden">
-                  <img src={post.cover} alt={post.coverAlt} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                  <SiteImg size="thumb" src={post.cover} alt={post.coverAlt} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                 </div>
                 <div className="p-6">
                   <h2 className="text-lg font-extrabold text-gray-900 group-hover:text-emerald-800">{post.title}</h2>

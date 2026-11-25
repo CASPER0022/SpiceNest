@@ -7,6 +7,7 @@ import { useJsonLd } from '../utils/structuredData';
 import { formatPostDate, getPost, sortedPosts } from '../data/blogPosts';
 import SpiceRouteExplorer from '../components/blog/SpiceRouteExplorer';
 import { CardamomCalendar, CardamomGrades, CardamomJourney } from '../components/blog/CardamomStory';
+import SiteImg from '../components/SiteImg';
 
 const SITE_URL = 'https://www.idukkiorigins.com';
 
@@ -76,7 +77,7 @@ function SpiceCards({ only, title = 'The spices of the route, from Idukki' }) {
             className="group snap-start shrink-0 w-44 rounded-2xl bg-white border border-gray-100 overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all"
           >
             <div className="h-40 bg-stone-50">
-              <img src={spice.image} alt={`${spice.name} pouch`} loading="lazy" decoding="async" className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" />
+              <SiteImg size="thumb" src={spice.image} alt={`${spice.name} pouch`} loading="lazy" decoding="async" className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" />
             </div>
             <div className="p-3">
               <p className="text-sm font-extrabold text-gray-900">{spice.name}</p>
@@ -157,7 +158,7 @@ function Quiz({ title, questions: QUIZ }) {
 function ShopCta({ title = 'Taste the Spice Route at home', image = '/images/homepage/premium_whole_spices.jpg' }) {
   return (
     <div className="not-prose my-12 rounded-3xl overflow-hidden relative">
-      <img src={image} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
+      <SiteImg size="web" src={image} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
       <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/95 via-emerald-900/85 to-emerald-900/40" />
       <div className="relative p-8 sm:p-10 text-white max-w-lg">
         <h3 className="text-2xl sm:text-3xl font-black">{title}</h3>
@@ -190,7 +191,7 @@ function Block({ block }) {
     case 'image':
       return (
         <figure className="not-prose my-10">
-          <img src={block.src} alt={block.alt} loading="lazy" decoding="async" className="w-full max-h-[480px] object-cover rounded-3xl" />
+          <SiteImg size="web" src={block.src} alt={block.alt} loading="lazy" decoding="async" className="w-full max-h-[480px] object-cover rounded-3xl" />
           {block.caption && <figcaption className="mt-3 text-sm text-gray-500 text-center">{block.caption}</figcaption>}
         </figure>
       );
@@ -318,7 +319,7 @@ export default function BlogPost() {
 
       {/* Hero */}
       <header className="relative overflow-hidden bg-emerald-950 text-white">
-        <img src={post.cover} alt={post.coverAlt} className="absolute inset-0 w-full h-full object-cover opacity-40" />
+        <SiteImg size="web" src={post.cover} alt={post.coverAlt} className="absolute inset-0 w-full h-full object-cover opacity-40" />
         <div className="absolute inset-0 bg-gradient-to-t from-emerald-950 via-emerald-950/60 to-transparent" />
         <div className="relative max-w-4xl mx-auto px-4 pt-14 pb-12 sm:pt-20 sm:pb-16">
           <Link to="/blog" className="inline-flex items-center gap-1.5 text-sm font-bold text-emerald-200 hover:text-white">

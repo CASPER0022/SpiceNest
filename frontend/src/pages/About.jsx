@@ -7,6 +7,7 @@ import {
 import usePageMeta from '../utils/usePageMeta';
 import Reveal from '../components/Reveal';
 import useReveal from '../utils/useReveal';
+import SiteImg from '../components/SiteImg';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -180,7 +181,7 @@ function FarmLayers() {
       {/* Detail */}
       <div key={layer.id} className="rounded-3xl overflow-hidden bg-white border border-gray-100 shadow-sm animate-[fadeIn_.4s_ease]">
         <div className="h-56 sm:h-64 overflow-hidden">
-          <img src={layer.image} alt={layer.alt} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+          <SiteImg size="thumb" src={layer.image} alt={layer.alt} loading="lazy" decoding="async" className="w-full h-full object-cover" />
         </div>
         <div className="p-6">
           <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-600">{layer.height}</p>
@@ -224,7 +225,7 @@ function PartnerFarmers() {
           <Reveal key={farmer.id} delay={i * 100}>
             <Link to={`/farmer/${farmer.id}`} className="group block rounded-3xl bg-white border border-gray-100 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all">
               <div className="aspect-square overflow-hidden bg-stone-100">
-                <img src={farmer.image} alt={farmer.name} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                <SiteImg size="thumb" src={farmer.image} alt={farmer.name} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
               </div>
               <div className="p-4">
                 <p className="font-extrabold text-gray-900">{farmer.name}</p>
@@ -257,7 +258,7 @@ export default function About() {
     <div className="bg-gray-50 -mt-20 md:-mt-20">
       {/* Hero */}
       <section className="relative min-h-[78vh] flex items-end overflow-hidden bg-emerald-950 text-white">
-        <img src="/images/farmers/bibin/farm1.jpg" alt="Pepper vines on shade trees at an Idukki Origins farm" className="absolute inset-0 w-full h-full object-cover opacity-60 scale-105 animate-[heroZoom_18s_ease-out_both]" />
+        <SiteImg size="web" src="/images/farmers/bibin/farm1.jpg" alt="Pepper vines on shade trees at an Idukki Origins farm" className="absolute inset-0 w-full h-full object-cover opacity-60 scale-105 animate-[heroZoom_18s_ease-out_both]" />
         <div className="absolute inset-0 bg-gradient-to-t from-emerald-950 via-emerald-950/60 to-emerald-950/20" />
         <div className="relative max-w-6xl mx-auto w-full px-4 pt-36 pb-16 sm:pb-20">
           <p className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/15 px-4 py-1.5 text-xs font-extrabold uppercase tracking-widest text-emerald-200 animate-[fadeIn_.6s_ease]">
@@ -319,8 +320,8 @@ export default function About() {
         </Reveal>
         <Reveal delay={150} className="relative">
           <div className="grid grid-cols-2 gap-3">
-            <img src="/images/blog/cardamom-harvest.jpg" alt="Hand-picking cardamom" loading="lazy" className="rounded-3xl h-56 sm:h-72 w-full object-cover" />
-            <img src="/images/farmers/John/farm2.jpg" alt="Clove buds on the tree" loading="lazy" className="rounded-3xl h-56 sm:h-72 w-full object-cover mt-10" />
+            <SiteImg size="thumb" src="/images/blog/cardamom-harvest.jpg" alt="Hand-picking cardamom" loading="lazy" className="rounded-3xl h-56 sm:h-72 w-full object-cover" />
+            <SiteImg size="thumb" src="/images/farmers/John/farm2.jpg" alt="Clove buds on the tree" loading="lazy" className="rounded-3xl h-56 sm:h-72 w-full object-cover mt-10" />
           </div>
           <div className="absolute -bottom-4 left-6 rounded-2xl bg-amber-400 px-5 py-3 shadow-lg">
             <p className="text-sm font-black text-amber-950">Farm-direct since day one</p>
@@ -359,7 +360,7 @@ export default function About() {
         </Reveal>
         <div key={source} className="mt-8 grid md:grid-cols-2 overflow-hidden rounded-3xl bg-white border border-gray-100 shadow-sm animate-[fadeIn_.45s_ease]">
           <div className="h-64 md:h-auto md:min-h-96">
-            <img src={current.image} alt={current.alt} loading="lazy" className="w-full h-full object-cover" />
+            <SiteImg size="web" src={current.image} alt={current.alt} loading="lazy" className="w-full h-full object-cover" />
           </div>
           <div className="p-6 sm:p-10">
             <h3 className="text-2xl font-black text-gray-900">{current.title}</h3>
@@ -462,7 +463,7 @@ export default function About() {
       <section className="max-w-6xl mx-auto px-4 pt-16 pb-20">
         <Reveal>
           <div className="relative overflow-hidden rounded-3xl">
-            <img src="/images/blog/spice-route-cover.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
+            <SiteImg size="web" src="/images/blog/spice-route-cover.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/95 via-emerald-900/85 to-emerald-900/40" />
             <div className="relative p-8 sm:p-12 text-white max-w-xl">
               <h2 className="text-3xl font-black tracking-tight">Our promise</h2>

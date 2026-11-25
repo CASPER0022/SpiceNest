@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Camera, ChevronLeft, ChevronRight, Expand, X } from 'lucide-react';
 import usePageMeta from '../utils/usePageMeta';
 import Reveal from '../components/Reveal';
+import SiteImg from '../components/SiteImg';
 
 const CATEGORIES = [
   { id: 'all', label: 'All' },
@@ -91,7 +92,7 @@ function Lightbox({ photos, index, onClose, onMove }) {
         </button>
       </div>
       <div className="relative flex-1 min-h-0 flex items-center justify-center px-2 sm:px-16" onClick={onClose}>
-        <img
+        <SiteImg size="web"
           key={photo.src}
           src={photo.src}
           alt={photo.title}
@@ -133,7 +134,7 @@ function Lightbox({ photos, index, onClose, onMove }) {
               aria-label={`Show ${p.title}`}
               className={`h-12 w-16 shrink-0 overflow-hidden rounded-lg transition-all ${i === index ? 'ring-2 ring-amber-300 opacity-100' : 'opacity-40 hover:opacity-80'}`}
             >
-              <img src={p.src} alt="" loading="lazy" className="h-full w-full object-cover" />
+              <SiteImg size="thumb" src={p.src} alt="" loading="lazy" className="h-full w-full object-cover" />
             </button>
           ))}
         </div>
@@ -159,7 +160,7 @@ export default function Gallery() {
       <section className="relative min-h-[62vh] flex items-end overflow-hidden bg-emerald-950 text-white">
         <div className="absolute inset-0 grid grid-cols-3 sm:grid-cols-4 gap-1 opacity-50 scale-105 animate-[heroZoom_18s_ease-out_both]" aria-hidden="true">
           {PHOTOS.slice(0, 12).map((p, i) => (
-            <img key={p.src} src={p.src} alt="" className={`h-full w-full object-cover ${i >= 9 ? 'hidden sm:block' : ''}`} />
+            <SiteImg size="thumb" key={p.src} src={p.src} alt="" className={`h-full w-full object-cover ${i >= 9 ? 'hidden sm:block' : ''}`} />
           ))}
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-emerald-950 via-emerald-950/70 to-emerald-950/30" />
@@ -204,7 +205,7 @@ export default function Gallery() {
               onClick={() => setOpen(i)}
               className="group relative mb-3 sm:mb-4 block w-full break-inside-avoid overflow-hidden rounded-2xl bg-gray-200 text-left shadow-sm focus:outline-none focus-visible:ring-4 focus-visible:ring-emerald-300"
             >
-              <img
+              <SiteImg size="thumb"
                 src={p.src}
                 alt={p.title}
                 loading="lazy"
@@ -228,7 +229,7 @@ export default function Gallery() {
         <Reveal>
           <div className="grid md:grid-cols-2 gap-4">
             <Link to="/farmers" className="group relative overflow-hidden rounded-3xl min-h-[220px] flex items-end p-6 sm:p-8 text-white">
-              <img src="/images/farmers/bibin/farm2.jpg" alt="" className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+              <SiteImg size="web" loading="lazy" src="/images/farmers/bibin/farm2.jpg" alt="" className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
               <span className="absolute inset-0 bg-gradient-to-t from-emerald-950/90 to-emerald-950/20" />
               <span className="relative">
                 <span className="block text-2xl sm:text-3xl font-black">Meet our farmers</span>
@@ -243,7 +244,7 @@ export default function Gallery() {
               rel="noopener noreferrer"
               className="group relative overflow-hidden rounded-3xl min-h-[220px] flex items-end p-6 sm:p-8 text-white"
             >
-              <img src="/images/blog/cardamom-curing.jpg" alt="" className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+              <SiteImg size="web" loading="lazy" src="/images/blog/cardamom-curing.jpg" alt="" className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
               <span className="absolute inset-0 bg-gradient-to-t from-amber-950/90 to-amber-950/20" />
               <span className="relative">
                 <span className="block text-2xl sm:text-3xl font-black">More on Instagram</span>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Star, MapPin, Award, ArrowRight, ShieldCheck, Heart } from 'lucide-react';
 import usePageMeta from '../utils/usePageMeta';
+import SiteImg from '../components/SiteImg';
 
 export default function Farmers() {
   usePageMeta('Our Farmers', 'Meet the Idukki farmers who grow our spices. We buy pepper, cardamom, cloves, nutmeg and mace directly from them.');
@@ -91,7 +92,7 @@ export default function Farmers() {
               <div>
                 {/* Farmer Image Banner */}
                 <div className="h-44 relative overflow-hidden bg-gray-100">
-                  <img 
+                  <SiteImg size="thumb" 
                     src={farmer.id === 1 ? "/images/farmers/raju/farm1.jpg" : farmer.id === 2 ? "/images/farmers/John/farm1.jpg" : farmer.id === 3 ? "/images/farmers/bibin/farm1.jpg" : farmer.id === 4 ? "/images/farmers/reji/farm1.jpg" : "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&q=80"} 
                     alt="Farm Lands" 
                     className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" 
@@ -108,7 +109,7 @@ export default function Farmers() {
                 {/* Farmer Profile Headshot & Details */}
                 <div className="px-6 pb-6 relative">
                   <div className="flex justify-between items-end -mt-12 mb-4">
-                    <img 
+                    <SiteImg size="thumb" 
                       src={farmer.image || 'https://ui-avatars.com/api/?name=Farmer&background=10b981&color=fff&size=256'} 
                       alt={farmer.name} 
                       className="w-24 h-24 rounded-2xl border-4 border-white shadow-lg object-cover bg-white relative z-10"

@@ -6,6 +6,7 @@ import {
 import usePageMeta from '../utils/usePageMeta';
 import Reveal from '../components/Reveal';
 import { useAuth } from '../context/AuthContext';
+import SiteImg from '../components/SiteImg';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -80,7 +81,7 @@ function ReviewCard({ review, index }) {
                 to={subjectLink}
                 className="group flex items-center gap-3 rounded-2xl bg-gray-50 p-2 pr-4 hover:bg-emerald-50 transition-colors"
               >
-                {subjectImage && <img src={subjectImage} alt="" loading="lazy" className="w-10 h-10 rounded-xl object-cover bg-white" />}
+                {subjectImage && <SiteImg size="thumb" src={subjectImage} alt="" loading="lazy" className="w-10 h-10 rounded-xl object-cover bg-white" />}
                 <span className="flex-1 min-w-0 text-sm font-bold text-gray-700 truncate">
                   {review.farmer && !review.product ? `Farmer: ${subject.name}` : subject.name}
                 </span>
@@ -210,7 +211,7 @@ export default function Reviews() {
     <div className="bg-gray-50 -mt-20 md:-mt-20">
       {/* Hero */}
       <section className="relative min-h-[60vh] flex items-end overflow-hidden bg-emerald-950 text-white">
-        <img
+        <SiteImg size="web"
           src="/images/homepage/premium_whole_spices.jpg"
           alt="Whole spices from Idukki"
           className="absolute inset-0 w-full h-full object-cover opacity-45 scale-105 animate-[heroZoom_18s_ease-out_both]"
@@ -401,7 +402,7 @@ export default function Reviews() {
       <section className="max-w-6xl mx-auto px-4 pb-20">
         <Reveal>
           <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-800 to-emerald-950 px-6 py-12 sm:px-12 text-white">
-            <img src="/images/pepper/pepper-1.jpg" alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover opacity-15" />
+            <SiteImg size="thumb" loading="lazy" src="/images/pepper/pepper-1.jpg" alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover opacity-15" />
             <div className="relative grid lg:grid-cols-[1.2fr_1fr] gap-8 items-center">
               <div>
                 <ShieldCheck className="w-10 h-10 text-amber-300" />

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import usePageMeta from '../utils/usePageMeta';
 import Reveal from '../components/Reveal';
+import SiteImg from '../components/SiteImg';
 
 const WHATSAPP = '918129074658';
 const EMAIL = 'info.idukkiorigins@gmail.com';
@@ -329,7 +330,7 @@ export default function Contact() {
     <div className="bg-gray-50 -mt-20 md:-mt-20">
       {/* Hero */}
       <section className="relative min-h-[62vh] flex items-end overflow-hidden bg-emerald-950 text-white">
-        <img
+        <SiteImg size="web"
           src="/images/homepage/homepage-bg2.jpg"
           alt="Spice hills of Idukki"
           className="absolute inset-0 w-full h-full object-cover opacity-55 scale-105 animate-[heroZoom_18s_ease-out_both]"
@@ -457,7 +458,7 @@ export default function Contact() {
       <section className="max-w-6xl mx-auto px-4 pb-20">
         <Reveal>
           <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-800 to-emerald-950 px-6 py-12 sm:px-12 text-white">
-            <img src="/images/blog/cardamom-harvest.jpg" alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover opacity-15" />
+            <SiteImg size="thumb" loading="lazy" src="/images/blog/cardamom-harvest.jpg" alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover opacity-15" />
             <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-6">
               <div className="max-w-xl">
                 <h2 className="text-3xl sm:text-4xl font-black tracking-tight">Follow life on the farm</h2>
