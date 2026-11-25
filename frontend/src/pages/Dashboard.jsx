@@ -147,7 +147,7 @@ const abandonedWhatsappMessage = (checkout) => {
   const items = (checkout.items || []).map(item => `• ${item.name} ${item.weight} × ${item.quantity}`).join('\n');
   const total = Math.round(checkout.cartValue).toLocaleString('en-IN');
   return [
-    `Hi${firstName ? ` ${firstName}` : ''}! 👋 This is Idukki Origins.`,
+    `Hi${firstName ? ` ${firstName}` : ''}! This is Idukki Origins.`,
     '',
     'We noticed you were about to order these spices but the payment didn’t go through:',
     items,
@@ -155,7 +155,7 @@ const abandonedWhatsappMessage = (checkout) => {
     '',
     'Was there a problem with the payment or anything we can help with? Just reply here.',
     '',
-    'You can complete your order anytime at https://www.idukkiorigins.com/shop 🌿',
+    'You can complete your order anytime at https://www.idukkiorigins.com/shop',
     'Fresh from our farmers in Idukki, Kerala.'
   ].join('\n');
 };
