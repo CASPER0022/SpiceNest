@@ -127,9 +127,14 @@ export default function ProductDetails() {
       });
   }, [slug, API_URL, navigate]);
 
-  // Product name in the browser tab and search results, with its description
+  // Product name in the browser tab and search results, with its description. Until the product
+  // has loaded, the name comes from the URL (/product/black-pepper -> "Black Pepper"): a generic
+  // "Shop" title here made Google list a product page as "Shop" when it crawled it mid-load.
+  const nameFromUrl = slug && !/^\d+$/.test(slug)
+    ? slug.split('-').map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+    : 'Whole Spices';
   usePageMeta(
-    product?.name ? `Buy ${product.name} Online` : 'Shop',
+    `Buy ${product?.name || nameFromUrl} Online`,
     product?.description ? String(product.description).replace(/\s+/g, ' ').trim().slice(0, 155) : undefined
   );
   // Price range, stock and ratings for Google (Product structured data)
