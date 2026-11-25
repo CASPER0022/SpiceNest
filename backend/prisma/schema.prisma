@@ -88,6 +88,7 @@ model Order {
   trackingToken   String?        @unique
   items           OrderItem[]
   messages        OrderMessage[]
+  events          OrderEvent[]
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 }
@@ -127,6 +128,20 @@ model OrderMessage {
   message   String   @db.Text
   sentBy    String   // e.g. "admin"
   createdAt DateTime @default(now())
+}
+
+// Order history shown to admins: status changes, stock returned or taken, emails, tracking and
+// address edits. Placing the order, payment and the stock it took are read from the order itself.
+model OrderEvent {
+  id        Int      @id @default(autoincrement())
+  orderId   Int
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  type      String   // "status" | "stock" | "email" | "shipping" | "address"
+  message   String   @db.Text
+  actor     String?  // admin email; null = the system
+  createdAt DateTime @default(now())
+
+  @@index([orderId, createdAt])
 }
 
 model CartItem {

@@ -10,46 +10,7 @@ import { uniqueProductSlug, backfillProductSlugs, SLUG_REGEX } from './utils/slu
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
 
-// In-Memory Cache Helper (bounded: the oldest entry is evicted once maxEntries is reached)
-class MemoryCache {
-  constructor(ttl = 5 * 60 * 1000, maxEntries = 500) { // Default TTL: 5 minutes
-    this.cache = new Map();
-    this.ttl = ttl;
-    this.maxEntries = maxEntries;
-  }
-
-  get(key) {
-    const item = this.cache.get(key);
-    if (!item) return null;
-    if (Date.now() > item.expiry) {
-      this.cache.delete(key);
-      return null;
-    }
-    return item.value;
-  }
-
-  set(key, value) {
-    this.cache.delete(key); // re-insert so Map order reflects recency
-    if (this.cache.size >= this.maxEntries) {
-      this.cache.delete(this.cache.keys().next().value);
-    }
-    this.cache.set(key, {
-      value,
-      expiry: Date.now() + this.ttl
-    });
-  }
-
-  delete(key) {
-    this.cache.delete(key);
-  }
-
-  clear() {
-    this.cache.clear();
-  }
-}
-
-const productCache = new MemoryCache(5 * 60 * 1000);
-const farmerCache = new MemoryCache(5 * 60 * 1000);
+import { productCache, farmerCache } from './utils/cache.js';
 
 // Route IDs must be plain positive integers; the parsed number is also the cache key,
 // so "/1", "/01" and "/1x" can never create separate cache entries.
@@ -232,11 +193,12 @@ async function loadAllProducts() {
 // asks for sold-out ones too with ?includeOutOfStock=1.
 app.get('/api/products', async (req, res) => {
   try {
-    const products = productCache.get('all_products') || await loadAllProducts();
     if (req.query.includeOutOfStock === '1') {
+      // Admins (Inventory) always get the stock straight from the database, never the cache
       const viewer = await getRequestUser(req);
-      if (viewer?.role === 'ADMIN') return res.json(products);
+      if (viewer?.role === 'ADMIN') return res.json(await loadAllProducts());
     }
+    const products = productCache.get('all_products') || await loadAllProducts();
     res.json(products.filter(isInStock));
   } catch (error) {
     console.error(error);

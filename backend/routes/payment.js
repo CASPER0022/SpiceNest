@@ -7,6 +7,7 @@ import prisma from '../db.js';
 import { sendOrderConfirmation, sendCustomAdminMessage, sendShippingUpdate } from '../utils/emailService.js';
 import { plainPersonName } from '../utils/personName.js';
 import { CARRIERS, DEFAULT_CARRIER, carrierFor, trackingInfo } from '../utils/carriers.js';
+import { invalidateProducts } from '../utils/cache.js';
 import { normalizeIndianMobile } from '../utils/phone.js';
 import { renderInvoicePdf, renderInvoicesPdf, invoiceFileName, invoiceData } from '../utils/invoice.js';
 import { orderAmounts } from '../utils/tax.js';
@@ -109,6 +110,20 @@ function parseAddress(address) {
 
 const round3 = (n) => Math.round(n * 1000) / 1000;
 const TX_OPTIONS = { maxWait: 10000, timeout: 20000 };
+
+// Adds entries to an order's history (OrderEvent). Always called AFTER the change itself has
+// succeeded, and never throws: a missing history line must not fail an order or a status change.
+// events: [{ orderId, type, message, actor? }]
+async function logOrderEvents(events) {
+  const data = events.filter(Boolean).map(({ orderId, type, message, actor = null }) => ({ orderId, type, message, actor }));
+  if (data.length === 0) return;
+  try {
+    await prisma.orderEvent.createMany({ data });
+  } catch (err) {
+    console.error('Could not write order history:', err.message);
+  }
+}
+const kgText = (kg) => `${round3(Number(kg) || 0)} kg`;
 const lineKey = (productId, weight) => `${productId}:${weight}`;
 
 // Locks the given product rows (SELECT ... FOR UPDATE, in ID order to avoid deadlocks) and
@@ -325,7 +340,14 @@ function sendConfirmationInBackground(order) {
     }
 
     console.log(`📧 Sending confirmation for order ${order.id}${invoice ? ' with invoice' : ''}`);
-    await sendOrderConfirmation(recipient, order, trackingUrl, { includeBuyerDetails, invoice });
+    const sent = await sendOrderConfirmation(recipient, order, trackingUrl, { includeBuyerDetails, invoice });
+    await logOrderEvents([{
+      orderId: order.id,
+      type: 'email',
+      message: sent
+        ? `Order confirmation email sent to ${recipient}${invoice ? ' with the GST invoice' : ''}.`
+        : `Order confirmation email to ${recipient} could not be sent.`
+    }]);
   })().catch((e) => console.error('Background email task failed:', e));
 }
 
@@ -1054,6 +1076,69 @@ router.post('/admin/orders/:id/send-message', verifyToken, async (req, res) => {
 });
 
 // ==========================================
+// ORDER STATUS AND STOCK
+// Every order takes its stock when it is paid. Moving it to Cancelled, Refunded or Failed puts
+// that stock back; moving it back to any other status takes it out again. Moving between two
+// of these (e.g. Cancelled -> Refunded) changes nothing, so stock is never returned twice.
+// ==========================================
+const STOCK_RELEASED_STATUSES = ['Cancelled', 'Refunded', 'Failed'];
+const releasesStock = (status) => STOCK_RELEASED_STATUSES.includes(status);
+
+// Kilos an order line took from stock: an oversold order only took the stock that was left
+function stockTakenByItem(item) {
+  return item.initialStock !== null && item.finalStock !== null
+    ? item.initialStock - item.finalStock
+    : (WEIGHT_OPTIONS[item.weight]?.kg ?? 0) * item.quantity;
+}
+
+// Changes one order's status inside a transaction, returning or taking its stock when needed.
+// Locks the order row first, so two quick changes cannot both move the stock.
+// Returns null if the order does not exist, else { order, stockChange: 'restored' | 'deducted' | null }.
+async function setOrderStatus(tx, orderId, status) {
+  const rows = await tx.$queryRaw`SELECT "status" FROM "Order" WHERE "id" = ${orderId} FOR UPDATE`;
+  if (rows.length === 0) return null;
+
+  let stockChange = null;
+  const stockMoves = []; // { name, weight, quantity, kg, after } for the order history
+  const restore = releasesStock(status);
+  if (releasesStock(rows[0].status) !== restore) {
+    const items = await tx.orderItem.findMany({ where: { orderId }, orderBy: { productId: 'asc' } });
+    for (const item of items) {
+      if (!item.productId) continue; // product was deleted since
+      const taken = stockTakenByItem(item);
+      if (!(taken > 0)) continue;
+      const updated = restore
+        ? await tx.$queryRaw`UPDATE "Product" SET "stock" = ROUND(("stock" + ${taken})::numeric, 3)::float8 WHERE "id" = ${item.productId} RETURNING "stock"`
+        : await tx.$queryRaw`UPDATE "Product" SET "stock" = GREATEST(0, ROUND(("stock" - ${taken})::numeric, 3))::float8 WHERE "id" = ${item.productId} RETURNING "stock"`;
+      if (updated.length > 0) {
+        const after = Number(updated[0].stock);
+        stockMoves.push({
+          productId: item.productId, name: item.productName || 'Product', weight: item.weight, quantity: item.quantity, kg: taken,
+          after
+        });
+      }
+    }
+    stockChange = restore ? 'restored' : 'deducted';
+  }
+
+  const order = await tx.order.update({ where: { id: orderId }, data: { status } });
+  return { order, stockChange, oldStatus: rows[0].status, stockMoves };
+}
+
+// History lines for one status change made with setOrderStatus
+function statusChangeEvents(orderId, result, actor) {
+  if (!result || result.oldStatus === result.order.status) return [];
+  const events = [{ orderId, type: 'status', actor, message: `Status changed from ${result.oldStatus} to ${result.order.status}.` }];
+  for (const move of result.stockMoves) {
+    const line = `${move.name} ${move.weight} × ${move.quantity}`;
+    events.push(result.stockChange === 'restored'
+      ? { orderId, type: 'stock', actor, message: `Stock returned: ${line}, +${kgText(move.kg)} (stock is now ${kgText(move.after)}).` }
+      : { orderId, type: 'stock', actor, message: `Stock taken again: ${line}, −${kgText(move.kg)} (stock is now ${kgText(move.after)}).` });
+  }
+  return events;
+}
+
+// ==========================================
 // UPDATE ORDER STATUS (ADMIN ONLY)
 // ==========================================
 router.put('/admin/orders/:id/status', verifyToken, async (req, res) => {
@@ -1074,12 +1159,21 @@ router.put('/admin/orders/:id/status', verifyToken, async (req, res) => {
       return res.status(400).json({ error: 'Invalid status value' });
     }
 
-    const updatedOrder = await prisma.order.update({
-      where: { id: parseInt(id, 10) },
-      data: { status }
-    });
+    const orderId = parseInt(id, 10);
+    if (!Number.isInteger(orderId) || orderId <= 0) {
+      return res.status(400).json({ error: 'Invalid order ID' });
+    }
+    const result = await prisma.$transaction((tx) => setOrderStatus(tx, orderId, status), TX_OPTIONS);
+    if (!result) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    if (result.stockChange) {
+      console.log(`Admin ${adminUser.email} set order #${orderId} to ${status} and ${result.stockChange} its stock`);
+    }
+    if (result.stockChange) invalidateProducts(result.stockMoves.map((move) => move.productId));
+    await logOrderEvents(statusChangeEvents(orderId, result, adminUser.email));
 
-    res.json({ success: true, order: updatedOrder });
+    res.json({ success: true, order: result.order, stockChange: result.stockChange });
   } catch (error) {
     console.error('Update order status error:', error);
     res.status(500).json({ error: 'Failed to update order status' });
@@ -1111,13 +1205,11 @@ router.delete('/admin/orders/:id', verifyToken, async (req, res) => {
       const order = await tx.order.findUnique({ where: { id }, include: { items: true } });
       if (!order) return null;
 
-      if (restoreStock) {
+      // A cancelled, refunded or failed order has already given its stock back
+      if (restoreStock && !releasesStock(order.status)) {
         for (const item of order.items) {
           if (!item.productId) continue; // product was deleted since
-          // Return what was actually taken: an oversold order only took the stock that was left
-          const taken = item.initialStock !== null && item.finalStock !== null
-            ? item.initialStock - item.finalStock
-            : (WEIGHT_OPTIONS[item.weight]?.kg ?? 0) * item.quantity;
+          const taken = stockTakenByItem(item);
           if (taken > 0) {
             await tx.$executeRaw`UPDATE "Product" SET "stock" = ROUND(("stock" + ${taken})::numeric, 3)::float8 WHERE "id" = ${item.productId}`;
           }
@@ -1133,8 +1225,10 @@ router.delete('/admin/orders/:id', verifyToken, async (req, res) => {
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    console.log(`Admin ${adminUser.email} deleted order #${id}${restoreStock ? ' and restored its stock' : ''}`);
-    res.json({ success: true, restoredStock: restoreStock });
+    const restoredStock = restoreStock && !releasesStock(deleted.status);
+    if (restoredStock) invalidateProducts(deleted.items.map((item) => item.productId).filter(Boolean));
+    console.log(`Admin ${adminUser.email} deleted order #${id}${restoredStock ? ' and restored its stock' : ''}`);
+    res.json({ success: true, restoredStock });
   } catch (error) {
     console.error('Delete order error:', error);
     res.status(500).json({ error: 'Failed to delete order' });
@@ -1251,8 +1345,12 @@ router.put('/admin/bulk/orders/status', verifyToken, async (req, res) => {
     const where = { id: { in: ids }, ...(status === 'Shipped' && { status: { in: ['PAID', 'Processing'] } }) };
     const toUpdate = await prisma.order.findMany({ where, select: { id: true } });
     const updatedIds = toUpdate.map((order) => order.id);
-    if (updatedIds.length > 0) {
-      await prisma.order.updateMany({ where: { id: { in: updatedIds } }, data: { status } });
+    // One transaction per order, so stock is returned or taken the same way as a single change
+    const admin = await prisma.user.findUnique({ where: { id: req.user.id }, select: { email: true } });
+    for (const orderId of updatedIds) {
+      const result = await prisma.$transaction((tx) => setOrderStatus(tx, orderId, status), TX_OPTIONS);
+      if (result?.stockChange) invalidateProducts(result.stockMoves.map((move) => move.productId));
+      await logOrderEvents(statusChangeEvents(orderId, result, admin?.email || null));
     }
 
     res.json({ success: true, status, updatedIds, skippedIds: ids.filter((id) => !updatedIds.includes(id)) });
@@ -1309,6 +1407,19 @@ router.put('/admin/orders/:id/tracking', verifyToken, async (req, res) => {
     }
     const order = await prisma.order.update({ where: { id }, data, include: ORDER_INCLUDE });
 
+    const historyEvents = [];
+    if (trackingNumber !== (existing.trackingNumber || '') || (trackingNumber && carrierId !== existing.shippingCarrier)) {
+      historyEvents.push({
+        orderId: id, type: 'shipping', actor: adminUser.email,
+        message: trackingNumber
+          ? `Tracking ${existing.trackingNumber ? 'changed' : 'added'}: ${carrierFor(carrierId).name} ${trackingNumber}.`
+          : `Tracking number ${existing.trackingNumber} removed.`
+      });
+    }
+    if (data.status) {
+      historyEvents.push({ orderId: id, type: 'status', actor: adminUser.email, message: `Status changed from ${existing.status} to ${data.status}.` });
+    }
+
     let emailed = false;
     if (trackingNumber && notifyCustomer) {
       const recipient = await orderRecipient(order);
@@ -1327,10 +1438,88 @@ router.put('/admin/orders/:id/tracking', verifyToken, async (req, res) => {
       }
     }
 
+    if (trackingNumber && notifyCustomer) {
+      historyEvents.push({
+        orderId: id, type: 'email', actor: adminUser.email,
+        message: emailed ? 'Shipping update email with the tracking number sent to the customer.' : 'Shipping update email could not be sent.'
+      });
+    }
+    await logOrderEvents(historyEvents);
+
     res.json({ success: true, order: { id: order.id, status: order.status, trackingNumber: order.trackingNumber, shippingCarrier: order.shippingCarrier }, emailed });
   } catch (error) {
     console.error('Save tracking number error:', error);
     res.status(500).json({ error: 'Failed to save tracking number' });
+  }
+});
+
+// ==========================================
+// ORDER HISTORY (ADMIN ONLY): everything that happened to an order, newest first.
+// Placing the order, the payment, the stock it took and admin messages are read from the order
+// itself (so older orders have them too); later changes come from OrderEvent.
+// Each entry: { id, type: 'order' | 'payment' | 'stock' | 'status' | 'email' | 'shipping' | 'address' | 'message', message, actor, createdAt }
+// ==========================================
+router.get('/admin/orders/:id/history', verifyToken, async (req, res) => {
+  try {
+    if (!(await requireAdminUser(req, res))) return;
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: 'Invalid order ID' });
+    }
+    const order = await prisma.order.findUnique({
+      where: { id },
+      include: { items: true, messages: { orderBy: { createdAt: 'asc' } } }
+    });
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    const placedAt = order.createdAt;
+    const entries = [];
+    // Oversold: a line needed more than the stock that was left when it was paid
+    const oversold = order.items.some((item) => item.initialStock !== null && item.initialStock < (WEIGHT_OPTIONS[item.weight]?.kg ?? 0) * item.quantity - 1e-9);
+    entries.push({ id: 'placed', type: 'order', actor: null, createdAt: placedAt,
+      message: `Order placed (₹${order.totalAmount.toFixed(2)})${oversold ? ', put On Hold: not enough stock left' : ''}.` });
+
+    if (order.razorpayPaymentId || order.razorpayOrderId) {
+      entries.push({ id: 'payment', type: 'payment', actor: null, createdAt: placedAt,
+        message: `Payment received via Razorpay${order.razorpayPaymentId ? ` (payment ${order.razorpayPaymentId})` : ''}${order.razorpayOrderId ? `, Razorpay order ${order.razorpayOrderId}` : ''}.` });
+    } else if (order.stripeSessionId) {
+      entries.push({ id: 'payment', type: 'payment', actor: null, createdAt: placedAt,
+        message: `Payment received via Stripe (session ${order.stripeSessionId}).` });
+    }
+
+    order.items.forEach((item, index) => {
+      const line = `${item.productName || 'Product'} ${item.weight} × ${item.quantity}`;
+      const taken = stockTakenByItem(item);
+      // Only the amount: the stock figures at that moment can include other customers' unpaid
+      // checkouts, which made the history look inconsistent
+      entries.push({ id: `stock-${index}`, type: 'stock', actor: null, createdAt: placedAt,
+        message: `Stock reduced: ${line}, −${kgText(taken)}.` });
+    });
+
+    for (const msg of order.messages) {
+      const preview = msg.message.length > 140 ? `${msg.message.slice(0, 140)}…` : msg.message;
+      entries.push({ id: `message-${msg.id}`, type: 'message', actor: null, createdAt: msg.createdAt, message: `Message emailed to the customer: “${preview}”` });
+    }
+
+    let events = [];
+    try {
+      events = await prisma.orderEvent.findMany({ where: { orderId: id }, orderBy: { createdAt: 'asc' } });
+    } catch (err) {
+      console.error('Could not read order history:', err.message); // e.g. table not created yet
+    }
+    for (const event of events) {
+      entries.push({ id: `event-${event.id}`, type: event.type, actor: event.actor, createdAt: event.createdAt, message: event.message });
+    }
+
+    // Newest first; entries with the same time keep the order they happened in
+    const indexed = entries.map((entry, index) => ({ entry, index }));
+    indexed.sort((a, b) => (new Date(b.entry.createdAt) - new Date(a.entry.createdAt)) || (b.index - a.index));
+    res.json(indexed.map(({ entry }) => entry));
+  } catch (error) {
+    console.error('Order history error:', error);
+    res.status(500).json({ error: 'Failed to load the order history' });
   }
 });
 
@@ -1453,6 +1642,8 @@ router.put('/admin/orders/:id/address', verifyToken, async (req, res) => {
         }
       }
     });
+
+    await logOrderEvents([{ orderId: updatedOrder.id, type: 'address', actor: adminUser.email, message: 'Delivery details edited.' }]);
 
     res.json({ success: true, order: updatedOrder });
   } catch (error) {

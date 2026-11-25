@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 import TaxReport from '../components/TaxReport';
 import ReviewManager from '../components/ReviewManager';
 import OrderBreakdown from '../components/OrderBreakdown';
+import OrderHistory from '../components/OrderHistory';
 import { normalizeIndianMobile, PHONE_ERROR } from '../utils/phone';
 
 // Date periods shared by Sales Analytics and the Order Registry
@@ -376,15 +377,24 @@ export default function Dashboard() {
         body: JSON.stringify({ status: newStatus })
       });
 
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || 'Failed to update status');
+        throw new Error(data.error || 'Failed to update status');
       }
 
-      setOrders(prevOrders => 
+      setOrders(prevOrders =>
         prevOrders.map(o => o.id === orderId ? { ...o, status: newStatus } : o)
       );
-      toast.success(`Order #${orderId} updated to ${newStatus}`);
+      // Cancelled / Refunded / Failed put the stock back; changing back takes it out again
+      if (data.stockChange) {
+        toast.success(`Order #${orderId} updated to ${newStatus}, stock ${data.stockChange === 'restored' ? 'added back' : 'deducted again'}`);
+        const prodRes = await fetch(`${API_URL}/api/products?includeOutOfStock=1`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (prodRes.ok) setProducts(await prodRes.json());
+      } else {
+        toast.success(`Order #${orderId} updated to ${newStatus}`);
+      }
     } catch (err) {
       console.error(err);
       toast.error(err.message || 'Error updating order status');
@@ -493,7 +503,7 @@ export default function Dashboard() {
 
       setOrders(prevOrders => prevOrders.filter(o => o.id !== orderId));
       setOrderToDelete(null);
-      toast.success(`Order #${orderId} deleted${restoreStockOnDelete ? ' and items returned to stock' : ''}`);
+      toast.success(`Order #${orderId} deleted${data.restoredStock ? ' and items returned to stock' : ''}`);
     } catch (err) {
       console.error(err);
       toast.error(err.message || 'Error deleting order');
@@ -1519,25 +1529,6 @@ export default function Dashboard() {
                           <span className="text-sm font-extrabold text-gray-800 leading-snug">{item.productName || (item.product ? item.product.name : 'Unknown Product')}</span>
                           <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded w-fit mt-1">{item.weight}</span>
                           <span className="text-xs text-gray-400 font-bold mt-1">Qty: {item.quantity} × ₹{item.price.toFixed(2)}</span>
-                          
-                          {/* Stock Log Details */}
-                          <div className="text-[10px] text-gray-500 font-bold mt-2 bg-gray-50 border border-gray-150 p-2 rounded-xl flex flex-wrap items-center gap-x-2 gap-y-1 w-fit">
-                            <span className="text-emerald-700 font-black uppercase tracking-wider text-[8px] bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 shadow-sm">Stock Log</span>
-                            <span>Reduced: <strong className="text-gray-800">{(parseWeightToKg(item.weight) * item.quantity).toFixed(2)} kg</strong></span>
-                            {item.initialStock !== undefined && item.initialStock !== null ? (
-                              <>
-                                <span className="text-gray-300">•</span>
-                                <span>Initial: <strong className="text-gray-800">{item.initialStock.toFixed(2)} kg</strong></span>
-                                <span className="text-gray-300">•</span>
-                                <span>Final: <strong className="text-gray-800">{item.finalStock.toFixed(2)} kg</strong></span>
-                              </>
-                            ) : (
-                              <>
-                                <span className="text-gray-300">•</span>
-                                <span className="text-gray-400 font-medium italic">Initial/Final states not archived</span>
-                              </>
-                            )}
-                          </div>
                         </div>
                       </div>
                       <span className="text-sm font-black text-gray-800">₹{(item.price * item.quantity).toFixed(2)}</span>
@@ -1752,6 +1743,14 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
+
+            {/* Order history: status changes, stock taken and returned, emails, tracking.
+                Keyed on what can change here so it reloads after each change. */}
+            <OrderHistory
+              key={`${selectedOrder.id}-${selectedOrder.status}-${selectedOrder.trackingNumber || ''}-${selectedOrder.shippingCarrier || ''}-${selectedOrder.address}-${selectedOrder.messages?.length || 0}`}
+              apiUrl={API_URL}
+              orderId={selectedOrder.id}
+            />
 
           </div>
 
@@ -3246,7 +3245,7 @@ export default function Dashboard() {
                             <button
                               onClick={() => {
                                 setRestoreStockOnDelete(true);
-                                setOrderToDelete({ id: order.id, customerName, totalAmount: order.totalAmount });
+                                setOrderToDelete({ id: order.id, customerName, totalAmount: order.totalAmount, status: order.status });
                               }}
                               title={`Delete order #${order.id}`}
                               aria-label={`Delete order #${order.id}`}
@@ -3293,18 +3292,24 @@ export default function Dashboard() {
                 <p className="text-sm text-gray-600 mb-5">
                   This permanently removes the order from the dashboard and analytics. It cannot be undone.
                 </p>
-                <label className="flex items-start gap-3 bg-gray-50 border border-gray-100 rounded-2xl p-4 mb-4 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={restoreStockOnDelete}
-                    onChange={(e) => setRestoreStockOnDelete(e.target.checked)}
-                    className="mt-0.5 w-4 h-4 accent-emerald-600"
-                  />
-                  <span className="text-sm text-gray-700">
-                    <span className="font-bold">Also return the items to stock</span>
-                    <span className="block text-xs text-gray-500">Recommended for test orders, so the stock they used is available again.</span>
-                  </span>
-                </label>
+                {['Cancelled', 'Refunded', 'Failed'].includes(orderToDelete.status) ? (
+                  <p className="text-sm text-gray-600 bg-gray-50 border border-gray-100 rounded-2xl p-4 mb-4">
+                    This order is <span className="font-bold">{orderToDelete.status}</span>, so its items are already back in stock.
+                  </p>
+                ) : (
+                  <label className="flex items-start gap-3 bg-gray-50 border border-gray-100 rounded-2xl p-4 mb-4 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={restoreStockOnDelete}
+                      onChange={(e) => setRestoreStockOnDelete(e.target.checked)}
+                      className="mt-0.5 w-4 h-4 accent-emerald-600"
+                    />
+                    <span className="text-sm text-gray-700">
+                      <span className="font-bold">Also return the items to stock</span>
+                      <span className="block text-xs text-gray-500">Recommended for test orders, so the stock they used is available again.</span>
+                    </span>
+                  </label>
+                )}
                 <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-xl p-3 mb-6">
                   Deleting does not refund the customer. Issue refunds from the Razorpay dashboard.
                 </p>
