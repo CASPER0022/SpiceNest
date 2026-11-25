@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, CalendarDays, Check, Clock, Link2, Share2, Sparkles, X } from 'lucide-react';
 import toast from 'react-hot-toast';
-import usePageMeta from '../utils/usePageMeta';
-import { useJsonLd } from '../utils/structuredData';
+import usePageMeta, { shortDescription } from '../utils/usePageMeta';
+import { useJsonLd, breadcrumbJsonLd } from '../utils/structuredData';
 import { formatPostDate, getPost, sortedPosts } from '../data/blogPosts';
 import SpiceRouteExplorer from '../components/blog/SpiceRouteExplorer';
 import { CardamomCalendar, CardamomGrades, CardamomJourney } from '../components/blog/CardamomStory';
@@ -260,7 +260,11 @@ function useActiveHeading(ids) {
 export default function BlogPost() {
   const { slug } = useParams();
   const post = getPost(slug);
-  usePageMeta(post ? post.title : 'Blog', post?.excerpt);
+  usePageMeta(
+    post ? post.title : 'Article not found',
+    post ? (post.seoDescription || shortDescription(post.excerpt)) : undefined,
+    { image: post?.cover, type: post ? 'article' : 'website', noindex: !post }
+  );
   useJsonLd(
     'blogpost-jsonld',
     post && {
@@ -277,6 +281,9 @@ export default function BlogPost() {
       keywords: post.tags.join(', ')
     }
   );
+
+  // Home › Blog › article title in Google results
+  useJsonLd('breadcrumb-jsonld', post && breadcrumbJsonLd([['Blog', '/blog'], [post.title, `/blog/${post.slug}`]]));
 
   const headings = post ? post.blocks.filter((b) => b.type === 'h2') : [];
   const active = useActiveHeading(headings.map((h) => h.id));

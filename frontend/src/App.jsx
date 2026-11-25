@@ -60,6 +60,7 @@ const CancellationReturn = lazyPage(() => import('./pages/CancellationReturn'));
 const RefundPolicy = lazyPage(() => import('./pages/RefundPolicy'));
 const PrivacyPolicy = lazyPage(() => import('./pages/PrivacyPolicy'));
 const TermsConditions = lazyPage(() => import('./pages/TermsConditions'));
+const NotFound = lazyPage(() => import('./pages/NotFound'));
 
 // Shown while a page's code loads (usually a fraction of a second)
 function PageLoader() {
@@ -135,6 +136,8 @@ function AppLayout() {
           <Route path="/refund-policy" element={<RefundPolicy />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms-conditions" element={<TermsConditions />} />
+          {/* Any other address: "page not found", kept out of search results */}
+          <Route path="*" element={<NotFound />} />
         </Routes>
         </Suspense>
       </main>

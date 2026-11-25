@@ -8,9 +8,9 @@ import { useWishlist } from '../context/WishlistContext';
 import toast from 'react-hot-toast';
 import ProductToastIcon from '../components/ProductToastIcon';
 import { trackViewItem } from '../utils/analytics';
-import usePageMeta from '../utils/usePageMeta';
+import usePageMeta, { shortDescription } from '../utils/usePageMeta';
 import { thumbSrc, onThumbError } from '../utils/images';
-import { productJsonLd, useJsonLd } from '../utils/structuredData';
+import { productJsonLd, breadcrumbJsonLd, useJsonLd } from '../utils/structuredData';
 
 const WEIGHT_OPTIONS = [
   { label: '100g', multiplier: 1.0, kg: 0.1, discountPercent: 0 },
@@ -104,7 +104,7 @@ export default function ProductDetails() {
     if (loadedProductRef.current?.slug === slug) return;
     fetch(`${API_URL}/api/products/${slug}`)
       .then((res) => {
-        if (!res.ok) throw new Error('Product not found');
+        if (!res.ok) throw new Error(res.status === 404 ? 'Product not found' : 'Could not load this product. Please try again.');
         return res.json();
       })
       .then((data) => {
@@ -133,12 +133,17 @@ export default function ProductDetails() {
   const nameFromUrl = slug && !/^\d+$/.test(slug)
     ? slug.split('-').map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
     : 'Whole Spices';
+  const productMissing = error === 'Product not found';
   usePageMeta(
-    `Buy ${product?.name || nameFromUrl} Online`,
-    product?.description ? String(product.description).replace(/\s+/g, ' ').trim().slice(0, 155) : undefined
+    productMissing ? 'Product not found' : `Buy ${product?.name || nameFromUrl} Online – Farm-Direct from Idukki`,
+    product?.description ? shortDescription(product.description) : undefined,
+    // Shared links show the product photo; an unknown product is kept out of search results
+    { image: product?.images?.[0], type: 'product', noindex: productMissing }
   );
   // Price range, stock and ratings for Google (Product structured data)
   useJsonLd('product-jsonld', productJsonLd(product));
+  // Home › Shop › Black Pepper in Google results
+  useJsonLd('breadcrumb-jsonld', product?.slug && breadcrumbJsonLd([['Shop', '/shop'], [product.name, `/product/${product.slug}`]]));
 
   useEffect(() => {
     if (product && product.stock !== undefined) {

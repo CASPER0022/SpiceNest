@@ -9,6 +9,8 @@ export const BLOG_POSTS = [
     title: 'From Plant to Plate: How Cardamom Is Grown in Idukki',
     excerpt:
       'Shade trees, monsoon planting, flowers that creep along the ground, hand-picked pods and slow curing: follow every step of cardamom cultivation in the Cardamom Hills, from the forest garden to your cup of chai.',
+    // Search-result description (~155 characters); the excerpt is longer
+    seoDescription: 'How cardamom is grown in Idukki, Kerala: shade trees, monsoon planting, hand-picking and slow curing, from the farm to your cup of chai.',
     date: '2026-11-16',
     readMinutes: 9,
     author: 'Idukki Origins',
@@ -141,6 +143,7 @@ export const BLOG_POSTS = [
     title: 'The Spice Route: How Kerala’s Spices Changed the World',
     excerpt:
       'For more than two thousand years, pepper and cardamom from the hills behind the Malabar coast pulled ships across oceans. Follow the Spice Route from Idukki to Rome, Venice and Lisbon, and back to your kitchen.',
+    seoDescription: 'How pepper and cardamom from the hills of Idukki pulled ships from Rome, Venice and Lisbon to Kerala for 2,000 years: the story of the Spice Route.',
     date: '2026-11-16',
     readMinutes: 8,
     author: 'Idukki Origins',

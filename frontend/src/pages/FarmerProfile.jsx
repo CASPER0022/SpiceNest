@@ -4,15 +4,24 @@ import { ChevronLeft, Star, MapPin, Award } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
-import usePageMeta from '../utils/usePageMeta';
+import usePageMeta, { shortDescription } from '../utils/usePageMeta';
+import { useJsonLd, breadcrumbJsonLd } from '../utils/structuredData';
 import SiteImg from '../components/SiteImg';
 
 export default function FarmerProfile() {
   const { id } = useParams();
   const [farmer, setFarmer] = useState(null);
-  usePageMeta(farmer?.name ? `Farmer ${farmer.name}` : 'Our Farmers');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const farmerMissing = error === 'Farmer not found';
+  // The farmer's own story as the search description, their photo for shared links
+  usePageMeta(
+    farmerMissing ? 'Farmer not found' : farmer?.name ? `${farmer.name}, Spice Farmer in Idukki` : 'Our Farmers',
+    farmer?.about ? shortDescription(farmer.about) : undefined,
+    { image: farmer?.image, type: 'profile', noindex: farmerMissing }
+  );
+  // Home › Our Farmers › Raju in Google results
+  useJsonLd('breadcrumb-jsonld', farmer?.name && breadcrumbJsonLd([['Our Farmers', '/farmers'], [farmer.name, `/farmer/${id}`]]));
   const { user } = useAuth();
 
   const [newRating, setNewRating] = useState(5);
@@ -39,7 +48,7 @@ export default function FarmerProfile() {
   useEffect(() => {
     fetch(`${API_URL}/api/farmers/${id}`)
       .then((res) => {
-        if (!res.ok) throw new Error('Farmer not found');
+        if (!res.ok) throw new Error(res.status === 404 ? 'Farmer not found' : 'Could not load this farmer. Please try again.');
         return res.json();
       })
       .then((data) => {

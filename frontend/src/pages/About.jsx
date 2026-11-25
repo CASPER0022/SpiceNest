@@ -249,7 +249,7 @@ function PartnerFarmers() {
 export default function About() {
   usePageMeta(
     'About Us',
-    'Idukki Origins grows black pepper, cardamom, nutmeg and cloves on its own integrated farms in Idukki, Kerala, using scientific methods, and buys directly from local farmers.'
+    'Idukki Origins grows black pepper, cardamom, nutmeg and cloves on its own farms in Idukki, Kerala, and buys directly from local farmers.'
   );
   const [source, setSource] = useState('farms');
   const current = SOURCES[source];
