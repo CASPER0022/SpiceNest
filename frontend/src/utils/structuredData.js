@@ -81,10 +81,30 @@ export function productJsonLd(product) {
   return data;
 }
 
+// Article data for a blog post (see data/blogPosts.js)
+export function blogPostingJsonLd(post) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: post.title,
+    description: post.excerpt,
+    image: absolute(post.cover),
+    datePublished: post.date,
+    dateModified: post.date,
+    author: { '@type': 'Organization', name: post.author, url: SITE_URL },
+    publisher: { '@id': `${SITE_URL}/#organization` },
+    mainEntityOfPage: `${SITE_URL}/blog/${post.slug}`,
+    keywords: post.tags.join(', ')
+  };
+}
+
+// Adds a JSON-LD block while the page is open. A ready-made page (scripts/prerender.js) already
+// has a block with the same id, written when the site was built: it is replaced by the live one.
 export function useJsonLd(id, data) {
   const json = data ? JSON.stringify(data) : '';
   useEffect(() => {
     if (!json) return undefined;
+    document.getElementById(id)?.remove();
     const script = document.createElement('script');
     script.type = 'application/ld+json';
     script.id = id;

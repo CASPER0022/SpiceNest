@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, CalendarDays, Check, Clock, Link2, Share2, Sparkles, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import usePageMeta, { shortDescription } from '../utils/usePageMeta';
-import { useJsonLd, breadcrumbJsonLd } from '../utils/structuredData';
+import { useJsonLd, breadcrumbJsonLd, blogPostingJsonLd } from '../utils/structuredData';
 import { formatPostDate, getPost, sortedPosts } from '../data/blogPosts';
 import SpiceRouteExplorer from '../components/blog/SpiceRouteExplorer';
 import { CardamomCalendar, CardamomGrades, CardamomJourney } from '../components/blog/CardamomStory';
@@ -265,22 +265,7 @@ export default function BlogPost() {
     post ? (post.seoDescription || shortDescription(post.excerpt)) : undefined,
     { image: post?.cover, type: post ? 'article' : 'website', noindex: !post }
   );
-  useJsonLd(
-    'blogpost-jsonld',
-    post && {
-      '@context': 'https://schema.org',
-      '@type': 'BlogPosting',
-      headline: post.title,
-      description: post.excerpt,
-      image: `${SITE_URL}${post.cover}`,
-      datePublished: post.date,
-      dateModified: post.date,
-      author: { '@type': 'Organization', name: post.author, url: SITE_URL },
-      publisher: { '@id': `${SITE_URL}/#organization` },
-      mainEntityOfPage: `${SITE_URL}/blog/${post.slug}`,
-      keywords: post.tags.join(', ')
-    }
-  );
+  useJsonLd('blogpost-jsonld', post && blogPostingJsonLd(post));
 
   // Home › Blog › article title in Google results
   useJsonLd('breadcrumb-jsonld', post && breadcrumbJsonLd([['Blog', '/blog'], [post.title, `/blog/${post.slug}`]]));

@@ -1,7 +1,8 @@
 import usePageMeta from '../utils/usePageMeta';
+import { pageMeta } from '../data/pageMeta';
 
 export default function RefundPolicy() {
-  usePageMeta('Refund Policy', 'How and when Idukki Origins refunds orders: damaged or wrong items and cancellations before dispatch, paid back to your original payment method.');
+  usePageMeta(...pageMeta('/refund-policy'));
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-16">

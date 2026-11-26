@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, CalendarDays, Clock, Search } from 'lucide-react';
 import usePageMeta from '../utils/usePageMeta';
+import { pageMeta } from '../data/pageMeta';
 import { formatPostDate, sortedPosts } from '../data/blogPosts';
 import SiteImg from '../components/SiteImg';
 
@@ -19,7 +20,7 @@ function PostMeta({ post, light }) {
 }
 
 export default function Blog() {
-  usePageMeta('Blog', 'Stories from the spice hills of Idukki, Kerala: the history of the Spice Route, how our spices are grown and harvested, and how to cook with them.');
+  usePageMeta(...pageMeta('/blog'));
   const posts = sortedPosts();
   const [query, setQuery] = useState('');
   const [tag, setTag] = useState('All');

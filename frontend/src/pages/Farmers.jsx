@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Star, MapPin, Award, ArrowRight, ShieldCheck, Heart } from 'lucide-react';
 import usePageMeta from '../utils/usePageMeta';
+import { pageMeta } from '../data/pageMeta';
 import SiteImg from '../components/SiteImg';
 
 export default function Farmers() {
-  usePageMeta('Our Farmers', 'Meet the Idukki farmers who grow our spices. We buy pepper, cardamom, cloves, nutmeg and mace directly from them.');
+  usePageMeta(...pageMeta('/farmers'));
   const [farmers, setFarmers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

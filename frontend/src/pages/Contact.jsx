@@ -5,6 +5,7 @@ import {
   ArrowRight, Building2, Check, ChevronDown, Copy, Mail, MapPin, MessageCircle, Navigation, Package, Phone, Send, Sprout, Tractor, Truck
 } from 'lucide-react';
 import usePageMeta from '../utils/usePageMeta';
+import { pageMeta } from '../data/pageMeta';
 import Reveal from '../components/Reveal';
 import SiteImg from '../components/SiteImg';
 
@@ -324,7 +325,7 @@ function Faq() {
 }
 
 export default function Contact() {
-  usePageMeta('Contact Us', 'Contact Idukki Origins, Kanjikuzhy, Idukki, Kerala: phone, WhatsApp and email for orders, bulk enquiries and farmer partnerships.');
+  usePageMeta(...pageMeta('/contact'));
 
   return (
     <div className="bg-gray-50 -mt-20 md:-mt-20">

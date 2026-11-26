@@ -1,7 +1,8 @@
 import usePageMeta from '../utils/usePageMeta';
+import { pageMeta } from '../data/pageMeta';
 
 export default function ShippingPolicy() {
-  usePageMeta('Shipping Policy', 'Idukki Origins ships across India with Delhivery, DTDC and India Post. Orders dispatch in 1–2 working days and arrive in 1–10 days. Free shipping above ₹500.');
+  usePageMeta(...pageMeta('/shipping-policy'));
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-16">

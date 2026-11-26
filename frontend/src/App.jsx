@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { CartProvider } from './context/CartContext';
@@ -76,6 +76,15 @@ function AppLayout() {
   const location = useLocation();
   const isHome = location.pathname === '/';
   const [showBubble, setShowBubble] = useState(false);
+
+  // A ready-made page (scripts/prerender.js) carries search data for the page first opened.
+  // Once the visitor moves to another page, any of it the app has not replaced is removed.
+  const firstPath = useRef(location.pathname);
+  useEffect(() => {
+    if (location.pathname !== firstPath.current) {
+      document.querySelectorAll('script[data-prerendered]').forEach((script) => script.remove());
+    }
+  }, [location.pathname]);
 
   useEffect(() => {
     // Show initially after 3 seconds

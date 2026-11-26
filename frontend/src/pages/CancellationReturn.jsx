@@ -1,7 +1,8 @@
 import usePageMeta from '../utils/usePageMeta';
+import { pageMeta } from '../data/pageMeta';
 
 export default function CancellationReturn() {
-  usePageMeta('Cancellation & Return Policy', 'Our spices are food products, so we do not accept returns. Damaged or wrong item? Report it within 7 days of delivery with photos for a free replacement or full refund.');
+  usePageMeta(...pageMeta('/cancellation-return'));
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-16">

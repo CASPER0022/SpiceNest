@@ -6,6 +6,7 @@ import {
   Sparkles, UtensilsCrossed, Wind
 } from 'lucide-react';
 import usePageMeta from '../utils/usePageMeta';
+import { pageMeta } from '../data/pageMeta';
 import useReveal from '../utils/useReveal';
 import Reveal from '../components/Reveal';
 import SiteImg from '../components/SiteImg';
@@ -221,10 +222,7 @@ function QualityChecklist() {
 }
 
 export default function Certifications() {
-  usePageMeta(
-    'Certifications',
-    'Idukki Origins is FSSAI registered (21326177000702), GST registered (32AGFPJ8946D1ZH) and an MSME Udyam registered business (UDYAM-KL-03-0041531).'
-  );
+  usePageMeta(...pageMeta('/certifications'));
   const [selected, setSelected] = useState(REGISTRATIONS[0].id);
   const current = REGISTRATIONS.find((r) => r.id === selected);
 

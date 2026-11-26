@@ -1,4 +1,8 @@
+import usePageMeta from '../utils/usePageMeta';
+import { pageMeta } from '../data/pageMeta';
+
 export default function PrivacyPolicy() {
+  usePageMeta(...pageMeta('/privacy-policy'));
   return (
     <div className="max-w-4xl mx-auto px-4 py-16">
       <h1 className="text-4xl font-black text-gray-900 tracking-tight mb-8">Privacy Policy</h1>

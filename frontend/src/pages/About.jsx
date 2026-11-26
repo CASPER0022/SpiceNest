@@ -5,6 +5,7 @@ import {
   Scissors, ShieldCheck, Sprout, Star, Sun, Tractor, Trees
 } from 'lucide-react';
 import usePageMeta from '../utils/usePageMeta';
+import { pageMeta } from '../data/pageMeta';
 import Reveal from '../components/Reveal';
 import useReveal from '../utils/useReveal';
 import SiteImg from '../components/SiteImg';
@@ -247,10 +248,7 @@ function PartnerFarmers() {
 }
 
 export default function About() {
-  usePageMeta(
-    'About Us',
-    'Idukki Origins grows black pepper, cardamom, nutmeg and cloves on its own farms in Idukki, Kerala, and buys directly from local farmers.'
-  );
+  usePageMeta(...pageMeta('/about'));
   const [source, setSource] = useState('farms');
   const current = SOURCES[source];
 

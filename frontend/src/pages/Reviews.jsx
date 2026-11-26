@@ -4,6 +4,7 @@ import {
   ArrowRight, BadgeCheck, ChevronDown, Leaf, MessageSquareQuote, PackageCheck, PenLine, Quote, ShieldCheck, ShoppingBag, Star, UserCheck
 } from 'lucide-react';
 import usePageMeta from '../utils/usePageMeta';
+import { pageMeta } from '../data/pageMeta';
 import Reveal from '../components/Reveal';
 import { useAuth } from '../context/AuthContext';
 import SiteImg from '../components/SiteImg';
@@ -151,7 +152,7 @@ function RatingSummary({ summary, starFilter, onStar }) {
 }
 
 export default function Reviews() {
-  usePageMeta('Customer Reviews', 'Read reviews of Idukki Origins spices from verified buyers, and share your own after your order arrives.');
+  usePageMeta(...pageMeta('/reviews'));
   const { user } = useAuth();
   const [data, setData] = useState(null);
   const [failed, setFailed] = useState(false);

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Camera, ChevronLeft, ChevronRight, Expand, X } from 'lucide-react';
 import usePageMeta from '../utils/usePageMeta';
+import { pageMeta } from '../data/pageMeta';
 import Reveal from '../components/Reveal';
 import SiteImg from '../components/SiteImg';
 
@@ -144,7 +145,7 @@ function Lightbox({ photos, index, onClose, onMove }) {
 }
 
 export default function Gallery() {
-  usePageMeta('Gallery', 'Photos from Idukki: pepper vines, cardamom harvests, nutmeg, mace and cloves on the farm, and the packs they end up in.');
+  usePageMeta(...pageMeta('/gallery'));
   const [category, setCategory] = useState('all');
   const [open, setOpen] = useState(null);
 
