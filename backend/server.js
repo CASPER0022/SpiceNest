@@ -190,6 +190,39 @@ async function loadAllProducts() {
   return productsWithRatings;
 }
 
+// One product with its farmer and reviews, as the product page needs it (GET /api/products/:id)
+const PRODUCT_DETAIL_INCLUDE = {
+  farmer: true,
+  reviews: {
+    include: { user: { select: { name: true } } },
+    orderBy: { createdAt: 'desc' }
+  }
+};
+
+const withRating = (product) => {
+  const reviewsCount = product.reviews.length;
+  const rating = reviewsCount > 0
+    ? parseFloat((product.reviews.reduce((acc, curr) => acc + curr.rating, 0) / reviewsCount).toFixed(1))
+    : 0; // Default to 0 when there are no reviews
+  return { ...product, rating, reviewsCount };
+};
+
+// Loads every product's page data in ONE database request and caches each one, so product pages
+// never wait on the database (about 1.3 s otherwise, mostly the round trip). Still one request
+// with 100 products. Archived products are left out; they load on demand for admins.
+async function loadAllProductDetails() {
+  const products = await prisma.product.findMany({
+    where: { isArchived: false },
+    include: PRODUCT_DETAIL_INCLUDE
+  });
+  for (const product of products) {
+    productCache.set(`product_${product.id}`, withRating(product));
+    // The link name (/product/black-pepper) -> product ID lookup, also used by every product page
+    if (product.slug) productCache.set(`slug_${product.slug}`, product.id);
+  }
+  return products.length;
+}
+
 // Get all spices from the database. Customers only get products in stock; the admin dashboard
 // asks for sold-out ones too with ?includeOutOfStock=1.
 app.get('/api/products', async (req, res) => {
@@ -242,36 +275,13 @@ app.get('/api/products/:id', async (req, res) => {
       return sendProduct(cachedProduct);
     }
 
-    const product = await prisma.product.findUnique({
-      where: { id },
-      include: { 
-        farmer: true,
-        reviews: {
-          include: {
-            user: {
-              select: { name: true }
-            }
-          },
-          orderBy: { createdAt: 'desc' }
-        }
-      }
-    });
-    
+    const product = await prisma.product.findUnique({ where: { id }, include: PRODUCT_DETAIL_INCLUDE });
+
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
     }
-    
-    const reviewsCount = product.reviews.length;
-    const rating = reviewsCount > 0 
-      ? parseFloat((product.reviews.reduce((acc, curr) => acc + curr.rating, 0) / reviewsCount).toFixed(1))
-      : 0; // Default to 0 when there are no reviews
 
-    const result = {
-      ...product,
-      rating,
-      reviewsCount
-    };
-
+    const result = withRating(product);
     productCache.set(cacheKey, result);
     await sendProduct(result);
   } catch (error) {
@@ -510,15 +520,15 @@ app.listen(PORT, () => {
   prisma.$connect()
     // Products created before slugs existed get one (no-op once every product has a slug)
     .then(() => backfillProductSlugs(prisma))
-    .then(() => Promise.all([loadAllProducts(), loadAllFarmers()]))
+    .then(() => Promise.all([loadAllProducts(), loadAllFarmers(), loadAllProductDetails()]))
     .then(() => console.log('✅ Database connected and caches warmed'))
     .catch((err) => console.error('Startup warm-up failed (requests will load on demand):', err.message));
 
-  // Refresh both lists shortly before their 5-minute cache expires, so visitors always get the
-  // cached copy instead of occasionally waiting on the database. (Admin edits clear the cache
-  // immediately, so changes still appear right away.)
+  // Refresh the lists and every product page's data shortly before their 5-minute cache expires,
+  // so visitors always get the cached copy instead of occasionally waiting on the database.
+  // (Admin edits clear the cache immediately, so changes still appear right away.)
   setInterval(() => {
-    Promise.all([loadAllProducts(), loadAllFarmers()])
+    Promise.all([loadAllProducts(), loadAllFarmers(), loadAllProductDetails()])
       .catch((err) => console.error('Background cache refresh failed:', err.message));
   }, 4 * 60 * 1000).unref();
 });

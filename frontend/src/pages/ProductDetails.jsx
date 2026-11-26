@@ -10,6 +10,7 @@ import ProductToastIcon from '../components/ProductToastIcon';
 import { trackViewItem } from '../utils/analytics';
 import usePageMeta, { shortDescription } from '../utils/usePageMeta';
 import { thumbSrc, onThumbError } from '../utils/images';
+import SiteImg from '../components/SiteImg';
 import { productJsonLd, breadcrumbJsonLd, useJsonLd } from '../utils/structuredData';
 
 const WEIGHT_OPTIONS = [
@@ -318,9 +319,14 @@ export default function ProductDetails() {
         {/* Left Column: Image */}
         <div className="space-y-4">
           <div className="aspect-square bg-stone-50 rounded-3xl overflow-hidden shadow-lg border border-gray-100 relative group">
-            <img 
-              src={activeImage || (product.images && product.images[0]) || '/images/placeholder.jpg'} 
-              alt={product.name} 
+            {/* Web-sized version (about half the bytes of the original); keyed so switching photos
+                starts fresh if one has to fall back to the original */}
+            <SiteImg
+              size="web"
+              key={activeImage || product.images?.[0]}
+              src={activeImage || (product.images && product.images[0]) || '/images/placeholder.jpg'}
+              alt={product.name}
+              fetchPriority="high"
               className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
             />
           </div>
@@ -414,7 +420,9 @@ export default function ProductDetails() {
           {product.farmer && (
             <div className="mb-8 p-5 bg-emerald-50 rounded-2xl border border-emerald-100 flex items-center justify-between transition-all hover:shadow-md">
               <div className="flex items-center space-x-4">
-                <img 
+                <SiteImg
+                  size="thumb"
+                  loading="lazy"
                   src={product.farmer.image || 'https://ui-avatars.com/api/?name=Farmer&background=10b981&color=fff&size=128'} 
                   alt={product.farmer.name} 
                   className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm" 
