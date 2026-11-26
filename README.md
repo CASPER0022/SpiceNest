@@ -76,6 +76,11 @@ FRONTEND_URL="http://localhost:5173"
 
 # Brevo API key used to send verification, reset and order emails
 BREVO_API_KEY="your_brevo_api_key"
+
+# Optional: Vercel deploy hook (Vercel project > Settings > Git > Deploy Hooks). When set, saving,
+# adding or deleting a product rebuilds the website a minute later, so the ready-made product
+# pages (frontend/scripts/prerender.js) show the change.
+VERCEL_DEPLOY_HOOK_URL="https://api.vercel.com/v1/integrations/deploy/..."
 ```
 
 Push the database schema and seed the initial products:

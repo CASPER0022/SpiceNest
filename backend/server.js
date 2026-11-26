@@ -52,6 +52,7 @@ import feedRoutes from './routes/feed.js';
 import taxRoutes from './routes/tax.js';
 import { verifyToken, getRequestUser } from './routes/auth.js';
 import { MIN_PACK_KG, isInStock } from './utils/pricing.js';
+import { scheduleSiteRebuild } from './utils/rebuildSite.js';
 
 // ==========================================
 // Middleware (Software that runs before your routes)
@@ -312,6 +313,7 @@ app.put('/api/products/:id', verifyToken, async (req, res) => {
     productCache.delete('all_products');
     farmerCache.clear(); // farmer cards list their product names
     productCache.delete(`product_${id}`);
+    scheduleSiteRebuild(`product ${id} updated`); // ready-made product pages show the change
 
     res.json({ success: true, product: updatedProduct });
   } catch (error) {
@@ -360,6 +362,7 @@ app.post('/api/products', verifyToken, async (req, res) => {
     // Invalidate products cache
     productCache.delete('all_products');
     farmerCache.clear(); // farmer cards list their product names
+    scheduleSiteRebuild(`product ${newProduct.id} added`); // the new product gets its ready-made page
 
     res.status(201).json({ success: true, product: newProduct });
   } catch (error) {
@@ -390,6 +393,7 @@ app.delete('/api/products/:id', verifyToken, async (req, res) => {
     productCache.delete('all_products');
     farmerCache.clear(); // farmer cards list their product names
     productCache.delete(`product_${id}`);
+    scheduleSiteRebuild(`product ${id} deleted`); // its ready-made page is removed
 
     res.json({ success: true, message: 'Product deleted successfully' });
   } catch (error) {

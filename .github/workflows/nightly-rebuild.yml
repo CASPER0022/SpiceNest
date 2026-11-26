@@ -1,0 +1,23 @@
+# Rebuilds the website every night, so the ready-made pages (frontend/scripts/prerender.js) pick
+# up stock and rating changes from orders and reviews, which don't trigger a rebuild themselves.
+# Needs the repository secret VERCEL_DEPLOY_HOOK_URL (Settings > Secrets and variables > Actions).
+name: Nightly website rebuild
+
+on:
+  schedule:
+    - cron: '30 21 * * *' # 03:00 in India (21:30 UTC)
+  workflow_dispatch: # "Run workflow" button on the Actions tab
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger the Vercel deploy hook
+        env:
+          HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::error::Add the VERCEL_DEPLOY_HOOK_URL repository secret first."
+            exit 1
+          fi
+          curl -fsS -X POST "$HOOK"
