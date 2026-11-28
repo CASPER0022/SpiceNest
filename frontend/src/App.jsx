@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
+import { Analytics } from '@vercel/analytics/react';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
 import { ViewedProvider } from './context/ViewedContext';
@@ -204,6 +205,7 @@ function App() {
           </ViewedProvider>
         </WishlistProvider>
       </CartProvider>
+      <Analytics />
     </AuthProvider>
   );
 }
