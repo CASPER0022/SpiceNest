@@ -33,6 +33,27 @@ function absoluteUrl(path) {
   return encodeURI(`${SITE_URL}/${String(path).replace(/^\/+/, '')}`);
 }
 
+// Google and Meta keep their own copy of each image and only download it again when the link changes.
+// A photo replaced under the same file name would stay old in their catalogs, so every image link gets
+// "?v=<content hash>": the site's ETag, which Vercel sets from the file contents. The link then changes
+// exactly when the photo does. If the site can't be reached, the plain link is used.
+async function versionedImageUrl(url) {
+  try {
+    const response = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(5000) });
+    const etag = (response.ok && response.headers.get('etag') || '').replace(/^W\//, '').replace(/"/g, '');
+    if (!etag) return url;
+    return `${url}${url.includes('?') ? '&' : '?'}v=${encodeURIComponent(etag.slice(0, 12))}`;
+  } catch {
+    return url;
+  }
+}
+
+async function versionImages(urls) {
+  const unique = [...new Set(urls)];
+  const versioned = await Promise.all(unique.map(versionedImageUrl));
+  return new Map(unique.map((url, i) => [url, versioned[i]]));
+}
+
 function plainText(text, maxLength) {
   return String(text || '')
     .replace(/<[^>]*>/g, ' ')
@@ -49,9 +70,11 @@ async function loadFeedItems() {
     orderBy: { id: 'asc' }
   });
 
+  const imageUrls = await versionImages(products.flatMap((p) => (p.images || []).filter(Boolean).map(absoluteUrl)));
+
   const items = [];
   for (const product of products) {
-    const images = (product.images || []).filter(Boolean).map(absoluteUrl);
+    const images = (product.images || []).filter(Boolean).map(absoluteUrl).map((url) => imageUrls.get(url));
     if (images.length === 0) continue; // image_link is required
 
     for (const [weight, option] of Object.entries(WEIGHT_OPTIONS)) {
